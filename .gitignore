@@ -1,0 +1,9 @@
+/vendor/
+app/utilities/vendor/
+node_modules/
+frontend/dist/
+.env
+frontend/.env
+*.log
+.DS_Store
+nuevo_proyecto - copia/

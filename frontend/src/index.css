@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+/* Kloset · tienda — tokens del diseño "Kloset.dc.html" */
+:root,
+[data-theme="light"] {
+  --paper: #F2F2F0;
+  --ink: #1C1C1A;
+  --soft: #6B6B66;
+  --body: #54544F;
+  --rule: #DBDAD5;
+  --surface: #E8E7E3;
+  --surface-2: #E1E0DB;
+  --red: #C4211F;
+  --hover: #E8E7E3;
+  --header-bg: rgba(242, 242, 240, 0.94);
+  --stage-veil: rgba(242, 242, 240, 0.82);
+  --stripe: rgba(28, 28, 26, 0.055);
+  --fig-a: rgba(28, 28, 26, 0.16);
+  --fig-b: rgba(28, 28, 26, 0.045);
+  --fig-bd: rgba(28, 28, 26, 0.2);
+}
+
+[data-theme="dark"] {
+  --paper: #161615;
+  --ink: #F0EFEC;
+  --soft: #95948E;
+  --body: #B6B5AF;
+  --rule: #2E2E2B;
+  --surface: #232321;
+  --surface-2: #1D1D1B;
+  --red: #D93A2B;
+  --hover: #232321;
+  --header-bg: rgba(22, 22, 21, 0.94);
+  --stage-veil: rgba(22, 22, 21, 0.8);
+  --stripe: rgba(240, 239, 236, 0.05);
+  --fig-a: rgba(240, 239, 236, 0.16);
+  --fig-b: rgba(240, 239, 236, 0.045);
+  --fig-bd: rgba(240, 239, 236, 0.22);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-soft: var(--soft);
+  --color-body: var(--body);
+  --color-rule: var(--rule);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-red: var(--red);
+  --color-hover: var(--hover);
+
+  --font-sans: "Archivo", system-ui, sans-serif;
+  --font-display: "Newsreader", Georgia, serif;
+  --font-narrow: "Archivo Narrow", system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--paper);
+  }
+  body {
+    color: var(--ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    transition: background 0.3s ease, color 0.3s ease;
+  }
+  a {
+    color: var(--red);
+    text-decoration: none;
+  }
+  a:hover {
+    color: var(--ink);
+  }
+  input,
+  button,
+  select {
+    font-family: inherit;
+  }
+  input[type="range"] {
+    accent-color: var(--red);
+  }
+}
+
+@keyframes kl-settle {
+  0% { transform: translateY(6px) scaleX(1.05); opacity: 0; }
+  60% { transform: translateY(0) scaleX(0.99); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes kl-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes kl-rule {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@utility kl-rise {
+  animation: kl-rise 0.35s ease both;
+}
+
+/* Trama que sustituye a la foto de producto cuando aún no hay imagen */
+@utility kl-stripes {
+  background-image: repeating-linear-gradient(115deg, var(--stripe) 0 2px, transparent 2px 11px);
+}
+
+@utility kl-kicker {
+  font-family: var(--font-narrow);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Oculta la barra de desplazamiento de los carruseles de categoría */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -1,0 +1,20 @@
+RewriteEngine On
+RewriteBase /kloset/dw-panel/
+
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI}/dw-panel [L,R=301]
+
+# RewriteCond %{HTTP_HOST} ^www\.
+# RewriteRule ^(.*)$ http://develoweb.com/dw-panel/$1 [R=301,L]
+
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^.*$ - [NC,L]
+
+RewriteRule ^(.*)/(.*)/(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4&param5=$5&param6=$6 [L]
+RewriteRule ^(.*)/(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4&param5=$5 [L]
+RewriteRule ^(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4 [L]
+RewriteRule ^(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3 [L]
+RewriteRule ^(.*)/(.*)$ index.php?param1=$1&param2=$2 [L]
+RewriteRule ^(.*)$ index.php?param1=$1 [NC,L]

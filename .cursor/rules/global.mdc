@@ -1,0 +1,62 @@
+---
+description: Estándares Kloset — framework PHP Develoweb + excepciones frontend React
+globs:
+alwaysApply: true
+---
+
+# Kloset — Reglas globales del proyecto
+
+## Arquitectura
+
+- **Backend:** PHP MVC propietario (Develoweb), namespace `Develoweb\App\Model`.
+- **Admin:** `dw-panel/` con sesión PHP + ACL (`sistema_*`).
+- **API pública:** `api/v1/` REST + JWT para el SPA React.
+- **Frontend tienda:** `frontend/` — React + TypeScript + Tailwind + R3F (sin plantillas PHP Travago).
+
+## Estructura
+
+```
+app/model/          Modelos (singular = entidad, plural = CRUD estático)
+app/utilities/      Libs.php, JWT, helpers
+app/public_root/    imgs/, modelos3d/
+app/view/back_end/kloset/   Tema admin (NO dashlite/travago)
+dw-panel/           Front controller admin + ajax.php
+api/                REST JWT
+frontend/           SPA cliente
+```
+
+## Base de datos (MySQL)
+
+- Tablas kernel: prefijo `sistema_*` (`sistema_usuarios`, `sistema_roles`, `sistema_modulos`, `sistema_secciones`, `usuarios_secciones`, `sistema_configuraciones`).
+- Tablas negocio: sin prefijo (`productos`, `categorias`, `productos_variantes`, etc.).
+- Columnas: patrón `atributo_entidad` (ej. `nombre_producto`, `id_usuario_sistema`).
+- PK: `id_` + entidad singular. FK = nombre de PK referenciada.
+- Inventario real: `productos_variantes` (talla + corte + stock = SKU).
+
+## PHP / Framework
+
+- PDO + prepared statements. Singleton `Conexion`.
+- Contraseñas: `password_hash` / `password_verify`.
+- Controlador prepara datos; **vistas no invocan modelos**.
+- Admin AJAX: `dw-panel/ajax.php` con `{ class, method }`.
+- API: rutas versionadas `/api/v1/`, JSON, CORS controlado.
+
+## Frontend (excepción aprobada)
+
+- Tailwind CSS + tokens del design system Kloset (`--paper`, `--ink`, `--red`, Archivo/Newsreader).
+- Avatar 3D: Three.js / React Three Fiber; GLB en `app/public_root/modelos3d/`.
+- JWT en `Authorization: Bearer`; sin lógica de negocio en el módulo 3D.
+- MediaPipe Pose: fuera del MVP.
+
+## Convenciones de código
+
+- Métodos: camelCase. Tablas/columnas: snake_case.
+- Modelos plural: métodos estáticos leyendo `$_POST`/`$_FILES` en acciones AJAX.
+- Subidas de imagen: `app/public_root/imgs/` con nombres únicos (`uploadImgs` en Libs.php).
+
+## Seguridad
+
+- Sanitizar salida HTML con `htmlspecialchars`.
+- Validar entrada en modelos/utilities.
+- Admin: ACL por sección. Cliente: JWT + rol Cliente.
+- No commitear credenciales reales en `inc.config.php`.

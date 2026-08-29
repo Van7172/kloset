@@ -1,0 +1,12 @@
+{
+    "name": "develoweb/kloset",
+    "autoload": {
+        "psr-4": {
+            "Develoweb\\App\\Model\\": "../model/",
+            "Develoweb\\App\\Utilities\\": ""
+        }
+    },
+    "require": {
+        "phpmailer/phpmailer": "^6.9"
+    }
+}

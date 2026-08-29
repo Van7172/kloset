@@ -1,0 +1,22 @@
+
+# Kloset — Front controller + API + assets estáticos
+RewriteEngine On
+
+RewriteCond %{REQUEST_FILENAME} -s [OR]
+RewriteCond %{REQUEST_FILENAME} -l [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^.*$ - [NC,L]
+
+RewriteRule ^app/public_root/ - [L]
+RewriteRule ^api/ - [L]
+RewriteRule ^dw-panel/ - [L]
+RewriteRule ^frontend/dist/ - [L]
+
+RewriteRule ^api/v1/(.*)$ api/index.php [L,QSA]
+
+RewriteRule ^(.*)/(.*)/(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4&param5=$5&param6=$6 [L]
+RewriteRule ^(.*)/(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4&param5=$5 [L]
+RewriteRule ^(.*)/(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3&param4=$4 [L]
+RewriteRule ^(.*)/(.*)/(.*)$ index.php?param1=$1&param2=$2&param3=$3 [L]
+RewriteRule ^(.*)/(.*)$ index.php?param1=$1&param2=$2 [L]
+RewriteRule ^(.*)$ index.php?param1=$1 [NC,L]
