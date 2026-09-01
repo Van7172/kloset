@@ -1,0 +1,15 @@
+{
+  "name": "Kloset · Ropa deportiva a tu medida",
+  "short_name": "Kloset",
+  "description": "Recomendación de talla por tus medidas reales y prueba en avatar 3D antes de pagar.",
+  "lang": "es-PE",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F2F2F0",
+  "theme_color": "#C4211F",
+  "icons": [
+    { "src": "/kloset-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

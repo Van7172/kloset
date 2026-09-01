@@ -4,6 +4,7 @@ import { api, type ApiDetalle } from '../services/api';
 import { useKloset, type ItemBolsa } from '../store/KlosetContext';
 import { TALLAS, money, tallaRecomendada, type Talla } from '../lib/fit';
 import { Marco } from '../components/Marco';
+import { Seo } from '../components/Seo';
 
 export function ProductPage() {
   const { url = '' } = useParams();
@@ -80,8 +81,18 @@ export function ProductPage() {
     { k: 'Cambio de talla', v: 'Sin coste durante 30 días' },
   ];
 
+  const resumen = p.descripcion_producto
+    ? p.descripcion_producto.slice(0, 155)
+    : `${p.nombre_producto} en corte ${corte.toLowerCase()}. Talla sugerida para tus medidas: ${recomendada}. Cambio de talla gratis 30 días.`;
+
   return (
     <div className="kl-rise">
+      <Seo
+        title={p.nombre_producto}
+        description={resumen}
+        path={`/producto/${p.url_producto}`}
+        image={imagenes[0]?.url_imagen ?? undefined}
+      />
       <button
         type="button"
         onClick={() => navigate('/')}
@@ -96,6 +107,7 @@ export function ProductPage() {
             src={imagenes[foto]?.url_imagen ?? null}
             alt={p.nombre_producto}
             etiqueta="Foto de producto · frontal"
+            prioridad
           />
           {imagenes.length > 1 && (
             <div className="mt-2 grid grid-cols-4 gap-2">
@@ -107,7 +119,15 @@ export function ProductPage() {
                   className="relative aspect-square cursor-pointer overflow-hidden border p-0"
                   style={{ borderColor: i === foto ? 'var(--ink)' : 'transparent' }}
                 >
-                  <img src={img.url_imagen} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={img.url_imagen}
+                    alt=""
+                    width={120}
+                    height={120}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>

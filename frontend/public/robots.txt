@@ -1,0 +1,12 @@
+# Kloset — https://www.kloset.pe (cambiá el dominio del sitemap por el real al publicar)
+User-agent: *
+Allow: /
+
+# Rutas de sesión / flujo de compra: sin valor para buscadores
+Disallow: /entrar
+Disallow: /cuenta
+Disallow: /pago
+Disallow: /bolsa
+Disallow: /pedidos
+
+Sitemap: https://www.kloset.pe/sitemap.xml

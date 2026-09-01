@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api, type ApiProducto } from '../services/api';
 import { useKloset } from '../store/KlosetContext';
 import { CORTES, money, tallaRecomendada, type Corte } from '../lib/fit';
 import { Marco } from '../components/Marco';
+import { Seo } from '../components/Seo';
 
 export function CatalogPage() {
-  const navigate = useNavigate();
   const { medidas, corte, setCorte } = useKloset();
   const [productos, setProductos] = useState<ApiProducto[]>([]);
   const [q, setQ] = useState('');
@@ -45,6 +45,11 @@ export function CatalogPage() {
 
   return (
     <div className="kl-rise">
+      <Seo
+        title="Kloset"
+        description="Kloset es la tienda de ropa deportiva que recomienda tu talla a partir de tus medidas reales y la prueba sobre tu avatar 3D antes de que pagues. Cambios de talla gratis durante 30 días."
+        path="/"
+      />
       <div className="flex flex-col items-start gap-[26px] border-b border-ink pb-[26px] pt-2 lg:flex-row lg:items-end">
         <div className="max-w-[660px]">
           <div className="mb-[18px] inline-block border-b-[3px] border-red pb-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-ink">
@@ -123,13 +128,19 @@ export function CatalogPage() {
       )}
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-9 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
-        {mostrados.map((p) => (
-          <div
+        {mostrados.map((p, i) => (
+          <Link
             key={p.id_producto}
-            onClick={() => navigate(`/producto/${p.url_producto}`)}
-            className="kl-rise cursor-pointer"
+            to={`/producto/${p.url_producto}`}
+            className="kl-rise block text-ink"
           >
-            <Marco src={p.url_imagen} alt={p.nombre_producto} etiqueta="foto de producto" className="p-3">
+            <Marco
+              src={p.url_imagen}
+              alt={p.nombre_producto}
+              etiqueta="foto de producto"
+              className="p-3"
+              prioridad={i < 4}
+            >
               <div className="relative border-b-2 border-red bg-ink px-[10px] py-[6px] font-narrow text-[11.5px] uppercase tracking-[0.08em] text-paper">
                 Tu talla · {talla}
               </div>
@@ -145,7 +156,7 @@ export function CatalogPage() {
               </div>
               <div className="font-display text-[17px]">{money(Number(p.precio_producto))}</div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

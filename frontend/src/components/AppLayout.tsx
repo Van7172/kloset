@@ -59,7 +59,7 @@ export function AppLayout() {
                 }}
               />
             ) : (
-              <img src={logo} alt="Kloset" className="h-8 w-auto" />
+              <img src={logo} alt="Kloset" width={128} height={32} decoding="async" className="h-8 w-auto" />
             )}
           </Link>
 
@@ -156,7 +156,15 @@ export function AppLayout() {
       <footer className="mt-[60px] border-t-[3px] border-[#C4211F] bg-[#161615] text-[#F0EFEC]">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-[30px] px-4 pb-[26px] pt-[30px] md:flex-row md:gap-14 md:px-7 md:pb-9 md:pt-11">
           <div className="shrink-0">
-            <img src={logoSquare} alt="Kloset" className="block h-[132px] w-[132px] object-cover" />
+            <img
+              src={logoSquare}
+              alt="Kloset"
+              width={132}
+              height={132}
+              loading="lazy"
+              decoding="async"
+              className="block h-[132px] w-[132px] object-cover"
+            />
             <p className="mt-4 max-w-[26ch] text-[13px] leading-relaxed text-[#95948E]">
               Ropa deportiva medida sobre tu cuerpo, no sobre un maniquí estándar.
             </p>

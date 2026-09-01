@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
@@ -25,6 +26,7 @@ export function AccountPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[680px]">
+      <Seo title="Tu cuenta" description="Gestiona tu perfil corporal, tu avatar y el historial de pedidos en Kloset." path="/cuenta" noindex />
       <div className="mb-[14px] mt-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">Tu cuenta</div>
       <h2 className="mb-[6px] font-display text-[34px] font-normal leading-tight tracking-[-0.025em]">
         {usuario.nombre}

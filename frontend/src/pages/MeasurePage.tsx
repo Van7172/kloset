@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
@@ -16,6 +17,7 @@ export function MeasurePage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[560px]">
+      <Seo title="Cómo medirte" description="Registra tus cuatro medidas —estatura, pecho, cintura y cadera— y Kloset calcula tu talla exacta para cada corte. Solo se hace una vez." path="/medidas" />
       <div className="my-[6px] mb-6 flex gap-[5px]">
         <div className="h-[3px] flex-1 origin-left bg-red" style={{ animation: 'kl-rule .5s ease both' }} />
         <div className="h-[3px] flex-1 bg-rule" />

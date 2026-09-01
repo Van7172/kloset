@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
@@ -117,6 +118,7 @@ export function CheckoutPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[1000px]">
+      <Seo title="Pago" description="Finaliza tu compra en Kloset de forma segura." path="/pago" noindex />
       <div className="mb-6 flex items-center gap-[14px] border-b border-ink pb-[14px]">
         <button
           type="button"

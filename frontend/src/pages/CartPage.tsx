@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
@@ -19,6 +20,7 @@ export function CartPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[760px]">
+      <Seo title="Tu bolsa" description="Revisa las prendas, tallas y cortes de tu bolsa antes de pasar por caja." path="/bolsa" noindex />
       <h2 className="mb-[6px] mt-[6px] font-display text-[34px] font-normal tracking-[-0.025em]">Tu bolsa</h2>
       <p className="mb-[22px] text-[13.5px] text-soft">
         {bolsa.length} prendas, todas verificadas sobre tu avatar.

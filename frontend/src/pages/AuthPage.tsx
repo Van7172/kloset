@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
@@ -51,6 +52,7 @@ export function AuthPage() {
 
   return (
     <div className="kl-rise mx-auto flex max-w-[620px] flex-col items-stretch gap-8 lg:max-w-[1000px] lg:flex-row lg:gap-14">
+      <Seo title="Entrar o crear cuenta" description="Accede a tu cuenta de Kloset para guardar tus medidas, tu avatar y tus pedidos." path="/entrar" noindex />
       <div className="min-w-0 flex-1">
         <div className="mb-[14px] mt-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">
           {signup ? 'Crear cuenta' : 'Acceder'}

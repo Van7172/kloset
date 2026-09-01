@@ -3,14 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/kloset-icon.png" />
+
+    <!-- ==========================================================
+         SEO — cambiá el dominio de canonical/OG por el real
+         cuando publiques (ahora: https://www.kloset.pe)
+         ========================================================== -->
+    <title>Kloset · Ropa deportiva que ya sabe cómo te queda</title>
+    <meta
+      name="description"
+      content="Kloset es la tienda de ropa deportiva que recomienda tu talla a partir de tus medidas reales y la prueba sobre tu avatar 3D antes de que pagues. Cambios de talla gratis durante 30 días. Envíos a todo el Perú."
+    />
+    <meta name="author" content="Kloset" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="theme-color" content="#C4211F" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href="https://www.kloset.pe/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Kloset" />
+    <meta property="og:locale" content="es_PE" />
+    <meta property="og:title" content="Kloset · Ropa deportiva que ya sabe cómo te queda" />
+    <meta
+      property="og:description"
+      content="Registra tus medidas una vez y cada prenda se prueba sobre tu avatar antes de que pagues. Cambios de talla gratis 30 días."
+    />
+    <meta property="og:url" content="https://www.kloset.pe/" />
+    <meta property="og:image" content="https://www.kloset.pe/kloset-icon.png" />
+    <meta property="og:image:alt" content="Kloset" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Kloset · Ropa deportiva que ya sabe cómo te queda" />
+    <meta
+      name="twitter:description"
+      content="Recomendación de talla por tus medidas reales y prueba en avatar 3D antes de pagar."
+    />
+    <meta name="twitter:image" content="https://www.kloset.pe/kloset-icon.png" />
+
+    <!-- Iconos / PWA -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/kloset-icon.png" sizes="512x512" type="image/png" />
+    <link rel="apple-touch-icon" href="/kloset-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Tipografías — carga sin bloquear el render -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
+      rel="preload"
+      as="style"
       href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Archivo:wght@400;500;600&family=Archivo+Narrow:wght@500;600&display=swap"
-      rel="stylesheet"
     />
-    <title>Kloset · Ropa que ya sabe cómo te queda</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Archivo:wght@400;500;600&family=Archivo+Narrow:wght@500;600&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Archivo:wght@400;500;600&family=Archivo+Narrow:wght@500;600&display=swap"
+      />
+    </noscript>
+
+    <!-- Datos estructurados -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.kloset.pe/#organization",
+            "name": "Kloset",
+            "url": "https://www.kloset.pe/",
+            "logo": "https://www.kloset.pe/kloset-icon.png",
+            "description": "Tienda de ropa deportiva con recomendación de talla por medidas reales y prueba en avatar 3D.",
+            "areaServed": "PE"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.kloset.pe/#website",
+            "url": "https://www.kloset.pe/",
+            "name": "Kloset",
+            "inLanguage": "es-PE",
+            "publisher": { "@id": "https://www.kloset.pe/#organization" },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.kloset.pe/?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "OnlineStore",
+            "@id": "https://www.kloset.pe/#store",
+            "name": "Kloset",
+            "url": "https://www.kloset.pe/",
+            "image": "https://www.kloset.pe/kloset-icon.png",
+            "parentOrganization": { "@id": "https://www.kloset.pe/#organization" },
+            "currenciesAccepted": "PEN",
+            "paymentAccepted": "Visa, Mastercard, Amex"
+          }
+        ]
+      }
+    </script>
+
     <script>
       // Tema antes del primer pintado para evitar el parpadeo
       (function () {
@@ -22,7 +123,19 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript>
+        <div style="max-width:640px;margin:48px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6">
+          <h1>Kloset · Ropa deportiva que ya sabe cómo te queda</h1>
+          <p>
+            Kloset recomienda tu talla a partir de tus medidas reales y prueba cada prenda sobre tu
+            avatar 3D antes de que pagues. Cambios de talla gratis durante 30 días y envíos a todo el
+            Perú. Activa JavaScript para explorar el catálogo, el probador de tallas y el avatar.
+          </p>
+          <p><a href="/">Ir al catálogo</a></p>
+        </div>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

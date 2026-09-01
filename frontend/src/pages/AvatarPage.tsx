@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type ApiDetalle } from '../services/api';
@@ -126,6 +127,7 @@ export function AvatarPage() {
 
   return (
     <div className="kl-rise">
+      <Seo title="Pruébalo en tu avatar" description="Prueba la prenda sobre tu silueta en los tres cortes —Slim, Regular y Oversize— y comprueba cómo cae antes de pagar." path="/avatar" />
       <div className="mb-[18px] flex items-center gap-[14px] border-b border-ink pb-[14px] pt-[2px]">
         <button
           type="button"

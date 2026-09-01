@@ -5,7 +5,8 @@
 [data-theme="light"] {
   --paper: #F2F2F0;
   --ink: #1C1C1A;
-  --soft: #6B6B66;
+  /* #636360: mismo gris apagado del diseño pero con contraste AA (≥4.5:1) sobre paper y sobre la barra translúcida */
+  --soft: #636360;
   --body: #54544F;
   --rule: #DBDAD5;
   --surface: #E8E7E3;

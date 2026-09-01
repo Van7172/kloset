@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
@@ -22,6 +23,7 @@ export function OrdersPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[700px]">
+      <Seo title="Tus pedidos" description="Estado, fechas de entrega y seguimiento de tus pedidos de Kloset." path="/pedidos" noindex />
       {nuevo && ultimo && (
         <div className="mb-[30px] border-b border-t-[3px] border-b-ink border-t-red pb-[26px] pt-6">
           <div className="mb-3 font-narrow text-xs uppercase tracking-[0.14em] text-red">
