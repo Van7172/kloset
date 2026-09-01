@@ -23,7 +23,33 @@ class Conexion
 				PDO::ATTR_PERSISTENT => true
 			]);
 		} catch (PDOException $e) {
-			die("Error al conectarse al servidor: " . $e->getMessage());
+			// El detalle va al log; al cliente nunca, para no exponer credenciales
+			error_log('Kloset · fallo de conexión a la base de datos: ' . $e->getMessage());
+			http_response_code(503);
+
+			$uri = $_SERVER['REQUEST_URI'] ?? '';
+			$script = basename($_SERVER['SCRIPT_NAME'] ?? '');
+			$esApi = str_contains($uri, '/api/') || $script === 'ajax.php';
+
+			if (!headers_sent()) {
+				header('Content-Type: ' . ($esApi ? 'application/json' : 'text/html') . '; charset=utf-8');
+				header('Retry-After: 120');
+			}
+
+			if ($esApi) {
+				die(json_encode(['status' => 'error', 'message' => 'Servicio no disponible temporalmente']));
+			}
+
+			die('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">'
+				. '<meta name="viewport" content="width=device-width,initial-scale=1">'
+				. '<title>Kloset · servicio no disponible</title>'
+				. '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#F2F2F0;color:#1C1C1A;'
+				. 'font-family:system-ui,sans-serif;padding:24px}div{max-width:420px;border-top:3px solid #C4211F;'
+				. 'background:#fff;padding:28px;line-height:1.6}h1{font-family:Georgia,serif;font-weight:400;'
+				. 'font-size:26px;margin:0 0 10px}p{margin:0;color:#54544F;font-size:14px}</style></head><body>'
+				. '<div><h1>Servicio no disponible</h1>'
+				. '<p>No pudimos conectar con la base de datos. Vuelve a intentarlo en unos minutos.</p></div>'
+				. '</body></html>');
 		}
 	}
 

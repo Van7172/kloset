@@ -14,7 +14,25 @@ if (!isset($_config)) {
 	$_config = require dirname(__DIR__) . '/app/inc.config.php';
 }
 
-session_start();
+/*
+ * La cookie de sesión se configura aquí y no se deja al php.ini del servidor:
+ * el hosting trae SameSite=None con Secure=Off, combinación que los navegadores
+ * rechazan, y sin cookie no hay forma de iniciar sesión en el panel.
+ */
+if (session_status() === PHP_SESSION_NONE) {
+	$sesionSegura = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+		|| (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+		|| ((int) ($_SERVER['SERVER_PORT'] ?? 80) === 443);
+
+	session_set_cookie_params([
+		'lifetime' => 0,
+		'path' => '/',
+		'secure' => $sesionSegura,
+		'httponly' => true,
+		'samesite' => 'Lax',
+	]);
+	session_start();
+}
 
 if (isset($_SESSION['sesion'])) {
 	$sesion = $_SESSION['sesion'];
