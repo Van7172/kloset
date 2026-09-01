@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 
 const SITIO = 'Kloset';
-const BASE_URL = 'https://www.kloset.pe';
+/** Dominio canónico: se define en `.env.production` (VITE_SITE_URL). */
+const BASE_URL = (import.meta.env.VITE_SITE_URL ?? 'https://kloset.shop').replace(/\/$/, '');
 
 type SeoProps = {
   /** Título de la pestaña; se le añade « · Kloset » salvo en la portada. */

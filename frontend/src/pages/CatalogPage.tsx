@@ -21,7 +21,7 @@ export function CatalogPage() {
         if (res.status === 'success') setProductos(res.productos ?? []);
         else setError('No se pudo cargar el catálogo');
       })
-      .catch(() => setError('API no disponible. Inicia Apache y MySQL en XAMPP.'))
+      .catch(() => setError('No pudimos cargar el catálogo. Vuelve a intentarlo en un momento.'))
       .finally(() => setCargando(false));
   }, []);
 

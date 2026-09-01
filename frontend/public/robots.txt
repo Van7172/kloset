@@ -1,4 +1,4 @@
-# Kloset — https://www.kloset.pe (cambiá el dominio del sitemap por el real al publicar)
+# Kloset — https://kloset.shop (dominio canónico)
 User-agent: *
 Allow: /
 
@@ -9,4 +9,4 @@ Disallow: /pago
 Disallow: /bolsa
 Disallow: /pedidos
 
-Sitemap: https://www.kloset.pe/sitemap.xml
+Sitemap: https://kloset.shop/sitemap.xml

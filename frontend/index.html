@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <!-- ==========================================================
-         SEO — cambiá el dominio de canonical/OG por el real
-         cuando publiques (ahora: https://www.kloset.pe)
+         SEO — el dominio sale de VITE_SITE_URL (frontend/.env.production)
          ========================================================== -->
     <title>Kloset · Ropa deportiva que ya sabe cómo te queda</title>
     <meta
@@ -17,7 +16,7 @@
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
     <meta name="theme-color" content="#C4211F" />
     <meta name="color-scheme" content="light dark" />
-    <link rel="canonical" href="https://www.kloset.pe/" />
+    <link rel="canonical" href="%VITE_SITE_URL%/" />
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
@@ -28,8 +27,8 @@
       property="og:description"
       content="Registra tus medidas una vez y cada prenda se prueba sobre tu avatar antes de que pagues. Cambios de talla gratis 30 días."
     />
-    <meta property="og:url" content="https://www.kloset.pe/" />
-    <meta property="og:image" content="https://www.kloset.pe/kloset-icon.png" />
+    <meta property="og:url" content="%VITE_SITE_URL%/" />
+    <meta property="og:image" content="%VITE_SITE_URL%/kloset-icon.png" />
     <meta property="og:image:alt" content="Kloset" />
 
     <!-- Twitter -->
@@ -39,7 +38,7 @@
       name="twitter:description"
       content="Recomendación de talla por tus medidas reales y prueba en avatar 3D antes de pagar."
     />
-    <meta name="twitter:image" content="https://www.kloset.pe/kloset-icon.png" />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/kloset-icon.png" />
 
     <!-- Iconos / PWA -->
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -75,36 +74,36 @@
         "@graph": [
           {
             "@type": "Organization",
-            "@id": "https://www.kloset.pe/#organization",
+            "@id": "%VITE_SITE_URL%/#organization",
             "name": "Kloset",
-            "url": "https://www.kloset.pe/",
-            "logo": "https://www.kloset.pe/kloset-icon.png",
+            "url": "%VITE_SITE_URL%/",
+            "logo": "%VITE_SITE_URL%/kloset-icon.png",
             "description": "Tienda de ropa deportiva con recomendación de talla por medidas reales y prueba en avatar 3D.",
             "areaServed": "PE"
           },
           {
             "@type": "WebSite",
-            "@id": "https://www.kloset.pe/#website",
-            "url": "https://www.kloset.pe/",
+            "@id": "%VITE_SITE_URL%/#website",
+            "url": "%VITE_SITE_URL%/",
             "name": "Kloset",
             "inLanguage": "es-PE",
-            "publisher": { "@id": "https://www.kloset.pe/#organization" },
+            "publisher": { "@id": "%VITE_SITE_URL%/#organization" },
             "potentialAction": {
               "@type": "SearchAction",
               "target": {
                 "@type": "EntryPoint",
-                "urlTemplate": "https://www.kloset.pe/?q={search_term_string}"
+                "urlTemplate": "%VITE_SITE_URL%/?q={search_term_string}"
               },
               "query-input": "required name=search_term_string"
             }
           },
           {
             "@type": "OnlineStore",
-            "@id": "https://www.kloset.pe/#store",
+            "@id": "%VITE_SITE_URL%/#store",
             "name": "Kloset",
-            "url": "https://www.kloset.pe/",
-            "image": "https://www.kloset.pe/kloset-icon.png",
-            "parentOrganization": { "@id": "https://www.kloset.pe/#organization" },
+            "url": "%VITE_SITE_URL%/",
+            "image": "%VITE_SITE_URL%/kloset-icon.png",
+            "parentOrganization": { "@id": "%VITE_SITE_URL%/#organization" },
             "currenciesAccepted": "PEN",
             "paymentAccepted": "Visa, Mastercard, Amex"
           }
