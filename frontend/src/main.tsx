@@ -16,6 +16,10 @@ const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ de
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
 const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
+const CoveragePage = lazy(() => import('./pages/CoveragePage').then((m) => ({ default: m.CoveragePage })));
+const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
+const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
+const LegalPage = lazy(() => import('./pages/LegalPage').then((m) => ({ default: m.LegalPage })));
 
 function Cargando() {
   return <p className="py-16 text-center text-soft">Cargando…</p>;
@@ -97,6 +101,38 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <Suspense fallback={<Cargando />}>
                   <AccountPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="cobertura"
+              element={
+                <Suspense fallback={<Cargando />}>
+                  <CoveragePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="nosotros"
+              element={
+                <Suspense fallback={<Cargando />}>
+                  <AboutPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="contacto"
+              element={
+                <Suspense fallback={<Cargando />}>
+                  <ContactPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="legal/:doc?"
+              element={
+                <Suspense fallback={<Cargando />}>
+                  <LegalPage />
                 </Suspense>
               }
             />
