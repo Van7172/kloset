@@ -17,7 +17,7 @@
         <?php endif; ?>
 
         <form method="post" action="<?= DW_PANEL ?>sign-in">
-            <label class="kl-label" for="login-correo">correo_usuario_sistema</label>
+            <label class="kl-label" for="login-correo">correo electrónico</label>
             <input class="kl-field" type="email" id="login-correo" name="username" required autocomplete="username" autofocus>
 
             <label class="kl-label" for="login-pass">contraseña</label>

@@ -7,7 +7,8 @@ import { Marco } from '../components/Marco';
 export function CartPage() {
   const navigate = useNavigate();
   const { bolsa, quitarDeBolsa, usuario, setIntencion } = useKloset();
-  const subtotal = bolsa.reduce((a, b) => a + b.price, 0);
+  const totalPrendas = bolsa.reduce((a, b) => a + b.cantidad, 0);
+  const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const pagar = () => {
     if (!usuario) {
@@ -23,7 +24,7 @@ export function CartPage() {
       <Seo title="Tu bolsa" description="Revisa las prendas, tallas y cortes de tu bolsa antes de pasar por caja." path="/bolsa" noindex />
       <h2 className="mb-[6px] mt-[6px] font-display text-[34px] font-normal tracking-[-0.025em]">Tu bolsa</h2>
       <p className="mb-[22px] text-[13.5px] text-soft">
-        {bolsa.length} prendas, todas verificadas sobre tu avatar.
+        {totalPrendas} {totalPrendas === 1 ? 'prenda' : 'prendas'}, todas verificadas sobre tu avatar.
       </p>
 
       {bolsa.length === 0 ? (
@@ -41,8 +42,8 @@ export function CartPage() {
       ) : (
         <>
           <div className="border-t border-ink">
-            {bolsa.map((it, i) => (
-              <div key={`${it.id_producto}-${i}`} className="flex gap-4 border-b border-rule py-4">
+            {bolsa.map((it) => (
+              <div key={it.id_carrito_item ?? `${it.id_producto}-${it.size}-${it.fit}`} className="flex gap-4 border-b border-rule py-4">
                 <Marco
                   src={it.imagen}
                   alt={it.name}
@@ -53,16 +54,17 @@ export function CartPage() {
                   <div className="font-display text-[19px]">{it.name}</div>
                   <div className="mt-1 text-[12.5px] text-soft">
                     Talla {it.size} · corte {it.fit}
+                    {it.cantidad > 1 && ` · ×${it.cantidad}`}
                   </div>
                   <div className="mt-[10px] inline-block border-b-2 border-red pb-[3px] font-narrow text-[11px] uppercase tracking-[0.08em] text-ink">
                     Probada en avatar
                   </div>
                 </div>
                 <div className="flex flex-col items-end justify-between">
-                  <span className="font-display text-lg">{money(it.price)}</span>
+                  <span className="font-display text-lg">{money(it.price * it.cantidad)}</span>
                   <button
                     type="button"
-                    onClick={() => quitarDeBolsa(i)}
+                    onClick={() => it.id_carrito_item && quitarDeBolsa(it.id_carrito_item)}
                     className="min-h-[44px] cursor-pointer border-none bg-transparent text-[12.5px] text-soft underline"
                   >
                     Quitar

@@ -59,7 +59,7 @@ export function OrdersPage() {
               <div>
                 <div className="font-display text-[19px]">{o.ref}</div>
                 <div className="mt-1 text-[12.5px] text-soft">
-                  {o.fecha} · {o.items.length} prendas
+                  {o.fecha} · {o.items.reduce((a, i) => a + i.cantidad, 0)} prendas
                 </div>
               </div>
               <span
@@ -71,7 +71,7 @@ export function OrdersPage() {
             </div>
             <div className="mt-3 flex items-center justify-between">
               <span className="text-[13.5px] text-body">
-                {o.items.map((i) => `${i.name} · ${i.size}`).join(' / ')}
+                {o.items.map((i) => `${i.name} · ${i.size}${i.cantidad > 1 ? ` ×${i.cantidad}` : ''}`).join(' / ')}
               </span>
               <span className="font-display text-lg">{money(o.total)}</span>
             </div>

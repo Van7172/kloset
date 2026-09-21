@@ -125,12 +125,12 @@ export function AuthPage() {
     const fallo = await entrar(correo, pass);
     setEnviando(false);
     if (fallo) return setError(fallo);
-    completarIngreso();
+    await completarIngreso();
   };
 
-  const completarIngreso = () => {
+  const completarIngreso = async () => {
     const destino = intencion;
-    if (destino?.item) añadirABolsa(destino.item);
+    if (destino?.item) await añadirABolsa(destino.item);
     setIntencion(null);
     navigate(destino?.then === 'checkout' ? '/pago' : destino?.then === 'cart' ? '/bolsa' : '/cuenta');
   };
@@ -142,7 +142,7 @@ export function AuthPage() {
     const fallo = await registrarse(pendiente.nombre, pendiente.correo, pendiente.pass);
     setEnviando(false);
     if (fallo) return setVerifyError(fallo);
-    completarIngreso();
+    await completarIngreso();
   };
 
   const enviarCodigoRecuperacion = () => {

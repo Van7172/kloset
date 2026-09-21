@@ -86,6 +86,8 @@ export function AvatarPage() {
   const [detalle, setDetalle] = useState<ApiDetalle | null>(null);
   const [rot, setRot] = useState(0);
   const [comparar, setComparar] = useState(false);
+  const [errorBolsa, setErrorBolsa] = useState('');
+  const [añadiendo, setAñadiendo] = useState(false);
 
   useEffect(() => {
     if (!url) return;
@@ -102,7 +104,7 @@ export function AvatarPage() {
   const precio = producto ? Number(producto.precio_producto) : 0;
   const cortesEnEscena: Corte[] = comparar ? [...CORTES] : [corte];
 
-  const añadir = () => {
+  const añadir = async () => {
     if (!producto) {
       navigate('/');
       return;
@@ -115,13 +117,18 @@ export function AvatarPage() {
       fit: corte,
       price: precio,
       imagen: detalle?.imagenes[0]?.url_imagen ?? null,
+      cantidad: 1,
     };
     if (!usuario) {
       setIntencion({ then: 'cart', item });
       navigate('/entrar');
       return;
     }
-    añadirABolsa(item);
+    setErrorBolsa('');
+    setAñadiendo(true);
+    const fallo = await añadirABolsa(item);
+    setAñadiendo(false);
+    if (fallo) return setErrorBolsa(fallo);
     navigate('/bolsa');
   };
 
@@ -241,10 +248,16 @@ export function AvatarPage() {
             <button
               type="button"
               onClick={añadir}
-              className="mt-4 min-h-[54px] w-full cursor-pointer border-none bg-ink font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
+              disabled={añadiendo}
+              className="mt-4 min-h-[54px] w-full cursor-pointer border-none bg-ink font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0] disabled:opacity-50"
             >
-              {producto ? 'Añadir a la bolsa' : 'Ir al catálogo'}
+              {añadiendo ? 'Añadiendo…' : producto ? 'Añadir a la bolsa' : 'Ir al catálogo'}
             </button>
+            {errorBolsa && (
+              <div className="mt-3 border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">
+                {errorBolsa}
+              </div>
+            )}
             <button
               type="button"
               onClick={() => navigate('/medidas')}

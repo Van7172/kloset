@@ -46,10 +46,17 @@ $routes = [
 		'productos' => ['Develoweb\\App\\Model\\Productos', 'listPublic'],
 		'producto' => ['Develoweb\\App\\Model\\Productos', 'getByUrlPublic'],
 		'auth/me' => ['Develoweb\\App\\Model\\AuthApi', 'me'],
+		'medidas' => ['Develoweb\\App\\Model\\PerfilesCorporales', 'mio'],
+		'carrito' => ['Develoweb\\App\\Model\\Carritos', 'mio'],
+		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'mios'],
 	],
 	'POST' => [
 		'auth/login' => ['Develoweb\\App\\Model\\AuthApi', 'login'],
 		'auth/register' => ['Develoweb\\App\\Model\\AuthApi', 'register'],
+		'medidas' => ['Develoweb\\App\\Model\\PerfilesCorporales', 'guardar'],
+		'carrito/agregar' => ['Develoweb\\App\\Model\\Carritos', 'agregar'],
+		'carrito/eliminar' => ['Develoweb\\App\\Model\\Carritos', 'quitar'],
+		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'crear'],
 	],
 ];
 
@@ -59,6 +66,9 @@ if ($resource === 'auth') {
 }
 if ($resource === 'producto') {
 	$key = 'producto';
+}
+if ($resource === 'carrito' && $action !== '') {
+	$key = 'carrito/' . $action;
 }
 
 $handler = $routes[$method][$key] ?? null;

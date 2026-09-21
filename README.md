@@ -60,11 +60,16 @@ Tipografías: Newsreader (títulos), Archivo y Archivo Narrow (interfaz).
 ### Tienda
 
 Rutas: catálogo, detalle de producto, medidas, resultado de talla, avatar,
-bolsa, pago, pedidos, acceso y cuenta. El catálogo, el detalle y la
-autenticación consumen la API; medidas, bolsa y pedidos viven en el cliente
-hasta que existan sus endpoints (Sprints 4-6). El pago es el simulador del
-diseño: `4242 4242 4242 4242` aprueba, `4000 0000 0000 0002` rechaza y
-`4000 0000 0000 3220` pide 3-D Secure.
+bolsa, pago, pedidos, acceso y cuenta. Catálogo, autenticación, medidas
+(`perfiles_corporales`), bolsa (`carritos`/`carritos_items`) y pedidos
+(`pedidos`/`pedidos_items`/`pagos`) consumen la API contra `kloset_bd`; solo
+el corte preferido y el perfil de un visitante sin cuenta se quedan en
+`localStorage`. El pago es el simulador del diseño: `4242 4242 4242 4242`
+aprueba, `4000 0000 0000 0002` rechaza y `4000 0000 0000 3220` pide 3-D
+Secure; al aprobarse, el checkout crea el pedido real (con la dirección de
+envío del formulario), descuenta stock de `productos_variantes` y vacía la
+bolsa. El avatar sigue siendo la silueta paramétrica del diseño: el modelo
+GLB con React Three Fiber queda para el Sprint 5.
 
 ### Panel
 

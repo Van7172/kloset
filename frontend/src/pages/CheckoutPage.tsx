@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 
-type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'done';
+type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'error' | 'done';
 
 const soloDigitos = (v: string) => v.replace(/\D/g, '');
 
@@ -19,14 +19,16 @@ function marca(num: string): string {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { bolsa, usuario, vaciarBolsa, registrarPedido } = useKloset();
-  const subtotal = bolsa.reduce((a, b) => a + b.price, 0);
+  const { bolsa, usuario, crearPedido } = useKloset();
+  const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const [estado, setEstado] = useState<Estado>('idle');
   const [progreso, setProgreso] = useState('0%');
   const [error, setError] = useState('');
+  const [errorPedido, setErrorPedido] = useState('');
   const [otp, setOtp] = useState('');
   const [pago, setPago] = useState({ holder: '', num: '', exp: '', cvc: '' });
+  const [envio, setEnvio] = useState({ direccion: '', ciudad: '', referencia: '' });
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -53,17 +55,17 @@ export function CheckoutPage() {
     setError('');
   };
 
-  const cerrarPedido = () => {
-    const ref = `KL-40${129 + bolsa.length}`;
-    registrarPedido({
-      ref,
-      fecha: new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }),
-      total: subtotal,
-      items: bolsa,
-      card: soloDigitos(pago.num).slice(-4),
-      estado: 'pagado',
-    });
-    vaciarBolsa();
+  const cerrarPedido = async () => {
+    const fallo = await crearPedido(
+      { direccion: envio.direccion, ciudad: envio.ciudad, referencia: envio.referencia },
+      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4) },
+    );
+    if (fallo) {
+      setErrorPedido(fallo);
+      setEstado('error');
+      return;
+    }
+
     // 'done' evita que el efecto de bolsa vacía redirija a /bolsa antes de salir
     setEstado('done');
     setProgreso('100%');
@@ -73,6 +75,7 @@ export function CheckoutPage() {
   };
 
   const pagar = () => {
+    if (!envio.direccion.trim() || !envio.ciudad.trim()) return setError('La dirección y el distrito son obligatorios');
     const d = soloDigitos(pago.num);
     if (d.length < 15) return setError('Número de tarjeta incompleto');
     if (!/^\d{2}\/\d{2}$/.test(pago.exp)) return setError('Caducidad en formato MM/AA');
@@ -90,7 +93,7 @@ export function CheckoutPage() {
         setOtp('');
         return setEstado('3ds');
       }
-      cerrarPedido();
+      void cerrarPedido();
     }, 1700);
   };
 
@@ -100,12 +103,12 @@ export function CheckoutPage() {
     setProgreso('70%');
     setError('');
     programar(() => setProgreso('96%'), 500);
-    programar(cerrarPedido, 1100);
+    programar(() => void cerrarPedido(), 1100);
   };
 
   const pasos = [
     { label: 'Bolsa', activo: true },
-    { label: 'Pago', activo: estado !== 'declined' },
+    { label: 'Pago', activo: estado !== 'declined' && estado !== 'error' },
     { label: 'Confirmación', activo: false },
   ];
 
@@ -148,6 +151,54 @@ export function CheckoutPage() {
         <div className="w-full min-w-0 lg:flex-[1.25]">
           {estado === 'idle' && (
             <div>
+              <h2 className="mb-3 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
+                Dirección de envío
+              </h2>
+              <div className="mb-6 border-t border-ink">
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-direccion" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Dirección
+                  </label>
+                  <input
+                    id="envio-direccion"
+                    value={envio.direccion}
+                    onChange={(e) => {
+                      setEnvio((s) => ({ ...s, direccion: e.target.value }));
+                      setError('');
+                    }}
+                    placeholder="Av. Larco 123, dpto. 4B"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-ciudad" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Distrito
+                  </label>
+                  <input
+                    id="envio-ciudad"
+                    value={envio.ciudad}
+                    onChange={(e) => {
+                      setEnvio((s) => ({ ...s, ciudad: e.target.value }));
+                      setError('');
+                    }}
+                    placeholder="Miraflores"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-referencia" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Referencia (opcional)
+                  </label>
+                  <input
+                    id="envio-referencia"
+                    value={envio.referencia}
+                    onChange={(e) => setEnvio((s) => ({ ...s, referencia: e.target.value }))}
+                    placeholder="Frente al parque"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+              </div>
+
               <h2 className="mb-5 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
                 Pago seguro
               </h2>
@@ -283,19 +334,46 @@ export function CheckoutPage() {
               </button>
             </div>
           )}
+
+          {estado === 'error' && (
+            <div className="border-t-[3px] border-red py-[22px]">
+              <div className="mb-3 font-narrow text-xs uppercase tracking-[0.14em] text-red">
+                No se pudo registrar el pedido
+              </div>
+              <h2 className="mb-[10px] font-display text-[28px] font-normal leading-tight tracking-[-0.025em]">
+                {errorPedido}
+              </h2>
+              <p className="mb-[22px] max-w-[44ch] text-[15px] leading-[1.65] text-body">
+                No se ha cobrado nada. Revisa tu bolsa y vuelve a intentarlo.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEstado('idle');
+                  setPago({ holder: '', num: '', exp: '', cvc: '' });
+                  setError('');
+                  setErrorPedido('');
+                }}
+                className="min-h-[54px] cursor-pointer border-none bg-ink px-6 font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
+              >
+                Volver a intentarlo
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="w-full border-t-[3px] border-red bg-surface p-[22px] lg:flex-1">
           <div className="mb-[14px] font-narrow text-[11.5px] uppercase tracking-[0.14em] text-soft">Resumen</div>
-          {bolsa.map((it, i) => (
-            <div key={`${it.id_producto}-${i}`} className="flex justify-between gap-3 border-b border-rule py-[11px]">
+          {bolsa.map((it) => (
+            <div key={it.id_carrito_item ?? `${it.id_producto}-${it.size}-${it.fit}`} className="flex justify-between gap-3 border-b border-rule py-[11px]">
               <div className="min-w-0">
                 <div className="font-display text-[17px]">{it.name}</div>
                 <div className="mt-[3px] text-xs text-soft">
                   Talla {it.size} · {it.fit}
+                  {it.cantidad > 1 && ` · ×${it.cantidad}`}
                 </div>
               </div>
-              <span className="whitespace-nowrap font-display text-base">{money(it.price)}</span>
+              <span className="whitespace-nowrap font-display text-base">{money(it.price * it.cantidad)}</span>
             </div>
           ))}
           <div className="flex items-baseline justify-between pt-4">

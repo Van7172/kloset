@@ -6,12 +6,14 @@ import { RANGOS_MEDIDAS, type Medidas } from '../lib/fit';
 
 export function MeasurePage() {
   const navigate = useNavigate();
-  const { medidas, setMedidas, guardarPerfil } = useKloset();
+  const { medidas, guardarPerfil } = useKloset();
   const [valores, setValores] = useState<Medidas>(medidas);
+  const [guardando, setGuardando] = useState(false);
 
-  const calcular = () => {
-    setMedidas(valores);
-    guardarPerfil();
+  const calcular = async () => {
+    setGuardando(true);
+    await guardarPerfil(valores);
+    setGuardando(false);
     navigate('/resultado');
   };
 
@@ -66,9 +68,10 @@ export function MeasurePage() {
       <button
         type="button"
         onClick={calcular}
-        className="min-h-[58px] w-full cursor-pointer border-none bg-ink font-narrow text-base font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
+        disabled={guardando}
+        className="min-h-[58px] w-full cursor-pointer border-none bg-ink font-narrow text-base font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0] disabled:opacity-50"
       >
-        Calcular mi talla
+        {guardando ? 'Guardando…' : 'Calcular mi talla'}
       </button>
     </div>
   );

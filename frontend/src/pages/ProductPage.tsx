@@ -15,6 +15,8 @@ export function ProductPage() {
   const [error, setError] = useState('');
   const [foto, setFoto] = useState(0);
   const [talla, setTalla] = useState<Talla | null>(null);
+  const [errorBolsa, setErrorBolsa] = useState('');
+  const [añadiendo, setAñadiendo] = useState(false);
 
   useEffect(() => {
     setDetalle(null);
@@ -62,15 +64,20 @@ export function ProductPage() {
     fit: corte,
     price: precio,
     imagen: imagenes[0]?.url_imagen ?? null,
+    cantidad: 1,
   };
 
-  const añadir = () => {
+  const añadir = async () => {
     if (!usuario) {
       setIntencion({ then: 'cart', item });
       navigate('/entrar');
       return;
     }
-    añadirABolsa(item);
+    setErrorBolsa('');
+    setAñadiendo(true);
+    const fallo = await añadirABolsa(item);
+    setAñadiendo(false);
+    if (fallo) return setErrorBolsa(fallo);
     navigate('/bolsa');
   };
 
@@ -188,11 +195,18 @@ export function ProductPage() {
             <button
               type="button"
               onClick={añadir}
-              className="min-h-[56px] cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover"
+              disabled={añadiendo}
+              className="min-h-[56px] cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover disabled:opacity-50"
             >
-              Añadir a la bolsa · {elegida}
+              {añadiendo ? 'Añadiendo…' : `Añadir a la bolsa · ${elegida}`}
             </button>
           </div>
+
+          {errorBolsa && (
+            <div className="mt-3 border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">
+              {errorBolsa}
+            </div>
+          )}
 
           <div className="mt-[26px] border-t border-ink pt-1">
             {specs.map((s) => (

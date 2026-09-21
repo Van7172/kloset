@@ -64,7 +64,7 @@ if ($logeado) {
 				$view_js = 'categorias.js';
 				$title = 'Categorías';
 				$crumb = 'Catálogo';
-				$search_ph = 'nombre_categoria o url_categoria';
+				$search_ph = 'nombre o URL de la categoría';
 				$primary_label = 'Nueva categoría';
 				break;
 			case 'productos':
@@ -74,7 +74,7 @@ if ($logeado) {
 				$view_js = 'productos.js';
 				$title = 'Productos';
 				$crumb = 'Catálogo';
-				$search_ph = 'nombre_producto o url_producto';
+				$search_ph = 'nombre o URL del producto';
 				$primary_label = 'Nuevo producto';
 				$primary_disabled = empty($categorias);
 				break;

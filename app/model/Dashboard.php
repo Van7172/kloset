@@ -73,7 +73,7 @@ class Dashboard
 			[
 				'label' => 'Clientes con perfil',
 				'value' => $conPerfil . ' / ' . $clientes,
-				'delta' => 'perfiles_corporales completos',
+				'delta' => 'con perfil corporal completo',
 				'clase' => 'kl-fg-soft',
 			],
 		];

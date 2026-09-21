@@ -54,8 +54,25 @@ Proyecto `08ff5c48-369d-471e-9b1a-eda07d6e3852`.
 
 ### Task 4–6: Medidas, avatar, carrito, pedidos, reportes
 
-La interfaz de estas pantallas ya existe en el SPA con estado local; falta
-persistirlas contra la API (`perfiles_corporales`, `carritos`, `pedidos`,
-`pagos`) y sustituir la silueta paramétrica por el GLB con R3F.
+- [x] Medidas, bolsa y pedidos persistidos contra la API
+      (`PerfilesCorporales`, `Carritos`, `Pedidos` en `app/model/`, rutas en
+      `api/index.php`): guardar/leer perfil corporal, agregar/quitar del
+      carrito con validación de stock real, y checkout que crea
+      `pedidos`/`pedidos_items`/`pagos`/`historial_estados_pedidos`,
+      descuenta `productos_variantes.stock_variante` y vacía el carrito
+      (`carritos.id_usuario_sistema` es `UNIQUE`: una sola fila de carrito
+      por usuario, se vacía en vez de "cerrarse")
+- [x] Columnas `marca_pago`/`ultimos_digitos_pago` en `pagos`
+      (`database/migrations/2026-09-21_pagos_marca_tarjeta.sql`) para que el
+      simulador de pago (aprueba/rechaza/3-D Secure, sin cambios) muestre la
+      tarjeta en la confirmación e historial
+- [x] Checkout con captura de dirección de envío (`direcciones_envio_clientes`);
+      antes no existía ningún campo de dirección en el SPA
+- [x] Seed de catálogo (`database/seeds/2026-09-21_catalogo_demo.sql`): 8
+      prendas × 15 variantes (3 cortes × 5 tallas) — `kloset_bd` no tenía
+      ningún producto cargado
+- [ ] Avatar: sustituir la silueta paramétrica por el modelo GLB con R3F
+      (`avatares_3d` sigue sin usarse; requiere pipeline de modelos 3D)
+- [ ] Reportes admin (`dw-panel` → `case 'reportes'` sigue siendo un stub)
 
 Ver plan de trabajo original (`plan_trabajo_sistema_ropa_deportiva.md`).
