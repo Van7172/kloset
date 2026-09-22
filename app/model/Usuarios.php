@@ -71,6 +71,51 @@ class Usuarios
 		return ['status' => 'success', 'usuario' => $usuario, 'secciones' => $secciones];
 	}
 
+	public static function store(): array
+	{
+		if ($error = Acl::guard(self::SECCION)) {
+			return $error;
+		}
+
+		$nombre = trim((string) ($_POST['nombre'] ?? ''));
+		$correo = trim((string) ($_POST['correo'] ?? ''));
+		$password = (string) ($_POST['password'] ?? '');
+		$idRol = (int) ($_POST['id_rol'] ?? 0);
+
+		if ($nombre === '') {
+			return ['status' => 'error', 'message' => 'El nombre es obligatorio'];
+		}
+		if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+			return ['status' => 'error', 'message' => 'El correo no es válido'];
+		}
+		if (strlen($password) < 8) {
+			return ['status' => 'error', 'message' => 'La contraseña necesita 8 caracteres o más'];
+		}
+		if ($idRol <= 0) {
+			return ['status' => 'error', 'message' => 'Selecciona un rol'];
+		}
+
+		$con = Conexion::getInstance();
+		$sth = $con->prepare('SELECT COUNT(*) FROM sistema_usuarios WHERE correo_usuario_sistema = :correo');
+		$sth->execute([':correo' => $correo]);
+		if ((int) $sth->fetchColumn() > 0) {
+			return ['status' => 'error', 'message' => 'Ese correo ya está registrado'];
+		}
+
+		$sth = $con->prepare(
+			'INSERT INTO sistema_usuarios (id_rol, nombre_usuario_sistema, correo_usuario_sistema, contrasena_usuario_sistema)
+			 VALUES (:rol, :nombre, :correo, :pass)'
+		);
+		$sth->execute([
+			':rol' => $idRol,
+			':nombre' => $nombre,
+			':correo' => $correo,
+			':pass' => password_hash($password, PASSWORD_DEFAULT),
+		]);
+
+		return ['status' => 'success', 'message' => 'Usuario creado', 'id' => (int) $con->lastInsertId()];
+	}
+
 	/**
 	 * Reescribe usuarios_secciones para un usuario.
 	 */

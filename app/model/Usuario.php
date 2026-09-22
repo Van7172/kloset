@@ -44,7 +44,13 @@ class Usuario
 		$this->_estado = $user['estado_usuario_sistema'];
 		$this->_fecha_creacion = $user['fecha_creacion'];
 
-		$sth = $con->prepare('SELECT id_seccion FROM usuarios_secciones WHERE id_usuario_sistema = :id');
+		$sth = $con->prepare(
+			'SELECT us.id_seccion FROM usuarios_secciones us
+			 INNER JOIN sistema_secciones s ON s.id_seccion = us.id_seccion
+			 INNER JOIN sistema_modulos m ON m.id_modulo = s.id_modulo
+			 WHERE us.id_usuario_sistema = :id
+			 ORDER BY m.orden_modulo, s.orden_seccion'
+		);
 		$sth->bindParam(':id', $this->_id, PDO::PARAM_INT);
 		$sth->execute();
 		foreach ($sth->fetchAll() as $section) {

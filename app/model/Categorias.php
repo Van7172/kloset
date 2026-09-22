@@ -135,13 +135,9 @@ class Categorias
 			return ['status' => 'error', 'message' => 'Categoría no válida'];
 		}
 
+		// productos.id_categoria es ON DELETE SET NULL: los productos de esta
+		// categoría se conservan, solo quedan sin categoría asignada.
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT COUNT(*) FROM productos WHERE id_categoria = :id');
-		$sth->execute([':id' => $id]);
-		if ((int) $sth->fetchColumn() > 0) {
-			return ['status' => 'error', 'message' => 'No se puede eliminar: la categoría tiene productos asociados'];
-		}
-
 		$sth = $con->prepare('DELETE FROM categorias WHERE id_categoria = :id');
 		$sth->execute([':id' => $id]);
 

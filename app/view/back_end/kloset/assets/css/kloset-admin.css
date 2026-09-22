@@ -149,6 +149,18 @@ code { font-family: 'Archivo Narrow', sans-serif; letter-spacing: 0.04em; }
 .kl-table-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--ink); font-family: 'Archivo Narrow', sans-serif; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
 .kl-empty { padding: 26px 16px; color: var(--soft); font-size: 14px; }
 
+/* --------------------------------------------------------- Acciones de fila */
+.kl-row-actions { display: flex; gap: 5px; justify-content: flex-end; position: sticky; right: 0; background: var(--panel); box-shadow: -10px 0 10px -8px rgba(0, 0, 0, 0.16); }
+.kl-icon-btn { border: 1px solid var(--rule); background: transparent; color: var(--soft); width: 32px; height: 32px; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.kl-icon-btn:hover { border-color: var(--ink); color: var(--ink); }
+.kl-icon-btn--danger:hover { border-color: var(--red); color: var(--red); }
+.kl-create-btn { border: 1px solid var(--ink); background: var(--ink); color: var(--panel); width: 36px; height: 36px; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.kl-create-btn:hover { background: var(--red); border-color: var(--red); color: #F2F2F0; }
+
+/* -------------------------------------------------- Confirmación de borrado */
+.kl-confirm { border-color: var(--red) !important; border-top-color: var(--red) !important; }
+.kl-confirm .kl-detail-title { margin: 8px 0 10px; }
+
 /* ---------------------------------------------------------- Panel detalle */
 .kl-detail { flex: 0 0 380px; width: 100%; background: var(--panel); border: 1px solid var(--ink); border-top: 3px solid var(--red); animation: ka-slide .28s ease both; position: sticky; top: 96px; }
 .kl-detail-head { padding: 16px 18px; border-bottom: 1px solid var(--rule); display: flex; align-items: flex-start; gap: 12px; }

@@ -82,6 +82,27 @@ window.Kloset = (function () {
     });
   }
 
+  /* ------------------------------------------------- Confirmación de borrado
+     Panel lateral rojo (no el confirm() nativo del navegador), con el texto
+     de advertencia propio de cada tabla. Mutuamente excluyente con el panel
+     de detalle: abrir uno cierra el otro. */
+
+  function confirmarEliminar(idConfirmar, idDetalle, opciones) {
+    const panel = document.getElementById(idConfirmar);
+    if (!panel) return;
+    if (idDetalle) cerrarDetalle(idDetalle);
+
+    panel.querySelector('[data-rol="titulo"]').textContent = opciones.titulo;
+    panel.querySelector('[data-rol="texto"]').textContent = opciones.texto;
+
+    const okViejo = panel.querySelector('[data-rol="ok"]');
+    const okNuevo = okViejo.cloneNode(true);
+    okViejo.parentNode.replaceChild(okNuevo, okViejo);
+    okNuevo.addEventListener('click', () => opciones.onConfirmar());
+
+    abrirDetalle(idConfirmar);
+  }
+
   /* ---------------------------------------------------------------- Tabla
      Conecta buscador, filtros de estado/categoría, contador y selección
      de fila con el panel de detalle. */
@@ -159,5 +180,5 @@ window.Kloset = (function () {
     window.location.reload();
   }
 
-  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, tabla, slug, recargar };
+  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar };
 })();

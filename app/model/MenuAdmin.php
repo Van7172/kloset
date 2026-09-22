@@ -48,11 +48,22 @@ class MenuAdmin
 		return [
 			'categorias' => (int) $con->query('SELECT COUNT(*) FROM categorias')->fetchColumn(),
 			'productos' => (int) $con->query('SELECT COUNT(*) FROM productos')->fetchColumn(),
+			'variantes' => (int) $con->query('SELECT COUNT(*) FROM productos_variantes')->fetchColumn(),
 			'pedidos' => (int) $con->query(
 				"SELECT COUNT(*) FROM pedidos
 				 WHERE estado_pedido IN ('pendiente_pago', 'pagado', 'en_preparacion')"
 			)->fetchColumn(),
+			'pagos' => (int) $con->query('SELECT COUNT(*) FROM pagos')->fetchColumn(),
+			'notificaciones' => (int) $con->query(
+				'SELECT COUNT(*) FROM notificaciones WHERE leido_notificacion = 0'
+			)->fetchColumn(),
+			'clientes' => (int) $con->query(
+				"SELECT COUNT(*) FROM sistema_usuarios u
+				 INNER JOIN sistema_roles r ON r.id_rol = u.id_rol
+				 WHERE r.nombre_rol = 'Cliente'"
+			)->fetchColumn(),
 			'usuarios' => (int) $con->query('SELECT COUNT(*) FROM sistema_usuarios')->fetchColumn(),
+			'roles' => (int) $con->query('SELECT COUNT(*) FROM sistema_roles')->fetchColumn(),
 		];
 	}
 }

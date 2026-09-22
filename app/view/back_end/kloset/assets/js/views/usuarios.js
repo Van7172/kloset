@@ -7,6 +7,9 @@
   const kicker = document.getElementById('usr-kicker');
   const resumen = document.getElementById('usr-resumen');
   const perms = document.getElementById('usr-perms');
+  const alta = document.getElementById('usr-alta');
+  const permsWrap = document.getElementById('usr-perms-wrap');
+  const btnGuardar = document.getElementById('usr-guardar');
 
   function kv(clave, valor, clase) {
     return (
@@ -15,7 +18,25 @@
     );
   }
 
+  function modoNuevo() {
+    form.reset();
+    form.elements.id.value = '';
+    Kloset.showError('form-usuario-error', '');
+    kicker.textContent = 'sistema_usuarios · nueva fila';
+    titulo.textContent = 'Nuevo usuario';
+    resumen.innerHTML = '';
+    alta.hidden = false;
+    permsWrap.hidden = true;
+    btnGuardar.textContent = 'Crear usuario';
+    Kloset.marcarFila(null);
+    Kloset.abrirDetalle(PANEL);
+    form.elements.nombre.focus();
+  }
+
   function pintar(datos) {
+    alta.hidden = true;
+    permsWrap.hidden = false;
+    btnGuardar.textContent = 'Guardar acceso';
     const u = datos.usuario;
     form.elements.id.value = u.id_usuario_sistema;
     kicker.textContent = 'sistema_usuarios · id_usuario_sistema ' + u.id_usuario_sistema;
@@ -54,6 +75,7 @@
     },
   });
 
+  document.getElementById('kl-primary')?.addEventListener('click', modoNuevo);
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
     btn.addEventListener('click', () => Kloset.cerrarDetalle(PANEL));
   });
@@ -62,7 +84,8 @@
     ev.preventDefault();
     Kloset.showError('form-usuario-error', '');
 
-    const res = await Kloset.ajax('Usuarios', 'updateSecciones', new FormData(form));
+    const esNuevo = !form.elements.id.value;
+    const res = await Kloset.ajax('Usuarios', esNuevo ? 'store' : 'updateSecciones', new FormData(form));
     if (res.status !== 'success') {
       Kloset.showError('form-usuario-error', res.message || 'No se pudo guardar');
       return;

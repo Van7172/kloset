@@ -1,13 +1,18 @@
 <?php
 
 use Develoweb\App\Model\Categorias;
+use Develoweb\App\Model\Clientes;
 use Develoweb\App\Model\Configuracion as ConfiguracionModel;
 use Develoweb\App\Model\Dashboard;
 use Develoweb\App\Model\MenuAdmin;
+use Develoweb\App\Model\Notificaciones;
+use Develoweb\App\Model\Pagos;
+use Develoweb\App\Model\PedidosAdmin;
 use Develoweb\App\Model\Productos as ProductosModel;
 use Develoweb\App\Model\Roles;
 use Develoweb\App\Model\Sesion;
 use Develoweb\App\Model\Usuarios;
+use Develoweb\App\Model\Variantes;
 
 /** @var Sesion $sesion */
 
@@ -78,11 +83,50 @@ if ($logeado) {
 				$primary_label = 'Nuevo producto';
 				$primary_disabled = empty($categorias);
 				break;
+			case 'variantes':
+				$variantes = Variantes::get();
+				$productos = ProductosModel::get();
+				$umbralStock = Dashboard::umbralStock();
+				$tpl = 'tpl_variantes.php';
+				$view_js = 'variantes.js';
+				$title = 'Inventario';
+				$crumb = 'Catálogo · SKU';
+				$search_ph = 'sku_variante o producto';
+				$primary_label = 'Nueva variante';
+				$primary_disabled = empty($productos);
+				break;
 			case 'pedidos':
+				$pedidos = PedidosAdmin::get();
 				$tpl = 'tpl_pedidos.php';
+				$view_js = 'pedidos.js';
 				$title = 'Pedidos';
 				$crumb = 'Ventas';
-				$search_ph = 'id_pedido o cliente';
+				$search_ph = 'cliente, correo o id_pedido';
+				break;
+			case 'pagos':
+				$pagos = Pagos::get();
+				$tpl = 'tpl_pagos.php';
+				$view_js = 'pagos.js';
+				$title = 'Pagos';
+				$crumb = 'Ventas';
+				$search_ph = 'id_transaccion o cliente';
+				break;
+			case 'notificaciones':
+				$notificaciones = Notificaciones::get();
+				$tpl = 'tpl_notificaciones.php';
+				$view_js = 'notificaciones.js';
+				$title = 'Notificaciones';
+				$crumb = 'Ventas';
+				$search_ph = 'cliente o mensaje';
+				$primary_label = 'Marcar leídas';
+				break;
+			case 'clientes':
+				$clientes = Clientes::get();
+				$tpl = 'tpl_clientes.php';
+				$view_js = 'clientes.js';
+				$title = 'Clientes';
+				$crumb = 'Clientes';
+				$search_ph = 'nombre o correo';
 				break;
 			case 'reportes':
 				$tpl = 'tpl_reportes.php';
@@ -97,6 +141,16 @@ if ($logeado) {
 				$title = 'Usuarios';
 				$crumb = 'Sistema · ACL';
 				$search_ph = 'nombre o correo';
+				$primary_label = 'Nuevo usuario';
+				break;
+			case 'roles':
+				$roles = Roles::get();
+				$tpl = 'tpl_roles.php';
+				$view_js = 'roles.js';
+				$title = 'Roles';
+				$crumb = 'Sistema · ACL';
+				$search_ph = 'nombre_rol';
+				$primary_label = 'Nuevo rol';
 				break;
 			case 'configuracion':
 				$configurations = ConfiguracionModel::getConfiguration();

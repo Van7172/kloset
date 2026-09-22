@@ -1,5 +1,6 @@
 (function () {
   const PANEL = 'detalle-producto';
+  const CONFIRM = 'confirmar-producto';
   const form = document.getElementById('form-producto');
   if (!form) return;
 
@@ -7,7 +8,6 @@
   const kicker = document.getElementById('prod-kicker');
   const resumen = document.getElementById('prod-resumen');
   const galeria = document.getElementById('prod-galeria');
-  const btnEliminar = document.getElementById('prod-eliminar');
 
   let cambios = false;
 
@@ -54,7 +54,6 @@
     kicker.textContent = 'productos · nueva fila';
     titulo.textContent = 'Nuevo producto';
     resumen.hidden = true;
-    btnEliminar.hidden = true;
     pintarGaleria([]);
     cambios = false;
     Kloset.marcarFila(null);
@@ -62,8 +61,13 @@
     form.elements.nombre.focus();
   }
 
-  function modoEditar(datos, fila) {
-    const p = datos.producto;
+  async function modoEditar(id, fila) {
+    const res = await Kloset.ajax('Productos', 'getById', { id: id });
+    if (res.status !== 'success') {
+      Kloset.toast(res.message || 'No se pudo cargar el producto', 'error');
+      return;
+    }
+    const p = res.producto;
     form.reset();
     Kloset.showError('form-producto-error', '');
     form.elements.id.value = p.id_producto;
@@ -78,31 +82,51 @@
     titulo.textContent = p.nombre_producto;
     const stock = fila ? fila.querySelectorAll('.kl-cell--num b')[2].textContent : '0';
     document.getElementById('prod-kv-variantes').textContent = stock + ' uds en stock';
-    document.getElementById('prod-kv-imagenes').textContent = datos.imagenes.length + ' imágenes';
+    document.getElementById('prod-kv-imagenes').textContent = res.imagenes.length + ' imágenes';
     resumen.hidden = false;
-    btnEliminar.hidden = false;
-    pintarGaleria(datos.imagenes);
+    pintarGaleria(res.imagenes);
     cambios = false;
     Kloset.marcarFila(p.id_producto);
     Kloset.abrirDetalle(PANEL);
   }
 
-  Kloset.tabla({
-    onSelect: async (id, fila) => {
-      const res = await Kloset.ajax('Productos', 'getById', { id: id });
-      if (res.status !== 'success') {
-        Kloset.toast(res.message || 'No se pudo cargar el producto', 'error');
-        return;
-      }
-      modoEditar(res, fila);
-    },
-  });
+  function pedirEliminar(id, fila) {
+    const nombre = fila.querySelector('.kl-cell b').textContent;
+    Kloset.confirmarEliminar(CONFIRM, PANEL, {
+      titulo: '¿Eliminar "' + nombre + '"?',
+      texto: 'Se eliminan en cascada sus productos_variantes y productos_imagenes. Los pedidos_items existentes conservan el nombre histórico.',
+      onConfirmar: async () => {
+        const res = await Kloset.ajax('Productos', 'deleteProducto', { id: id });
+        if (res.status !== 'success') {
+          Kloset.toast(res.message || 'No se pudo eliminar', 'error');
+          return;
+        }
+        Kloset.toast(res.message);
+        Kloset.recargar();
+      },
+    });
+  }
+
+  Kloset.tabla({ onSelect: (id, fila) => modoEditar(id, fila) });
 
   document.getElementById('kl-primary')?.addEventListener('click', modoNuevo);
+  document.getElementById('prod-crear')?.addEventListener('click', modoNuevo);
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
     btn.addEventListener('click', () => {
       Kloset.cerrarDetalle(PANEL);
       if (cambios) Kloset.recargar();
+    });
+  });
+  document.getElementById('confirmar-producto-cancelar')?.addEventListener('click', () => Kloset.cerrarDetalle(CONFIRM));
+
+  document.querySelectorAll('.kl-grid-row').forEach((fila) => {
+    fila.querySelector('[data-accion="editar"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      modoEditar(fila.dataset.id, fila);
+    });
+    fila.querySelector('[data-accion="eliminar"]')?.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      pedirEliminar(fila.dataset.id, fila);
     });
   });
 
@@ -110,19 +134,6 @@
     if (form.elements.url.value.trim() === '') {
       form.elements.url.value = Kloset.slug(form.elements.nombre.value);
     }
-  });
-
-  btnEliminar.addEventListener('click', async () => {
-    const id = form.elements.id.value;
-    if (!id || !confirm('¿Eliminar el producto "' + form.elements.nombre.value + '" y sus imágenes?')) return;
-
-    const res = await Kloset.ajax('Productos', 'deleteProducto', { id: id });
-    if (res.status !== 'success') {
-      Kloset.toast(res.message || 'No se pudo eliminar', 'error');
-      return;
-    }
-    Kloset.toast(res.message);
-    Kloset.recargar();
   });
 
   form.addEventListener('submit', async (ev) => {
