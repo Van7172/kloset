@@ -1,3 +1,4 @@
+import { Seo } from '../components/Seo';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { confianza, mapaAjuste, porQueEstaTalla, tallaRecomendada } from '../lib/fit';
@@ -13,6 +14,7 @@ export function ResultPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[640px]">
+      <Seo title="Tu talla recomendada" description="Tu talla y el mapa de ajuste por zonas —pecho, cintura, cadera y largo— calculados a partir de tus medidas y del corte elegido." path="/resultado" noindex />
       <div className="mb-[18px] mt-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">
         Paso 2 · Recomendación
       </div>

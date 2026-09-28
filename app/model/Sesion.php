@@ -46,6 +46,9 @@ class Sesion
 		}
 
 		$user_obj = new Usuario((int) $user['id_usuario_sistema']);
+		if (empty($user_obj->getSecciones())) return ['errors' => 'Esta cuenta no tiene acceso al panel'];
+		session_regenerate_id(true);
+		$_SESSION['csrf_panel'] = bin2hex(random_bytes(32));
 		$user_obj->setLogeado(true);
 		$_SESSION['sesion']->setUsuario($user_obj);
 		$_SESSION['usuario'] = $user_obj;

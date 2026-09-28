@@ -1,0 +1,12 @@
+# Kloset — https://kloset.shop (dominio canónico)
+User-agent: *
+Allow: /
+
+# Rutas de sesión / flujo de compra: sin valor para buscadores
+Disallow: /entrar
+Disallow: /cuenta
+Disallow: /pago
+Disallow: /bolsa
+Disallow: /pedidos
+
+Sitemap: https://kloset.shop/sitemap.xml

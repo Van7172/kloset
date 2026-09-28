@@ -75,7 +75,12 @@ class JwtHelper
 		global $_config;
 		try {
 			$decoded = self::decode($m[1], $_config['jwt']['secret']);
-			return isset($decoded->sub) ? (int) $decoded->sub : null;
+			$id = isset($decoded->sub) ? (int) $decoded->sub : 0;
+			if ($id <= 0) return null;
+			$con = \Develoweb\App\Model\Conexion::getInstance();
+			$sth = $con->prepare("SELECT 1 FROM sistema_usuarios WHERE id_usuario_sistema = ? AND estado_usuario_sistema = 'activo'");
+			$sth->execute([$id]);
+			return $sth->fetchColumn() ? $id : null;
 		} catch (\Throwable $e) {
 			return null;
 		}

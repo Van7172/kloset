@@ -54,6 +54,7 @@ class Productos
 		if ($error = Acl::guard(self::SECCION)) {
 			return $error;
 		}
+		if ($error = self::validarImagenes()) return $error;
 
 		$datos = self::readInput();
 		if (isset($datos['status'])) {
@@ -94,6 +95,7 @@ class Productos
 		if ($error = Acl::guard(self::SECCION)) {
 			return $error;
 		}
+		if ($error = self::validarImagenes()) return $error;
 
 		$id = (int) ($_POST['id'] ?? 0);
 		if ($id <= 0) {
@@ -109,6 +111,9 @@ class Productos
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = ?');
+		$existe->execute([$id]);
+		if (!$existe->fetchColumn()) return ['status' => 'error', 'message' => 'Producto no encontrado'];
 		$sth = $con->prepare(
 			'UPDATE productos SET id_categoria = :categoria, nombre_producto = :nombre,
 			 url_producto = :url, descripcion_producto = :descripcion,
@@ -147,14 +152,27 @@ class Productos
 		}
 
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT url_imagen FROM productos_imagenes WHERE id_producto = :id');
-		$sth->execute([':id' => $id]);
-		foreach ($sth->fetchAll() as $img) {
-			self::borrarArchivo($img['url_imagen']);
+		$con->beginTransaction();
+		try {
+			$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = ? FOR UPDATE');
+			$existe->execute([$id]);
+			if (!$existe->fetchColumn()) { $con->rollBack(); return ['status' => 'error', 'message' => 'Producto no encontrado']; }
+			foreach (['pedidos_items', 'carritos_items'] as $tabla) {
+				$usos = $con->prepare("SELECT COUNT(*) FROM $tabla i INNER JOIN productos_variantes v ON v.id_variante = i.id_variante WHERE v.id_producto = ?");
+				$usos->execute([$id]);
+				if ($usos->fetchColumn()) { $con->rollBack(); return ['status' => 'error', 'message' => 'Este producto tiene pedidos o bolsas asociados. Desactívalo para retirarlo del catálogo.']; }
+			}
+			$sth = $con->prepare('SELECT url_imagen FROM productos_imagenes WHERE id_producto = ?');
+			$sth->execute([$id]);
+			$imagenes = $sth->fetchAll();
+			$con->prepare('DELETE FROM productos WHERE id_producto = ?')->execute([$id]);
+			$con->commit();
+		} catch (\Throwable $e) {
+			$con->rollBack();
+			error_log('KLOSET eliminar producto: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo eliminar el producto. Sus imágenes se conservaron.'];
 		}
-
-		$sth = $con->prepare('DELETE FROM productos WHERE id_producto = :id');
-		$sth->execute([':id' => $id]);
+		foreach ($imagenes as $img) self::borrarArchivo($img['url_imagen']);
 
 		return ['status' => 'success', 'message' => 'Producto eliminado'];
 	}
@@ -164,10 +182,17 @@ class Productos
 		if ($error = Acl::guard(self::SECCION)) {
 			return $error;
 		}
+		if ($error = self::validarImagenes()) return $error;
 
 		$id = (int) ($_POST['id'] ?? 0);
 		if ($id <= 0) {
 			return ['status' => 'error', 'message' => 'Producto no válido'];
+		}
+		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = :id');
+		$existe->execute([':id' => $id]);
+		if (!$existe->fetchColumn()) {
+			return ['status' => 'error', 'message' => 'Producto no encontrado'];
 		}
 
 		$subidas = self::guardarImagenes($id);
@@ -298,6 +323,21 @@ class Productos
 		return IMGS . 'productos/' . $archivo;
 	}
 
+	private static function validarImagenes(): ?array
+	{
+		if (!isset($_FILES['imagenes'])) return null;
+		$f = $_FILES['imagenes'];
+		if (!is_array($f['name'] ?? null) || count($f['name']) > 20) return ['status'=>'error', 'message'=>'Envía hasta 20 imágenes por operación'];
+		foreach ($f['name'] as $i => $nombre) {
+			if (($f['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) continue;
+			$info = is_uploaded_file($f['tmp_name'][$i]) ? @getimagesize($f['tmp_name'][$i]) : false;
+			if ($f['error'][$i] !== UPLOAD_ERR_OK || $f['size'][$i] > 10 * 1024 * 1024 || !$info
+				|| !in_array($info['mime'] ?? '', ['image/jpeg','image/png','image/gif','image/webp'], true)
+				|| !in_array(strtolower(pathinfo($nombre, PATHINFO_EXTENSION)), ['jpg','jpeg','png','gif','webp'], true)) return ['status'=>'error', 'message'=>'Usa imágenes JPEG, PNG, GIF o WebP válidas de hasta 10 MB'];
+		}
+		return null;
+	}
+
 	private static function guardarImagenes(int $id_producto): array
 	{
 		if (empty($_FILES['imagenes']['name'][0])) {
@@ -320,9 +360,16 @@ class Productos
 			if ((int) $_FILES['imagenes']['error'][$i] !== UPLOAD_ERR_OK) {
 				continue;
 			}
+			$tmp = $_FILES['imagenes']['tmp_name'][$i];
+			$size = (int) $_FILES['imagenes']['size'][$i];
+			$info = is_uploaded_file($tmp) ? getimagesize($tmp) : false;
+			if ($size <= 0 || $size > 10 * 1024 * 1024 || !$info
+				|| !in_array($info['mime'] ?? '', ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+				continue;
+			}
 			$archivo = \uploadImgs(
 				$_FILES['imagenes']['name'][$i],
-				$_FILES['imagenes']['tmp_name'][$i],
+				$tmp,
 				PUBLIC_ROOT_HOST . self::DIR_IMGS
 			);
 			if ($archivo === '') {
@@ -350,18 +397,23 @@ class Productos
 		$url = trim((string) ($_POST['url'] ?? ''));
 		$descripcion = trim((string) ($_POST['descripcion'] ?? ''));
 		$precio = (float) str_replace(',', '.', (string) ($_POST['precio'] ?? '0'));
+		if (!is_numeric(str_replace(',', '.', (string)($_POST['precio'] ?? '0')))) return ['status'=>'error', 'message'=>'El precio debe ser numérico'];
 		$categoria = (int) ($_POST['id_categoria'] ?? 0);
 		$estado = ($_POST['estado'] ?? 'activo') === 'inactivo' ? 'inactivo' : 'activo';
 
 		if ($nombre === '') {
 			return ['status' => 'error', 'message' => 'El nombre es obligatorio'];
 		}
+		if (mb_strlen($nombre) > 150 || mb_strlen($url) > 180 || !is_finite($precio) || $precio > 99999999.99) return ['status' => 'error', 'message' => 'Nombre, URL o precio exceden el límite permitido'];
 		if ($precio <= 0) {
 			return ['status' => 'error', 'message' => 'El precio debe ser mayor a 0'];
 		}
 		if ($categoria <= 0) {
 			return ['status' => 'error', 'message' => 'Selecciona una categoría'];
 		}
+		$cat = Conexion::getInstance()->prepare('SELECT 1 FROM categorias WHERE id_categoria = ?');
+		$cat->execute([$categoria]);
+		if (!$cat->fetchColumn()) return ['status' => 'error', 'message' => 'La categoría no existe'];
 
 		$url = \url_friend($url !== '' ? $url : $nombre);
 		if ($url === '') {

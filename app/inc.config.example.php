@@ -17,9 +17,11 @@ return [
 		'back' => 'kloset',
 	],
 	'admin' => [
-		'servidor_correo_url' => 'localhost',
-		'servidor_correo_usuario' => '',
-		'servidor_correo_contrasena' => '',
+		'servidor_correo_url' => getenv('KLOSET_SMTP_HOST') ?: 'localhost',
+		'servidor_correo_usuario' => getenv('KLOSET_SMTP_USER') ?: '',
+		'servidor_correo_contrasena' => getenv('KLOSET_SMTP_PASS') ?: '',
+		'servidor_correo_puerto' => getenv('KLOSET_SMTP_PORT') ?: '587',
+		'servidor_correo_seguridad' => getenv('KLOSET_SMTP_SECURITY') ?: 'tls',
 	],
 	'jwt' => [
 		'secret' => 'cambiar-en-produccion',

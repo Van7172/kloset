@@ -14,18 +14,40 @@ if (!isset($_config)) {
 	$_config = require dirname(__DIR__) . '/app/inc.config.php';
 }
 
-session_start();
+/*
+ * La cookie de sesión se configura aquí y no se deja al php.ini del servidor:
+ * el hosting trae SameSite=None con Secure=Off, combinación que los navegadores
+ * rechazan, y sin cookie no hay forma de iniciar sesión en el panel.
+ */
+if (session_status() === PHP_SESSION_NONE) {
+	$sesionSegura = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+		|| (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+		|| ((int) ($_SERVER['SERVER_PORT'] ?? 80) === 443);
+
+	session_set_cookie_params([
+		'lifetime' => 0,
+		'path' => '/',
+		'secure' => $sesionSegura,
+		'httponly' => true,
+		'samesite' => 'Lax',
+	]);
+	session_start();
+}
 
 if (isset($_SESSION['sesion'])) {
 	$sesion = $_SESSION['sesion'];
 	if (isset($_SESSION['usuario']) && $_SESSION['usuario']->getId() > 0) {
-		$_SESSION['usuario']->setLogeado(true);
+		// Los permisos y el estado se vuelven a consultar en cada petición.
+		$_SESSION['usuario'] = new \Develoweb\App\Model\Usuario($_SESSION['usuario']->getId());
+		$_SESSION['usuario']->setLogeado($_SESSION['usuario']->getEstado() === 'activo' && count($_SESSION['usuario']->getSecciones()) > 0);
 		$sesion->setUsuario($_SESSION['usuario']);
 	}
 } else {
 	$sesion = new Sesion($_config);
 	$_SESSION['sesion'] = $sesion;
 }
+
+if (empty($_SESSION['csrf_panel'])) $_SESSION['csrf_panel'] = bin2hex(random_bytes(32));
 
 $msgbox = new Msgbox();
 if (isset($_SESSION['msg'])) {

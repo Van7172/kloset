@@ -1,9 +1,13 @@
+import { Seo } from '../components/Seo';
+import { nombreCortoDepartamento } from '../lib/locations';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
+import { api, type ApiDireccion } from '../services/api';
+import { AddressForm } from '../components/AddressForm';
 
-type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'done';
+type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'error' | 'done';
 
 const soloDigitos = (v: string) => v.replace(/\D/g, '');
 
@@ -18,14 +22,21 @@ function marca(num: string): string {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { bolsa, usuario, vaciarBolsa, registrarPedido } = useKloset();
-  const subtotal = bolsa.reduce((a, b) => a + b.price, 0);
+  const { bolsa, usuario, crearPedido, cargandoSesion, cargandoBolsa } = useKloset();
+  const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const [estado, setEstado] = useState<Estado>('idle');
   const [progreso, setProgreso] = useState('0%');
   const [error, setError] = useState('');
+  const [errorPedido, setErrorPedido] = useState('');
   const [otp, setOtp] = useState('');
   const [pago, setPago] = useState({ holder: '', num: '', exp: '', cvc: '' });
+  const [envio, setEnvio] = useState({ direccion: '', ciudad: '', referencia: '' });
+  const [direcciones, setDirecciones] = useState<ApiDireccion[]>([]);
+  const [direccionId, setDireccionId] = useState<number | null>(null);
+  const [elegirDireccion, setElegirDireccion] = useState(false);
+  const [editarDireccion, setEditarDireccion] = useState(false);
+  const [usarManual, setUsarManual] = useState(false);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -33,8 +44,17 @@ export function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    if (bolsa.length === 0 && estado === 'idle') navigate('/bolsa');
-  }, [bolsa.length, estado, navigate]);
+    if (!usuario) return;
+    void api.direcciones.listar().then((res) => {
+      if (res.status !== 'success') return;
+      setDirecciones(res.direcciones);
+      setDireccionId(res.direcciones.find((d) => Boolean(d.principal))?.id ?? res.direcciones[0]?.id ?? null);
+    }).catch(() => undefined);
+  }, [usuario]);
+
+  useEffect(() => {
+    if (!cargandoSesion && !cargandoBolsa && bolsa.length === 0 && estado === 'idle') navigate('/bolsa');
+  }, [bolsa.length, estado, navigate, cargandoSesion, cargandoBolsa]);
 
   const programar = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -52,17 +72,17 @@ export function CheckoutPage() {
     setError('');
   };
 
-  const cerrarPedido = () => {
-    const ref = `KL-40${129 + bolsa.length}`;
-    registrarPedido({
-      ref,
-      fecha: new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' }),
-      total: subtotal,
-      items: bolsa,
-      card: soloDigitos(pago.num).slice(-4),
-      estado: 'pagado',
-    });
-    vaciarBolsa();
+  const cerrarPedido = async () => {
+    const fallo = await crearPedido(
+      !usarManual && direccionId ? { id_direccion: direccionId } : { direccion: envio.direccion, ciudad: envio.ciudad, referencia: envio.referencia },
+      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4) },
+    );
+    if (fallo) {
+      setErrorPedido(fallo);
+      setEstado('error');
+      return;
+    }
+
     // 'done' evita que el efecto de bolsa vacía redirija a /bolsa antes de salir
     setEstado('done');
     setProgreso('100%');
@@ -72,6 +92,7 @@ export function CheckoutPage() {
   };
 
   const pagar = () => {
+    if ((usarManual || !direccionId) && (!envio.direccion.trim() || !envio.ciudad.trim())) return setError('La dirección y el distrito son obligatorios');
     const d = soloDigitos(pago.num);
     if (d.length < 15) return setError('Número de tarjeta incompleto');
     if (!/^\d{2}\/\d{2}$/.test(pago.exp)) return setError('Caducidad en formato MM/AA');
@@ -89,7 +110,7 @@ export function CheckoutPage() {
         setOtp('');
         return setEstado('3ds');
       }
-      cerrarPedido();
+      void cerrarPedido();
     }, 1700);
   };
 
@@ -99,12 +120,12 @@ export function CheckoutPage() {
     setProgreso('70%');
     setError('');
     programar(() => setProgreso('96%'), 500);
-    programar(cerrarPedido, 1100);
+    programar(() => void cerrarPedido(), 1100);
   };
 
   const pasos = [
     { label: 'Bolsa', activo: true },
-    { label: 'Pago', activo: estado !== 'declined' },
+    { label: 'Pago', activo: estado !== 'declined' && estado !== 'error' },
     { label: 'Confirmación', activo: false },
   ];
 
@@ -117,6 +138,7 @@ export function CheckoutPage() {
 
   return (
     <div className="kl-rise mx-auto max-w-[1000px]">
+      <Seo title="Pago de demostración" description="Prueba el flujo de compra de Kloset con tarjetas de demostración." path="/pago" noindex />
       <div className="mb-6 flex items-center gap-[14px] border-b border-ink pb-[14px]">
         <button
           type="button"
@@ -146,8 +168,59 @@ export function CheckoutPage() {
         <div className="w-full min-w-0 lg:flex-[1.25]">
           {estado === 'idle' && (
             <div>
+              <h2 className="mb-3 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
+                Dirección de envío
+              </h2>
+              {!usarManual && direccionId && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direcciones.find((d) => d.id === direccionId)?.nombre}</div><p className="mt-1 text-sm text-body">{direcciones.find((d) => d.id === direccionId)?.direccion}<br />{direcciones.find((d) => d.id === direccionId)?.ciudad}, {nombreCortoDepartamento(direcciones.find((d) => d.id === direccionId)?.departamento ?? 'Lima Metropolitana')}</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
+              {(!direccionId || usarManual) && <div className="mb-6 border-t border-ink">
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-direccion" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Dirección
+                  </label>
+                  <input
+                    id="envio-direccion"
+                    value={envio.direccion}
+                    onChange={(e) => {
+                      setEnvio((s) => ({ ...s, direccion: e.target.value }));
+                      setError('');
+                    }}
+                    placeholder="Av. Larco 123, dpto. 4B"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-ciudad" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Distrito
+                  </label>
+                  <input
+                    id="envio-ciudad"
+                    value={envio.ciudad}
+                    onChange={(e) => {
+                      setEnvio((s) => ({ ...s, ciudad: e.target.value }));
+                      setError('');
+                    }}
+                    placeholder="Miraflores"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+                <div className="border-b border-rule py-[14px]">
+                  <label htmlFor="envio-referencia" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
+                    Referencia (opcional)
+                  </label>
+                  <input
+                    id="envio-referencia"
+                    value={envio.referencia}
+                    onChange={(e) => setEnvio((s) => ({ ...s, referencia: e.target.value }))}
+                    placeholder="Frente al parque"
+                    className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
+                  />
+                </div>
+              </div>}
+              <div className="mb-6 flex flex-wrap gap-4 text-sm"><button type="button" onClick={() => setEditarDireccion(true)} className="cursor-pointer border-none bg-transparent p-0 text-ink underline">+ Guardar nueva dirección</button>{direccionId && <button type="button" onClick={() => setUsarManual(!usarManual)} className="cursor-pointer border-none bg-transparent p-0 text-soft underline">{usarManual ? 'Usar dirección guardada' : 'Usar otra dirección solo para este pedido'}</button>}</div>
+              <div className="mb-6 border-l-[3px] border-red bg-surface px-4 py-3 text-[13px] leading-[1.5] text-body">Envío gratuito en la zona de cobertura de Lima y Callao. Plazo referencial: 24 a 72 horas hábiles después de confirmar el pedido.</div>
+
               <h2 className="mb-5 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
-                Pago seguro
+                Pago de demostración
               </h2>
               <div className="border-t border-ink">
                 {campos.map((f) => (
@@ -186,28 +259,28 @@ export function CheckoutPage() {
                 onClick={pagar}
                 className="mt-[22px] min-h-[58px] w-full cursor-pointer border-none bg-ink font-narrow text-base font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
               >
-                Pagar {money(subtotal)}
+                Simular pago {money(subtotal)}
               </button>
               <div className="mt-4 font-narrow text-[11px] uppercase leading-[1.7] tracking-[0.1em] text-soft">
-                Simulador · 4242 4242 4242 4242 aprueba · 4000 0000 0000 0002 rechaza · 4000 0000 0000 3220 pide
-                3-D Secure
+                Usa solo tarjetas de prueba. 4242 4242 4242 4242 aprueba · 4000 0000 0000 0002 rechaza · 4000 0000 0000 3220 pide
+                verificación de prueba. No se procesa ningún cargo real.
               </div>
             </div>
           )}
 
           {estado === 'processing' && (
             <div className="py-5">
-              <div className="mb-[14px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">Autorizando</div>
+              <div className="mb-[14px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">Simulando autorización</div>
               <h2 className="mb-5 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
-                Hablando con tu banco…
+                Preparando tu pedido…
               </h2>
               <div className="h-1 overflow-hidden bg-surface-2">
                 <div className="h-full bg-red transition-[width] duration-500 ease-linear" style={{ width: progreso }} />
               </div>
               <div className="mt-[18px] border-t border-rule">
                 {[
-                  { t: 'Tokenizando tarjeta', s: 'ok' },
-                  { t: 'Verificando fondos', s: progreso === '12%' ? '…' : 'ok' },
+                  { t: 'Validando tarjeta de prueba', s: 'ok' },
+                  { t: 'Simulando aprobación', s: progreso === '12%' ? '…' : 'ok' },
                   { t: 'Registrando pago', s: progreso === '92%' || progreso === '96%' ? 'ok' : '…' },
                 ].map((l) => (
                   <div
@@ -226,14 +299,13 @@ export function CheckoutPage() {
           {estado === '3ds' && (
             <div className="border border-ink p-6">
               <div className="mb-3 font-narrow text-[11.5px] uppercase tracking-[0.14em] text-soft">
-                Banco emisor · 3-D Secure
+                Verificación de prueba
               </div>
               <h2 className="mb-[10px] font-display text-[26px] font-normal leading-tight tracking-[-0.02em]">
                 Confirma con tu código
               </h2>
               <p className="mb-5 text-[14.5px] leading-[1.6] text-body">
-                Enviamos un código de 6 dígitos al teléfono registrado. En esta demo, cualquier código de 6 dígitos
-                es válido.
+                Ingresa cualquier código de 6 dígitos para continuar esta demostración. No se envía ningún mensaje ni se realiza un cargo.
               </p>
               <input
                 inputMode="numeric"
@@ -262,10 +334,10 @@ export function CheckoutPage() {
                 Pago rechazado · código 51
               </div>
               <h2 className="mb-[10px] font-display text-[28px] font-normal leading-tight tracking-[-0.025em]">
-                Tu banco no autorizó el cargo.
+                La tarjeta de prueba fue rechazada.
               </h2>
               <p className="mb-[22px] max-w-[44ch] text-[15px] leading-[1.65] text-body">
-                No se ha cobrado nada. Prueba con otra tarjeta o vuelve a intentarlo en unos minutos; tu bolsa queda
+                No se ha cobrado nada. Prueba con otra tarjeta de demostración; tu bolsa queda
                 intacta.
               </p>
               <button
@@ -281,30 +353,57 @@ export function CheckoutPage() {
               </button>
             </div>
           )}
+
+          {estado === 'error' && (
+            <div className="border-t-[3px] border-red py-[22px]">
+              <div className="mb-3 font-narrow text-xs uppercase tracking-[0.14em] text-red">
+                No se pudo registrar el pedido
+              </div>
+              <h2 className="mb-[10px] font-display text-[28px] font-normal leading-tight tracking-[-0.025em]">
+                {errorPedido}
+              </h2>
+              <p className="mb-[22px] max-w-[44ch] text-[15px] leading-[1.65] text-body">
+                No se ha cobrado nada. Revisa tu bolsa y vuelve a intentarlo.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setEstado('idle');
+                  setPago({ holder: '', num: '', exp: '', cvc: '' });
+                  setError('');
+                  setErrorPedido('');
+                }}
+                className="min-h-[54px] cursor-pointer border-none bg-ink px-6 font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
+              >
+                Volver a intentarlo
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="w-full border-t-[3px] border-red bg-surface p-[22px] lg:flex-1">
           <div className="mb-[14px] font-narrow text-[11.5px] uppercase tracking-[0.14em] text-soft">Resumen</div>
-          {bolsa.map((it, i) => (
-            <div key={`${it.id_producto}-${i}`} className="flex justify-between gap-3 border-b border-rule py-[11px]">
+          {bolsa.map((it) => (
+            <div key={it.id_carrito_item ?? `${it.id_producto}-${it.size}-${it.fit}`} className="flex justify-between gap-3 border-b border-rule py-[11px]"><img src={it.imagen ?? ''} alt="" className="h-16 w-14 shrink-0 bg-paper object-cover" />
               <div className="min-w-0">
                 <div className="font-display text-[17px]">{it.name}</div>
                 <div className="mt-[3px] text-xs text-soft">
                   Talla {it.size} · {it.fit}
+                  {it.cantidad > 1 && ` · ×${it.cantidad}`}
                 </div>
               </div>
-              <span className="whitespace-nowrap font-display text-base">{money(it.price)}</span>
+              <span className="whitespace-nowrap font-display text-base">{money(it.price * it.cantidad)}</span>
             </div>
           ))}
           <div className="flex items-baseline justify-between pt-4">
             <span className="font-narrow text-xs uppercase tracking-[0.12em]">Total</span>
             <span className="font-display text-[26px] tracking-[-0.02em]">{money(subtotal)}</span>
           </div>
-          <div className="mt-4 text-[13px] leading-[1.6] text-body">
-            Envío gratis a {usuario?.correo ?? 'tu correo'}. Cambio de talla sin coste durante 30 días.
-          </div>
+          <div className="mt-4 text-[13px] leading-[1.6] text-body">No se realiza ningún cargo real. El pedido de demostración quedará guardado en tu cuenta.</div>
         </div>
       </div>
+      {elegirDireccion && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setElegirDireccion(false); }}><div role="dialog" aria-modal="true" aria-label="Cambiar dirección" className="w-full max-w-[540px] bg-paper p-6 shadow-2xl"><div className="mb-4 flex justify-between"><h2 className="font-display text-[30px]">Cambiar dirección</h2><button type="button" aria-label="Cerrar" onClick={() => setElegirDireccion(false)} className="min-h-10 min-w-10 border-none bg-transparent text-2xl">×</button></div><p className="mb-4 text-sm text-body">Selecciona una dirección guardada.</p>{direcciones.map((d) => <button key={d.id} type="button" onClick={() => { setDireccionId(d.id); setUsarManual(false); setElegirDireccion(false); }} className="mb-2 flex w-full items-start gap-3 border border-rule bg-transparent p-4 text-left"><span className="text-red">{direccionId === d.id ? '◉' : '○'}</span><span><strong>{d.nombre}</strong><span className="mt-1 block text-sm text-body">{d.direccion}<br />{d.ciudad}, {nombreCortoDepartamento(d.departamento)}</span></span></button>)}<button type="button" onClick={() => { setElegirDireccion(false); setEditarDireccion(true); }} className="mt-3 min-h-11 w-full cursor-pointer border border-ink bg-transparent font-narrow text-xs font-semibold uppercase">+ Añadir nueva dirección</button></div></div>}
+      {editarDireccion && <AddressForm onClose={() => setEditarDireccion(false)} onSaved={(lista, id) => { setDirecciones(lista); setDireccionId(id); setUsarManual(false); setEditarDireccion(false); }} />}
     </div>
   );
 }
