@@ -86,7 +86,7 @@ export function AppLayout() {
             )}
           </Link>
 
-          <nav className="ml-3 hidden items-stretch gap-[2px] md:flex">
+          <nav className="ml-3 hidden items-stretch gap-[2px] lg:flex">
             {TABS.filter((t) => !t.soloMovil && !(t.ocultaConSesion && usuario)).map((t) => (
               <NavLink
                 key={t.key}
@@ -148,7 +148,7 @@ export function AppLayout() {
             </svg>
             {bolsa.length > 0 && (
               <span className="absolute -right-[6px] -top-[6px] flex h-[18px] min-w-[18px] items-center justify-center bg-red px-1 font-narrow text-[11px] font-semibold leading-none text-[#F2F2F0]">
-                {bolsa.length}
+                {bolsa.reduce((total, item) => total + item.cantidad, 0)}
               </span>
             )}
           </button>
@@ -222,7 +222,7 @@ export function AppLayout() {
       </footer>
 
       <nav
-        className="sticky bottom-0 z-40 border-t border-ink backdrop-blur-md md:hidden"
+        className="sticky bottom-0 z-40 border-t border-ink backdrop-blur-md lg:hidden"
         style={{ background: 'var(--header-bg)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid grid-cols-4">

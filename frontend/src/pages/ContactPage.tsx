@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Seo } from '../components/Seo';
+import { api } from '../services/api';
 
 const TEMAS = [
   { key: 'talla', label: 'Duda de talla' },
@@ -8,10 +9,8 @@ const TEMAS = [
 ] as const;
 
 const CANALES = [
-  { k: 'WhatsApp', v: '+51 987 654 321', note: 'Lunes a sábado, 9:00 a 20:00' },
-  { k: 'Correo', v: 'hola@kloset.pe', note: 'Respuesta en el mismo día hábil' },
-  { k: 'Showroom', v: 'Av. Arequipa 2450, Lince', note: 'Cita previa · pruebas de ajuste' },
-  { k: 'Atención al cliente', v: '(01) 480 2200', note: 'Lunes a viernes, 9:00 a 18:00' },
+  { k: 'Atención personalizada', v: 'Hablemos de tu talla', note: 'Cuéntanos qué prenda estás viendo y tus medidas si necesitas ayuda con el ajuste.' },
+  { k: 'Tu consulta', v: 'Directo a nuestro equipo', note: 'El mensaje queda registrado en el panel de atención de Kloset.' },
 ];
 
 type Tema = (typeof TEMAS)[number]['key'];
@@ -23,6 +22,8 @@ export function ContactPage() {
   const [telefono, setTelefono] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [enviado, setEnviado] = useState('');
+  const [error, setError] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
   const campos = [
     { k: 'nombre', label: 'Nombre', ph: 'Tu nombre', value: nombre, set: setNombre },
@@ -30,15 +31,34 @@ export function ContactPage() {
     { k: 'tel', label: 'Teléfono (opcional)', ph: '9XX XXX XXX', value: telefono, set: setTelefono },
   ];
 
-  const enviar = () => {
-    setEnviado('Mensaje enviado · te respondemos por correo');
+  const enviar = async () => {
+    setError('');
+    setEnviado('');
+    if (nombre.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim()) || mensaje.trim().length < 10) {
+      setError('Completa tu nombre, un correo válido y un mensaje de al menos 10 caracteres.');
+      return;
+    }
+    setEnviando(true);
+    try {
+      const res = await api.contacto({ tema, nombre: nombre.trim(), correo: correo.trim(), telefono: telefono.trim(), mensaje: mensaje.trim(), sitio: '' });
+      if (res.status !== 'success') {
+        setError(res.message || 'No pudimos guardar tu consulta. Inténtalo de nuevo.');
+        return;
+      }
+      setEnviado('Consulta recibida. Te responderemos al correo que indicaste.');
+      setMensaje('');
+    } catch {
+      setError('No pudimos guardar tu consulta. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
     <div className="kl-rise">
       <Seo
         title="Contáctanos"
-        description="Escríbenos por formulario o WhatsApp. Si es una duda de ajuste, contestamos con la talla y la holgura exacta."
+        description="Escríbenos desde el formulario de Kloset. Si tienes una duda de ajuste, cuéntanos tus medidas y la prenda que estás viendo."
         path="/contacto"
       />
       <div className="mb-7 max-w-[760px] border-b border-ink pb-6">
@@ -49,8 +69,8 @@ export function ContactPage() {
           Hablamos de <em className="italic">tu talla.</em>
         </h1>
         <p className="m-0 max-w-[54ch] text-[15.5px] leading-[1.65] text-body">
-          Escríbenos por el formulario o por WhatsApp. Si es una duda de ajuste, cuéntanos tus medidas y qué prenda
-          estás viendo: contestamos con la talla y la holgura exacta.
+          Escríbenos desde el formulario. Si es una duda de ajuste, cuéntanos tus medidas y qué prenda
+          estás viendo para poder orientarte mejor.
         </p>
       </div>
 
@@ -81,12 +101,14 @@ export function ContactPage() {
                   {f.label}
                 </label>
                 <input
+                  type={f.k === 'correo' ? 'email' : f.k === 'tel' ? 'tel' : 'text'}
                   value={f.value}
                   onChange={(e) => {
                     f.set(e.target.value);
                     setEnviado('');
                   }}
                   placeholder={f.ph}
+                  maxLength={f.k === 'tel' ? 30 : f.k === 'correo' ? 150 : 120}
                   className="min-h-10 w-full border-none bg-transparent py-2 text-base text-ink outline-none"
                 />
               </div>
@@ -102,6 +124,7 @@ export function ContactPage() {
                   setEnviado('');
                 }}
                 rows={5}
+                maxLength={3000}
                 placeholder="Cuéntanos qué necesitas"
                 className="w-full resize-y border-none bg-transparent py-2 text-base leading-[1.55] text-ink outline-none"
               />
@@ -109,20 +132,22 @@ export function ContactPage() {
           </div>
 
           {enviado && (
-            <div className="mt-4 border-l-[3px] border-red bg-surface px-[14px] py-3 font-narrow text-xs uppercase tracking-[0.06em]">
+            <div role="status" className="mt-4 border-l-[3px] border-red bg-surface px-[14px] py-3 font-narrow text-xs uppercase tracking-[0.06em]">
               {enviado}
             </div>
           )}
+          {error && <div role="alert" className="mt-4 border-l-[3px] border-red bg-surface px-[14px] py-3 text-sm text-red">{error}</div>}
 
           <button
             type="button"
             onClick={enviar}
+            disabled={enviando}
             className="mt-[22px] min-h-[58px] w-full cursor-pointer border-none bg-ink font-narrow text-base font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
           >
-            Enviar mensaje
+            {enviando ? 'Enviando…' : 'Enviar mensaje'}
           </button>
           <p className="mt-[14px] text-[12.5px] leading-[1.55] text-soft">
-            Respondemos en horario de atención, normalmente el mismo día hábil.
+            Usaremos tu correo únicamente para responder a esta consulta.
           </p>
         </div>
 

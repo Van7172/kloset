@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:local": "tsc && vite build --base /kloset/frontend/dist/",
     "preview": "vite preview"
   },
   "devDependencies": {

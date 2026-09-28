@@ -83,8 +83,9 @@ class Carritos
 
 		$con = Conexion::getInstance();
 		$sth = $con->prepare(
-			'SELECT id_variante, stock_variante FROM productos_variantes
-			 WHERE id_producto = :p AND talla_variante = :t AND corte_variante = :c'
+			"SELECT v.id_variante, v.stock_variante FROM productos_variantes v
+			 INNER JOIN productos p ON p.id_producto = v.id_producto
+			 WHERE v.id_producto = :p AND v.talla_variante = :t AND v.corte_variante = :c AND p.estado_producto = 'activo'"
 		);
 		$sth->execute([':p' => $idProducto, ':t' => $talla, ':c' => $corte]);
 		$variante = $sth->fetch();
@@ -138,5 +139,96 @@ class Carritos
 		$sth->execute([':item' => $idItem, ':carrito' => $idCarrito]);
 
 		return ['status' => 'success', 'items' => self::itemsDe($con, $idCarrito)];
+	}
+
+	public static function cantidad(): array
+	{
+		$userId = JwtHelper::bearerUserId();
+		if (!$userId) {
+			http_response_code(401);
+			return ['status' => 'error', 'message' => 'No autorizado'];
+		}
+		$idItem = (int) ($_POST['id_carrito_item'] ?? 0);
+		$cantidad = (int) ($_POST['cantidad'] ?? 0);
+		if ($idItem <= 0 || $cantidad < 1 || $cantidad > 99) {
+			http_response_code(422);
+			return ['status' => 'error', 'message' => 'Cantidad no válida'];
+		}
+		$con = Conexion::getInstance();
+		$sth = $con->prepare('SELECT ci.id_carrito, v.stock_variante FROM carritos_items ci INNER JOIN carritos c ON c.id_carrito = ci.id_carrito INNER JOIN productos_variantes v ON v.id_variante = ci.id_variante WHERE ci.id_carrito_item = ? AND c.id_usuario_sistema = ?');
+		$sth->execute([$idItem, $userId]);
+		$item = $sth->fetch();
+		if (!$item) {
+			http_response_code(404);
+			return ['status' => 'error', 'message' => 'Prenda no encontrada en tu bolsa'];
+		}
+		if ($cantidad > (int) $item['stock_variante']) {
+			http_response_code(422);
+			return ['status' => 'error', 'message' => 'No hay stock suficiente en esa talla'];
+		}
+		$con->prepare('UPDATE carritos_items SET cantidad_carrito_item = ? WHERE id_carrito_item = ?')->execute([$cantidad, $idItem]);
+		return ['status' => 'success', 'items' => self::itemsDe($con, (int) $item['id_carrito'])];
+	}
+
+	public static function guardados(): array
+	{
+		$userId = JwtHelper::bearerUserId();
+		if (!$userId) { http_response_code(401); return ['status' => 'error', 'message' => 'No autorizado']; }
+		$con = Conexion::getInstance();
+		$sth = $con->prepare('SELECT g.id_variante, g.cantidad AS cantidad_carrito_item, v.talla_variante, v.corte_variante, v.stock_variante, p.id_producto, p.nombre_producto, p.url_producto, p.precio_producto, (SELECT i.url_imagen FROM productos_imagenes i WHERE i.id_producto = p.id_producto ORDER BY i.orden_imagen, i.id_imagen LIMIT 1) AS url_imagen FROM prendas_guardadas_clientes g INNER JOIN productos_variantes v ON v.id_variante = g.id_variante INNER JOIN productos p ON p.id_producto = v.id_producto WHERE g.id_usuario_sistema = ? ORDER BY g.fecha_creacion DESC');
+		$sth->execute([$userId]);
+		$items = $sth->fetchAll();
+		foreach ($items as &$item) $item['url_imagen'] = $item['url_imagen'] ? IMGS . 'productos/' . $item['url_imagen'] : null;
+		unset($item);
+		return ['status' => 'success', 'items' => $items];
+	}
+
+	public static function guardarDespues(): array
+	{
+		$userId = JwtHelper::bearerUserId();
+		if (!$userId) { http_response_code(401); return ['status' => 'error', 'message' => 'No autorizado']; }
+		$idItem = (int) ($_POST['id_carrito_item'] ?? 0);
+		$con = Conexion::getInstance();
+		$con->beginTransaction();
+		try {
+			$sth = $con->prepare('SELECT ci.* FROM carritos_items ci INNER JOIN carritos c ON c.id_carrito = ci.id_carrito WHERE ci.id_carrito_item = ? AND c.id_usuario_sistema = ? FOR UPDATE');
+			$sth->execute([$idItem, $userId]);
+			$item = $sth->fetch();
+			if (!$item) { $con->rollBack(); http_response_code(404); return ['status' => 'error', 'message' => 'Prenda no encontrada']; }
+			$con->prepare('INSERT INTO prendas_guardadas_clientes (id_usuario_sistema, id_variante, cantidad) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE cantidad = VALUES(cantidad)')->execute([$userId, $item['id_variante'], $item['cantidad_carrito_item']]);
+			$con->prepare('DELETE FROM carritos_items WHERE id_carrito_item = ?')->execute([$idItem]);
+			$con->commit();
+			return ['status' => 'success', 'items' => self::itemsDe($con, (int) $item['id_carrito'])];
+		} catch (\Throwable $e) {
+			$con->rollBack(); error_log('Kloset · guardar prenda: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo guardar la prenda'];
+		}
+	}
+
+	public static function restaurarGuardado(): array
+	{
+		$userId = JwtHelper::bearerUserId();
+		if (!$userId) { http_response_code(401); return ['status' => 'error', 'message' => 'No autorizado']; }
+		$idVariante = (int) ($_POST['id_variante'] ?? 0);
+		$con = Conexion::getInstance();
+		$con->beginTransaction();
+		try {
+			$sth = $con->prepare('SELECT g.cantidad, v.stock_variante, p.estado_producto FROM prendas_guardadas_clientes g INNER JOIN productos_variantes v ON v.id_variante = g.id_variante INNER JOIN productos p ON p.id_producto = v.id_producto WHERE g.id_usuario_sistema = ? AND g.id_variante = ? FOR UPDATE');
+			$sth->execute([$userId, $idVariante]); $item = $sth->fetch();
+			if (!$item || $item['estado_producto'] !== 'activo') { $con->rollBack(); return ['status' => 'error', 'message' => 'Prenda no disponible']; }
+			$idCarrito = self::idCarritoActivo($con, $userId);
+			$sth = $con->prepare('SELECT id_carrito_item, cantidad_carrito_item FROM carritos_items WHERE id_carrito = ? AND id_variante = ?');
+			$sth->execute([$idCarrito, $idVariante]); $existente = $sth->fetch();
+			$cantidad = (int) $item['cantidad'] + (int) ($existente['cantidad_carrito_item'] ?? 0);
+			if ($cantidad > (int) $item['stock_variante']) { $con->rollBack(); return ['status' => 'error', 'message' => 'No hay stock suficiente para recuperar esta cantidad']; }
+			if ($existente) $con->prepare('UPDATE carritos_items SET cantidad_carrito_item = ? WHERE id_carrito_item = ?')->execute([$cantidad, $existente['id_carrito_item']]);
+			else $con->prepare('INSERT INTO carritos_items (id_carrito, id_variante, cantidad_carrito_item) VALUES (?, ?, ?)')->execute([$idCarrito, $idVariante, $cantidad]);
+			$con->prepare('DELETE FROM prendas_guardadas_clientes WHERE id_usuario_sistema = ? AND id_variante = ?')->execute([$userId, $idVariante]);
+			$con->commit();
+			return ['status' => 'success', 'items' => self::itemsDe($con, $idCarrito)];
+		} catch (\Throwable $e) {
+			$con->rollBack(); error_log('Kloset · recuperar prenda: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo recuperar la prenda'];
+		}
 	}
 }

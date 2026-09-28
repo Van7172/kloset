@@ -25,11 +25,15 @@
                              data-mensaje="<?= htmlspecialchars($n['mensaje_notificacion']) ?>"
                              data-pedido="<?= (int) $n['id_pedido'] ?>"
                              data-fecha="<?= htmlspecialchars($n['fecha_creacion']) ?>"
+                             data-tema="<?= htmlspecialchars($n['tema_contacto'] ?? '') ?>"
+                             data-correo="<?= htmlspecialchars($n['correo_contacto'] ?? '') ?>"
+                             data-telefono="<?= htmlspecialchars($n['telefono_contacto'] ?? '') ?>"
+                             data-consulta="<?= htmlspecialchars($n['mensaje_contacto'] ?? '') ?>"
                              data-leido="<?= $n['leido_notificacion'] ? '1' : '0' ?>"
-                             data-buscar="<?= htmlspecialchars(mb_strtolower($n['cliente'] . ' ' . $n['mensaje_notificacion'])) ?>">
+                             data-buscar="<?= htmlspecialchars(mb_strtolower($n['cliente'] . ' ' . $n['mensaje_notificacion'] . ' ' . ($n['correo_contacto'] ?? ''))) ?>">
                             <div class="kl-cell"><b><?= htmlspecialchars($n['cliente']) ?></b><small><?= htmlspecialchars($n['fecha_creacion']) ?></small></div>
                             <div class="kl-cell kl-cell--wrap"><b style="font-weight:400; white-space:normal;"><?= htmlspecialchars($n['mensaje_notificacion']) ?></b></div>
-                            <div class="kl-cell kl-cell--right kl-cell--num"><b>#<?= (int) $n['id_pedido'] ?></b></div>
+                            <div class="kl-cell kl-cell--right kl-cell--num"><b><?= $n['id_pedido'] ? '#' . (int) $n['id_pedido'] : '—' ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--tag">
                                 <b class="<?= $n['leido_notificacion'] ? 'kl-fg-soft' : 'kl-fg-red' ?>"><?= $n['leido_notificacion'] ? 'sí' : 'no' ?></b>
                             </div>

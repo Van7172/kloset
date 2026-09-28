@@ -28,7 +28,7 @@ function Cargando() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <KlosetProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={(window as Window & { __KLOSET_ROOT__?: string }).__KLOSET_ROOT__ || undefined}>
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<CatalogPage />} />
@@ -87,6 +87,10 @@ createRoot(document.getElementById('root')!).render(
                   <OrdersPage />
                 </Suspense>
               }
+            />
+            <Route
+              path="pedidos/:id"
+              element={<Suspense fallback={<Cargando />}><OrdersPage /></Suspense>}
             />
             <Route
               path="entrar"

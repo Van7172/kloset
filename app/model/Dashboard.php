@@ -4,7 +4,7 @@ namespace Develoweb\App\Model;
 
 class Dashboard
 {
-	public const ESTADOS_PEDIDO = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
+	public const ESTADOS_PEDIDO = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'en_reparto', 'entregado', 'cancelado'];
 	private const ESTADOS_ABIERTOS = ['pendiente_pago', 'pagado', 'en_preparacion'];
 
 	/**

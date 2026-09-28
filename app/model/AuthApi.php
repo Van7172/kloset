@@ -53,7 +53,7 @@ class AuthApi
 		$correo = trim($_POST['correo'] ?? '');
 		$password = $_POST['password'] ?? '';
 
-		if ($nombre === '' || $correo === '' || strlen($password) < 8) {
+		if (mb_strlen($nombre) < 2 || mb_strlen($nombre) > 120 || !filter_var($correo, FILTER_VALIDATE_EMAIL) || mb_strlen($correo) > 150 || strlen($password) < 8 || strlen($password) > 128) {
 			return ['status' => 'error', 'message' => 'Datos inválidos (mínimo 8 caracteres en contraseña)'];
 		}
 

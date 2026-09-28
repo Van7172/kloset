@@ -169,6 +169,12 @@ class Productos
 		if ($id <= 0) {
 			return ['status' => 'error', 'message' => 'Producto no válido'];
 		}
+		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = :id');
+		$existe->execute([':id' => $id]);
+		if (!$existe->fetchColumn()) {
+			return ['status' => 'error', 'message' => 'Producto no encontrado'];
+		}
 
 		$subidas = self::guardarImagenes($id);
 		if (empty($subidas)) {
@@ -320,9 +326,16 @@ class Productos
 			if ((int) $_FILES['imagenes']['error'][$i] !== UPLOAD_ERR_OK) {
 				continue;
 			}
+			$tmp = $_FILES['imagenes']['tmp_name'][$i];
+			$size = (int) $_FILES['imagenes']['size'][$i];
+			$info = is_uploaded_file($tmp) ? getimagesize($tmp) : false;
+			if ($size <= 0 || $size > 10 * 1024 * 1024 || !$info
+				|| !in_array($info['mime'] ?? '', ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true)) {
+				continue;
+			}
 			$archivo = \uploadImgs(
 				$_FILES['imagenes']['name'][$i],
-				$_FILES['imagenes']['tmp_name'][$i],
+				$tmp,
 				PUBLIC_ROOT_HOST . self::DIR_IMGS
 			);
 			if ($archivo === '') {

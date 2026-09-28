@@ -62,7 +62,7 @@ export function MeasurePage() {
       </div>
 
       <p className="mb-6 mt-5 text-[12.5px] leading-[1.55] text-soft">
-        Tus medidas se guardan solo en tu cuenta. No se comparten ni se usan para publicidad.
+        Tus medidas quedan en este navegador. Si entras a tu cuenta, también podrás guardarlas en tu perfil.
       </p>
 
       <button

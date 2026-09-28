@@ -97,4 +97,16 @@ class PerfilesCorporales
 			],
 		];
 	}
+
+	public static function eliminar(): array
+	{
+		$userId = JwtHelper::bearerUserId();
+		if (!$userId) {
+			http_response_code(401);
+			return ['status' => 'error', 'message' => 'No autorizado'];
+		}
+		$con = Conexion::getInstance();
+		$con->prepare('DELETE FROM perfiles_corporales WHERE id_usuario_sistema = ?')->execute([$userId]);
+		return ['status' => 'success'];
+	}
 }

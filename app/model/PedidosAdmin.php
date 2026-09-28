@@ -6,13 +6,14 @@ class PedidosAdmin
 {
 	private const SECCION = 'pedidos';
 
-	public const ESTADOS = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
+	public const ESTADOS = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'en_reparto', 'entregado', 'cancelado'];
 
 	private const MENSAJES = [
 		'pendiente_pago' => 'Tu pedido fue creado y está pendiente de pago.',
 		'pagado' => 'Tu pago fue aprobado. Preparamos tu pedido.',
 		'en_preparacion' => 'Tu pedido está en preparación.',
 		'enviado' => 'Tu pedido salió del almacén.',
+		'en_reparto' => 'Tu pedido está en reparto.',
 		'entregado' => 'Tu pedido fue entregado. ¡Gracias por tu compra!',
 		'cancelado' => 'Tu pedido fue cancelado.',
 	];
@@ -41,6 +42,7 @@ class PedidosAdmin
 
 		$sth = $con->prepare(
 			"SELECT p.id_pedido, p.estado_pedido, p.subtotal_pedido, p.total_pedido, p.fecha_creacion,
+			        p.transportista_pedido, p.seguimiento_pedido, p.entrega_estimada_pedido,
 			        u.nombre_usuario_sistema AS cliente, u.correo_usuario_sistema AS correo,
 			        d.direccion_envio_cliente, d.ciudad_envio_cliente, d.referencia_envio_cliente,
 			        pg.metodo_pago, pg.marca_pago, pg.ultimos_digitos_pago, pg.estado_pago, pg.id_transaccion_pasarela_pago
@@ -90,6 +92,13 @@ class PedidosAdmin
 		$id = (int) ($_POST['id'] ?? 0);
 		$estado = (string) ($_POST['estado'] ?? '');
 		$comentario = trim((string) ($_POST['comentario'] ?? ''));
+		$transportista = trim((string) ($_POST['transportista'] ?? ''));
+		$seguimiento = trim((string) ($_POST['seguimiento'] ?? ''));
+		$entrega = trim((string) ($_POST['entrega_estimada'] ?? ''));
+		if (mb_strlen($transportista) > 120 || mb_strlen($seguimiento) > 100 || mb_strlen($comentario) > 255
+			|| ($entrega !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $entrega) || !\DateTime::createFromFormat('!Y-m-d', $entrega) || \DateTime::createFromFormat('!Y-m-d', $entrega)->format('Y-m-d') !== $entrega))) {
+			return ['status' => 'error', 'message' => 'Revisa los datos de seguimiento'];
+		}
 
 		if ($id <= 0) {
 			return ['status' => 'error', 'message' => 'Pedido no válido'];
@@ -105,8 +114,8 @@ class PedidosAdmin
 		if (!$pedido) {
 			return ['status' => 'error', 'message' => 'Pedido no encontrado'];
 		}
-		if ($pedido['estado_pedido'] === $estado) {
-			return ['status' => 'error', 'message' => 'El pedido ya está en ese estado'];
+		if ($pedido['estado_pedido'] === 'cancelado' || ($pedido['estado_pedido'] === 'entregado' && $estado !== 'entregado')) {
+			return ['status' => 'error', 'message' => 'Este pedido está cerrado'];
 		}
 
 		$admin = Acl::usuario();
@@ -114,9 +123,16 @@ class PedidosAdmin
 
 		try {
 			$con->beginTransaction();
+			$sth = $con->prepare('SELECT estado_pedido FROM pedidos WHERE id_pedido = ? FOR UPDATE');
+			$sth->execute([$id]);
+			$estadoActual = $sth->fetchColumn();
+			if ($estadoActual !== $pedido['estado_pedido']) throw new \RuntimeException('El estado cambió; vuelve a cargar el pedido');
+			if ($estado === 'cancelado') {
+				$con->prepare('UPDATE productos_variantes v INNER JOIN pedidos_items pi ON pi.id_variante = v.id_variante SET v.stock_variante = v.stock_variante + pi.cantidad_pedido_item WHERE pi.id_pedido = ?')->execute([$id]);
+			}
 
-			$con->prepare('UPDATE pedidos SET estado_pedido = :estado WHERE id_pedido = :id')
-				->execute([':estado' => $estado, ':id' => $id]);
+			$con->prepare('UPDATE pedidos SET estado_pedido = :estado, transportista_pedido = :transportista, seguimiento_pedido = :seguimiento, entrega_estimada_pedido = :entrega WHERE id_pedido = :id')
+				->execute([':estado' => $estado, ':id' => $id, ':transportista' => $transportista ?: null, ':seguimiento' => $seguimiento ?: null, ':entrega' => $entrega ?: null]);
 
 			$con->prepare(
 				'INSERT INTO historial_estados_pedidos (id_pedido, id_usuario_sistema, estado_historial_estado_pedido, comentario_historial_estado_pedido)
@@ -129,9 +145,12 @@ class PedidosAdmin
 			]);
 
 			$mensaje = self::MENSAJES[$estado] ?? ('Tu pedido cambió a ' . str_replace('_', ' ', $estado) . '.');
-			$con->prepare(
-				'INSERT INTO notificaciones (id_usuario_sistema, id_pedido, mensaje_notificacion) VALUES (:usuario, :pedido, :mensaje)'
-			)->execute([':usuario' => $pedido['id_usuario_sistema'], ':pedido' => $id, ':mensaje' => $mensaje]);
+			$preferencia = $con->prepare('SELECT avisos_pedidos_usuario FROM sistema_usuarios WHERE id_usuario_sistema = ?');
+			$preferencia->execute([$pedido['id_usuario_sistema']]);
+			if ($preferencia->fetchColumn()) {
+				$con->prepare('INSERT INTO notificaciones (id_usuario_sistema, id_pedido, mensaje_notificacion) VALUES (:usuario, :pedido, :mensaje)')
+					->execute([':usuario' => $pedido['id_usuario_sistema'], ':pedido' => $id, ':mensaje' => $mensaje]);
+			}
 
 			$con->commit();
 		} catch (\Throwable $e) {
@@ -142,7 +161,7 @@ class PedidosAdmin
 
 		return [
 			'status' => 'success',
-			'message' => 'estado_pedido → ' . str_replace('_', ' ', $estado) . ' · historial y notificación creados',
+			'message' => 'Pedido actualizado · estado e historial guardados',
 		];
 	}
 }

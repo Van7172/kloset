@@ -3,7 +3,8 @@
   const panel = document.getElementById(PANEL);
   if (!panel) return;
 
-  const ESTADOS = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
+  const ESTADOS = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'en_reparto', 'entregado', 'cancelado'];
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const label = (e) => e.replace(/_/g, ' ');
   const money = (n) => 'S/ ' + Number(n).toFixed(2);
   const estadoClase = (e) => (e === 'entregado' ? 'kl-fg-ok' : e === 'cancelado' ? 'kl-fg-red' : e === 'pendiente_pago' ? 'kl-fg-warn' : '');
@@ -52,22 +53,25 @@
 
     resumen.innerHTML =
       kv('estado_pedido', label(p.estado_pedido), estadoClase(p.estado_pedido)) +
-      kv('correo', p.correo) +
-      kv('direccion_envio', p.direccion_envio_cliente + ', ' + p.ciudad_envio_cliente + (p.referencia_envio_cliente ? ' (' + p.referencia_envio_cliente + ')' : '')) +
+      kv('correo', esc(p.correo)) +
+      kv('direccion_envio', esc(p.direccion_envio_cliente + ', ' + p.ciudad_envio_cliente + (p.referencia_envio_cliente ? ' (' + p.referencia_envio_cliente + ')' : ''))) +
       kv('subtotal_pedido', money(p.subtotal_pedido)) +
       kv('total_pedido', money(p.total_pedido)) +
-      kv('pagos', (p.metodo_pago || '—') + (p.marca_pago ? ' · ' + p.marca_pago : '') + ' · ' + (p.estado_pago || '—'), p.estado_pago === 'aprobado' ? 'kl-fg-ok' : p.estado_pago === 'rechazado' ? 'kl-fg-red' : 'kl-fg-warn') +
-      kv('id_transaccion', p.id_transaccion_pasarela_pago || '—');
+      kv('pagos', esc((p.metodo_pago || '—') + (p.marca_pago ? ' · ' + p.marca_pago : '') + ' · ' + (p.estado_pago || '—')), p.estado_pago === 'aprobado' ? 'kl-fg-ok' : p.estado_pago === 'rechazado' ? 'kl-fg-red' : 'kl-fg-warn') +
+      kv('id_transaccion', esc(p.id_transaccion_pasarela_pago || '—'));
 
     itemsBox.innerHTML = res.items
       .map((it) => (
-        '<div class="kl-listrow"><div><b>' + it.nombre_producto + '</b>' +
-        '<small>' + it.sku_variante + ' · ' + it.talla_variante + ' · ' + it.corte_variante + ' · x' + it.cantidad_pedido_item + '</small></div>' +
+        '<div class="kl-listrow"><div><b>' + esc(it.nombre_producto) + '</b>' +
+        '<small>' + esc(it.sku_variante) + ' · ' + esc(it.talla_variante) + ' · ' + esc(it.corte_variante) + ' · x' + Number(it.cantidad_pedido_item) + '</small></div>' +
         '<strong>' + money(it.precio_unitario_pedido_item * it.cantidad_pedido_item) + '</strong></div>'
       ))
       .join('') || '<p class="kl-fg-soft" style="font-size:13px;">Sin ítems.</p>';
 
     pintarEstados(p.estado_pedido);
+    document.getElementById('ped-transportista').value = p.transportista_pedido || '';
+    document.getElementById('ped-seguimiento').value = p.seguimiento_pedido || '';
+    document.getElementById('ped-entrega').value = p.entrega_estimada_pedido || '';
     comentario.value = '';
     Kloset.showError('form-pedido-error', '');
 
@@ -77,8 +81,8 @@
         '<div style="display:flex; justify-content:space-between; gap:10px;">' +
         '<span class="kl-mono ' + estadoClase(h.estado_historial_estado_pedido) + '" style="font-size:11.5px;">' + label(h.estado_historial_estado_pedido) + '</span>' +
         '<span class="kl-fg-soft" style="font-family:\'Archivo Narrow\',sans-serif; font-size:10.5px; white-space:nowrap;">' + h.fecha_creacion + '</span>' +
-        '</div><div style="font-size:12.5px; color:var(--body); margin-top:4px; line-height:1.45;">' + (h.comentario_historial_estado_pedido || '—') +
-        (h.autor ? ' · ' + h.autor : '') + '</div></div>'
+        '</div><div style="font-size:12.5px; color:var(--body); margin-top:4px; line-height:1.45;">' + esc(h.comentario_historial_estado_pedido || '—') +
+        (h.autor ? ' · ' + esc(h.autor) : '') + '</div></div>'
       ))
       .join('') || '<p class="kl-fg-soft" style="font-size:13px;">Sin movimientos.</p>';
 
@@ -106,6 +110,9 @@
       id: idActual,
       estado: estadoElegido,
       comentario: comentario.value,
+      transportista: document.getElementById('ped-transportista').value,
+      seguimiento: document.getElementById('ped-seguimiento').value,
+      entrega_estimada: document.getElementById('ped-entrega').value,
     });
 
     if (res.status !== 'success') {

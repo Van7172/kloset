@@ -48,7 +48,13 @@ $routes = [
 		'auth/me' => ['Develoweb\\App\\Model\\AuthApi', 'me'],
 		'medidas' => ['Develoweb\\App\\Model\\PerfilesCorporales', 'mio'],
 		'carrito' => ['Develoweb\\App\\Model\\Carritos', 'mio'],
+		'carrito/guardados' => ['Develoweb\\App\\Model\\Carritos', 'guardados'],
 		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'mios'],
+		'pedido' => ['Develoweb\\App\\Model\\Pedidos', 'detalle'],
+		'direcciones' => ['Develoweb\\App\\Model\\Direcciones', 'mias'],
+		'favoritos' => ['Develoweb\\App\\Model\\Favoritos', 'mios'],
+		'cuenta/datos' => ['Develoweb\\App\\Model\\CuentaApi', 'datos'],
+		'cuenta/avisos' => ['Develoweb\\App\\Model\\CuentaApi', 'avisos'],
 	],
 	'POST' => [
 		'auth/login' => ['Develoweb\\App\\Model\\AuthApi', 'login'],
@@ -56,7 +62,19 @@ $routes = [
 		'medidas' => ['Develoweb\\App\\Model\\PerfilesCorporales', 'guardar'],
 		'carrito/agregar' => ['Develoweb\\App\\Model\\Carritos', 'agregar'],
 		'carrito/eliminar' => ['Develoweb\\App\\Model\\Carritos', 'quitar'],
+		'carrito/cantidad' => ['Develoweb\\App\\Model\\Carritos', 'cantidad'],
+		'carrito/guardar' => ['Develoweb\\App\\Model\\Carritos', 'guardarDespues'],
+		'carrito/restaurar' => ['Develoweb\\App\\Model\\Carritos', 'restaurarGuardado'],
 		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'crear'],
+		'pedidos/cancelar' => ['Develoweb\\App\\Model\\Pedidos', 'cancelar'],
+		'direcciones' => ['Develoweb\\App\\Model\\Direcciones', 'guardar'],
+		'direcciones/eliminar' => ['Develoweb\\App\\Model\\Direcciones', 'eliminar'],
+		'direcciones/principal' => ['Develoweb\\App\\Model\\Direcciones', 'principal'],
+		'favoritos/alternar' => ['Develoweb\\App\\Model\\Favoritos', 'alternar'],
+		'cuenta/datos' => ['Develoweb\\App\\Model\\CuentaApi', 'guardar'],
+		'cuenta/clave' => ['Develoweb\\App\\Model\\CuentaApi', 'cambiarClave'],
+		'medidas/eliminar' => ['Develoweb\\App\\Model\\PerfilesCorporales', 'eliminar'],
+		'contacto' => ['Develoweb\\App\\Model\\Contactos', 'enviar'],
 	],
 ];
 
@@ -69,6 +87,9 @@ if ($resource === 'producto') {
 }
 if ($resource === 'carrito' && $action !== '') {
 	$key = 'carrito/' . $action;
+}
+if (in_array($resource, ['direcciones', 'favoritos', 'cuenta', 'medidas', 'pedidos'], true) && $action !== '') {
+	$key = $resource . '/' . $action;
 }
 
 $handler = $routes[$method][$key] ?? null;

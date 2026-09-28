@@ -10,10 +10,13 @@ class Notificaciones
 	{
 		$con = Conexion::getInstance();
 		$sth = $con->query(
-			"SELECT n.id_notificacion, n.id_usuario_sistema, n.id_pedido, n.mensaje_notificacion,
-			        n.leido_notificacion, n.fecha_creacion, u.nombre_usuario_sistema AS cliente
+			"SELECT n.id_notificacion, n.id_usuario_sistema, n.id_pedido, n.id_contacto,
+			        n.mensaje_notificacion, n.leido_notificacion, n.fecha_creacion,
+			        COALESCE(c.nombre_contacto, u.nombre_usuario_sistema) AS cliente,
+			        c.tema_contacto, c.correo_contacto, c.telefono_contacto, c.mensaje_contacto
 			 FROM notificaciones n
 			 INNER JOIN sistema_usuarios u ON u.id_usuario_sistema = n.id_usuario_sistema
+			 LEFT JOIN contactos c ON c.id_contacto = n.id_contacto
 			 ORDER BY n.fecha_creacion DESC"
 		);
 		return $sth->fetchAll();

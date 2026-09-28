@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -32,18 +33,24 @@ export type ItemBolsa = {
 };
 
 export type Pedido = {
+  id: number;
   ref: string;
   fecha: string;
+  fechaRaw: string;
   total: number;
+  subtotal: number;
   items: ItemBolsa[];
   card: string;
   estado: string;
+  direccion: string;
+  ciudad: string;
+  referencia: string;
 };
 
 /** Intención guardada cuando el usuario debe autenticarse a mitad de un flujo. */
 export type Intencion = { then: 'cart' | 'checkout'; item?: ItemBolsa } | null;
 
-export type DireccionEnvio = { direccion: string; ciudad: string; referencia?: string };
+export type DireccionEnvio = { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string };
 
 type Estado = {
   usuario: ApiUsuario | null;
@@ -55,6 +62,7 @@ type Estado = {
   pedidos: Pedido[];
   intencion: Intencion;
   cargandoSesion: boolean;
+  cargandoBolsa: boolean;
 };
 
 type Acciones = {
@@ -63,7 +71,13 @@ type Acciones = {
   setCorte: (c: Corte) => void;
   añadirABolsa: (item: ItemBolsa) => Promise<string | null>;
   quitarDeBolsa: (idCarritoItem: number) => Promise<void>;
+  cambiarCantidad: (idCarritoItem: number, cantidad: number) => Promise<string | null>;
+  guardarParaDespues: (idCarritoItem: number) => Promise<string | null>;
+  recuperarGuardado: (idVariante: number) => Promise<string | null>;
   crearPedido: (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => Promise<string | null>;
+  borrarPerfil: () => Promise<string | null>;
+  actualizarNombre: (nombre: string) => void;
+  recargarPedidos: () => Promise<void>;
   setIntencion: (i: Intencion) => void;
   entrar: (correo: string, password: string) => Promise<string | null>;
   registrarse: (nombre: string, correo: string, password: string) => Promise<string | null>;
@@ -96,7 +110,7 @@ function temaInicial(): 'light' | 'dark' {
   } catch {
     /* ignorar */
   }
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return 'light';
 }
 
 function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
@@ -116,12 +130,12 @@ function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
 function mapPedidoItem(it: ApiPedidoItem): ItemBolsa {
   return {
     id_producto: it.id_producto ?? 0,
-    url_producto: '',
+    url_producto: it.url_producto ?? '',
     name: it.nombre_producto ?? '',
     size: (it.talla_variante ?? it.talla ?? 'M') as Talla,
     fit: (it.corte_variante ?? it.corte ?? 'Regular') as Corte,
     price: Number(it.precio_unitario_pedido_item ?? it.precio ?? 0),
-    imagen: null,
+    imagen: it.url_imagen ?? null,
     cantidad: it.cantidad_pedido_item ?? it.cantidad ?? 1,
   };
 }
@@ -132,18 +146,25 @@ function mapPedido(p: ApiPedido): Pedido {
     ? new Date(fechaIso.replace(' ', 'T')).toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })
     : '';
   return {
+    id: p.id_pedido,
     ref: p.ref,
     fecha,
+    fechaRaw: fechaIso,
     total: Number(p.total ?? p.total_pedido ?? 0),
+    subtotal: Number(p.subtotal_pedido ?? p.total ?? p.total_pedido ?? 0),
     items: p.items.map(mapPedidoItem),
     card: p.ultimos_digitos_pago ?? p.ultimos_digitos ?? '',
     estado: p.estado ?? p.estado_pedido ?? 'pagado',
+    direccion: p.direccion_envio_cliente ?? '',
+    ciudad: p.ciudad_envio_cliente ?? '',
+    referencia: p.referencia_envio_cliente ?? '',
   };
 }
 
 export function KlosetProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<ApiUsuario | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const [cargandoBolsa, setCargandoBolsa] = useState(Boolean(getToken()));
   const [tema, setTema] = useState<'light' | 'dark'>(temaInicial);
   const [medidas, setMedidasState] = useState<Medidas>(() => leer('kloset-medidas', MEDIDAS_INICIALES));
   const [tienePerfil, setTienePerfil] = useState(() => leer('kloset-perfil', false));
@@ -151,6 +172,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   const [bolsa, setBolsa] = useState<ItemBolsa[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [intencion, setIntencion] = useState<Intencion>(null);
+  const carritoRevision = useRef(0);
+  const pedidosRevision = useRef(0);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', tema);
@@ -189,12 +212,16 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     if (!usuario) {
       setBolsa([]);
       setPedidos([]);
+      if (!getToken()) setCargandoBolsa(false);
       return;
     }
+    let activo = true;
+    setCargandoBolsa(true);
 
     api
       .medidas.obtener()
       .then((res) => {
+        if (!activo) return;
         if (res.status === 'success' && res.perfil) {
           setMedidasState({
             h: Number(res.perfil.estatura_perfil_corporal),
@@ -203,24 +230,37 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
             hip: Number(res.perfil.cadera_perfil_corporal),
           });
           setTienePerfil(true);
+        } else if (res.status === 'success') {
+          setTienePerfil(false);
         }
       })
       .catch(() => undefined);
 
+    const revisionCarrito = carritoRevision.current;
     api
       .carrito.obtener()
       .then((res) => {
-        if (res.status === 'success') setBolsa(res.items.map(mapCarritoItem));
+        if (activo && res.status === 'success' && revisionCarrito === carritoRevision.current) setBolsa(res.items.map(mapCarritoItem));
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => { if (activo) setCargandoBolsa(false); });
 
+    const revisionPedidos = pedidosRevision.current;
     api
       .pedidos.listar()
       .then((res) => {
-        if (res.status === 'success') setPedidos(res.pedidos.map(mapPedido));
+        if (activo && res.status === 'success' && revisionPedidos === pedidosRevision.current) setPedidos(res.pedidos.map(mapPedido));
       })
       .catch(() => undefined);
+    return () => { activo = false; };
   }, [usuario]);
+
+  const recargarPedidos = useCallback(async () => {
+    try {
+      const res = await api.pedidos.listar();
+      if (res.status === 'success') { pedidosRevision.current++; setPedidos(res.pedidos.map(mapPedido)); }
+    } catch { /* El detalle muestra el error de conexión en su propio flujo. */ }
+  }, []);
 
   const entrar = useCallback(async (correo: string, password: string) => {
     try {
@@ -276,6 +316,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
         cantidad: item.cantidad,
       });
       if (res.status !== 'success' || !res.items) return res.message || 'No se pudo añadir a la bolsa';
+      carritoRevision.current++;
       setBolsa(res.items.map(mapCarritoItem));
       return null;
     } catch {
@@ -286,16 +327,60 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   const quitarDeBolsa = useCallback(async (idCarritoItem: number) => {
     try {
       const res = await api.carrito.quitar(idCarritoItem);
-      if (res.status === 'success' && res.items) setBolsa(res.items.map(mapCarritoItem));
+      if (res.status === 'success' && res.items) { carritoRevision.current++; setBolsa(res.items.map(mapCarritoItem)); }
     } catch {
       /* la próxima carga de la bolsa reconciliará el estado */
     }
   }, []);
 
+  const cambiarCantidad = useCallback(async (idCarritoItem: number, cantidad: number) => {
+    try {
+      const res = await api.carrito.cantidad(idCarritoItem, cantidad);
+      if (res.status !== 'success' || !res.items) return res.message || 'No se pudo cambiar la cantidad';
+      carritoRevision.current++;
+      setBolsa(res.items.map(mapCarritoItem));
+      return null;
+    } catch {
+      return 'No hay conexión con la API';
+    }
+  }, []);
+
+  const guardarParaDespues = useCallback(async (idCarritoItem: number) => {
+    try {
+      const res = await api.carrito.guardar(idCarritoItem);
+      if (res.status !== 'success' || !res.items) return res.message || 'No se pudo guardar la prenda';
+      carritoRevision.current++; setBolsa(res.items.map(mapCarritoItem)); return null;
+    } catch { return 'No hay conexión con la API'; }
+  }, []);
+  const recuperarGuardado = useCallback(async (idVariante: number) => {
+    try {
+      const res = await api.carrito.restaurar(idVariante);
+      if (res.status !== 'success' || !res.items) return res.message || 'No se pudo recuperar la prenda';
+      carritoRevision.current++; setBolsa(res.items.map(mapCarritoItem)); return null;
+    } catch { return 'No hay conexión con la API'; }
+  }, []);
+
+  const borrarPerfil = useCallback(async () => {
+    try {
+      if (usuario) {
+        const res = await api.medidas.eliminar();
+        if (res.status !== 'success') return res.message || 'No pudimos borrar tus medidas';
+      }
+      setMedidasState(MEDIDAS_INICIALES);
+      setTienePerfil(false);
+      localStorage.removeItem('kloset-medidas');
+      localStorage.removeItem('kloset-perfil');
+      return null;
+    } catch {
+      return 'No hay conexión con la API';
+    }
+  }, [usuario]);
+
   const crearPedido = useCallback(
     async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => {
       try {
         const res = await api.pedidos.crear({
+          id_direccion: direccion.id_direccion,
           direccion: direccion.direccion,
           ciudad: direccion.ciudad,
           referencia: direccion.referencia,
@@ -303,6 +388,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
           ultimos_digitos: tarjeta.ultimos,
         });
         if (res.status !== 'success' || !res.pedido) return res.message || 'No se pudo registrar el pedido';
+        pedidosRevision.current++;
+        carritoRevision.current++;
         setPedidos((p) => [mapPedido(res.pedido as ApiPedido), ...p]);
         setBolsa([]);
         return null;
@@ -324,18 +411,29 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       pedidos,
       intencion,
       cargandoSesion,
+      cargandoBolsa,
       alternarTema: () => setTema((t) => (t === 'dark' ? 'light' : 'dark')),
       guardarPerfil,
       setCorte: (c: Corte) => setCorteState(c),
       añadirABolsa,
       quitarDeBolsa,
+      cambiarCantidad,
+      guardarParaDespues,
+      recuperarGuardado,
       crearPedido,
+      borrarPerfil,
+      recargarPedidos,
+      actualizarNombre: (nombre: string) => setUsuario((u) => u ? { ...u, nombre } : u),
       setIntencion,
       entrar,
       registrarse,
       salir: () => {
         setToken(null);
         setUsuario(null);
+        setMedidasState(MEDIDAS_INICIALES);
+        setTienePerfil(false);
+        localStorage.removeItem('kloset-medidas');
+        localStorage.removeItem('kloset-perfil');
       },
     }),
     [
@@ -348,10 +446,16 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       pedidos,
       intencion,
       cargandoSesion,
+      cargandoBolsa,
       guardarPerfil,
       añadirABolsa,
       quitarDeBolsa,
+      cambiarCantidad,
+      guardarParaDespues,
+      recuperarGuardado,
       crearPedido,
+      borrarPerfil,
+      recargarPedidos,
       entrar,
       registrarse,
     ],

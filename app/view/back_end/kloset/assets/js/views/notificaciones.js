@@ -8,10 +8,16 @@
   const btnMarcar = document.getElementById('not-marcar');
   let actual = null;
 
+  function escapar(valor) {
+    return String(valor ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
+  }
+
   function kv(clave, valor, clase) {
     return (
-      '<dl class="kl-kv" style="margin:0;"><dt>' + clave + '</dt>' +
-      '<dd class="' + (clase || '') + '">' + valor + '</dd></dl>'
+      '<dl class="kl-kv" style="margin:0;"><dt>' + escapar(clave) + '</dt>' +
+      '<dd class="' + escapar(clase || '') + '" style="white-space:pre-wrap">' + escapar(valor) + '</dd></dl>'
     );
   }
 
@@ -21,7 +27,13 @@
     titulo.textContent = fila.dataset.cliente;
     resumen.innerHTML =
       kv('mensaje', fila.dataset.mensaje) +
-      kv('id_pedido', '#' + fila.dataset.pedido) +
+      (fila.dataset.consulta ? (
+        kv('tema', fila.dataset.tema) +
+        kv('correo', fila.dataset.correo) +
+        kv('teléfono', fila.dataset.telefono || '—') +
+        kv('consulta', fila.dataset.consulta)
+      ) : '') +
+      kv('id_pedido', fila.dataset.pedido !== '0' ? '#' + fila.dataset.pedido : '—') +
       kv('fecha_creacion', fila.dataset.fecha) +
       kv('leido_notificacion', leido ? 'true' : 'false', leido ? 'kl-fg-soft' : 'kl-fg-red');
     btnMarcar.hidden = leido;

@@ -10,7 +10,7 @@
     <title>Kloset · Ropa deportiva que ya sabe cómo te queda</title>
     <meta
       name="description"
-      content="Kloset es la tienda de ropa deportiva que recomienda tu talla a partir de tus medidas reales y la prueba sobre tu avatar 3D antes de que pagues. Cambios de talla gratis durante 30 días. Envíos a todo el Perú."
+      content="Kloset recomienda tu talla a partir de tus medidas reales. Explora ropa deportiva con ajuste personalizado, cambios de talla durante 30 días y cobertura en Lima y Callao."
     />
     <meta name="author" content="Kloset" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -36,7 +36,7 @@
     <meta name="twitter:title" content="Kloset · Ropa deportiva que ya sabe cómo te queda" />
     <meta
       name="twitter:description"
-      content="Recomendación de talla por tus medidas reales y prueba en avatar 3D antes de pagar."
+      content="Ropa deportiva con recomendación de talla a partir de tus medidas reales."
     />
     <meta name="twitter:image" content="%VITE_SITE_URL%/kloset-icon.png" />
 
@@ -78,7 +78,7 @@
             "name": "Kloset",
             "url": "%VITE_SITE_URL%/",
             "logo": "%VITE_SITE_URL%/kloset-icon.png",
-            "description": "Tienda de ropa deportiva con recomendación de talla por medidas reales y prueba en avatar 3D.",
+            "description": "Tienda de ropa deportiva con recomendación de talla por medidas reales.",
             "areaServed": "PE"
           },
           {
@@ -116,8 +116,7 @@
       (function () {
         var saved = null;
         try { saved = localStorage.getItem('kloset-theme'); } catch (e) {}
-        var prefers = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.setAttribute('data-theme', saved || (prefers ? 'dark' : 'light'));
+        document.documentElement.setAttribute('data-theme', saved || 'light');
       })();
     </script>
   </head>
@@ -127,9 +126,8 @@
         <div style="max-width:640px;margin:48px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6">
           <h1>Kloset · Ropa deportiva que ya sabe cómo te queda</h1>
           <p>
-            Kloset recomienda tu talla a partir de tus medidas reales y prueba cada prenda sobre tu
-            avatar 3D antes de que pagues. Cambios de talla gratis durante 30 días y envíos a todo el
-            Perú. Activa JavaScript para explorar el catálogo, el probador de tallas y el avatar.
+            Kloset recomienda tu talla a partir de tus medidas reales. Cambios de talla durante 30 días
+            y cobertura en Lima y Callao. Activa JavaScript para explorar el catálogo y la guía de tallas.
           </p>
           <p><a href="/">Ir al catálogo</a></p>
         </div>

@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
+const APP_ROOT = (window as Window & { __KLOSET_ROOT__?: string }).__KLOSET_ROOT__ ?? '';
+const API_BASE = APP_ROOT ? APP_ROOT + '/api/v1' : (import.meta.env.VITE_API_URL ?? '/api/v1');
 
 export type ApiProducto = {
   id_producto: number;
@@ -65,6 +66,8 @@ export type ApiPedidoItem = {
   corte?: string;
   nombre_producto?: string;
   id_producto?: number;
+  url_producto?: string;
+  url_imagen?: string | null;
 };
 
 export type ApiPedido = {
@@ -76,12 +79,41 @@ export type ApiPedido = {
   total_pedido?: string;
   fecha?: string;
   fecha_creacion?: string;
+  subtotal_pedido?: string;
+  direccion_envio_cliente?: string;
+  ciudad_envio_cliente?: string;
+  referencia_envio_cliente?: string | null;
+  historial?: { estado: string; comentario: string | null; fecha: string }[];
+  transportista_pedido?: string | null;
+  seguimiento_pedido?: string | null;
+  entrega_estimada_pedido?: string | null;
   marca_pago?: string;
   marca_tarjeta?: string;
   ultimos_digitos_pago?: string | null;
   ultimos_digitos?: string;
   items: ApiPedidoItem[];
 };
+
+export type ApiDireccion = {
+  id: number;
+  nombre: string;
+  direccion: string;
+  ciudad: string;
+  referencia: string | null;
+  telefono: string | null;
+  principal: number;
+};
+
+export type ApiDatosCuenta = {
+  nombre: string;
+  correo: string;
+  telefono: string | null;
+  avisos_pedidos: number;
+  avisos_novedades: number;
+  fecha_creacion: string;
+};
+
+export type ApiFavorito = ApiProducto & { estado_producto: string; stock: number };
 
 export type ApiDetalle = {
   status: string;
@@ -125,6 +157,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   health: () => request<{ status: string }>('/health'),
 
+  contacto: (datos: { tema: string; nombre: string; correo: string; telefono: string; mensaje: string; sitio: string }) =>
+    request<{ status: string; message?: string }>('/contacto', {
+      method: 'POST',
+      body: JSON.stringify(datos),
+    }),
+
   productos: () => request<{ status: string; productos: ApiProducto[] }>('/productos'),
 
   producto: (url: string) => request<ApiDetalle>(`/producto?url=${encodeURIComponent(url)}`),
@@ -150,9 +188,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(datos),
       }),
+    eliminar: () => request<{ status: string; message?: string }>('/medidas/eliminar', { method: 'POST' }),
   },
 
   carrito: {
+    guardados: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito/guardados'),
+    guardar: (id_carrito_item: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/guardar', { method: 'POST', body: JSON.stringify({ id_carrito_item }) }),
+    restaurar: (id_variante: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/restaurar', { method: 'POST', body: JSON.stringify({ id_variante }) }),
     obtener: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito'),
     agregar: (datos: { id_producto: number; talla: string; corte: string; cantidad?: number }) =>
       request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/agregar', {
@@ -164,14 +206,38 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ id_carrito_item }),
       }),
+    cantidad: (id_carrito_item: number, cantidad: number) =>
+      request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/cantidad', {
+        method: 'POST', body: JSON.stringify({ id_carrito_item, cantidad }),
+      }),
   },
 
   pedidos: {
+    cancelar: (id: number) => request<{ status: string; message?: string }>('/pedidos/cancelar', { method: 'POST', body: JSON.stringify({ id }) }),
     listar: () => request<{ status: string; pedidos: ApiPedido[] }>('/pedidos'),
-    crear: (datos: { direccion: string; ciudad: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string }) =>
+    detalle: (id: number) => request<{ status: string; message?: string; pedido?: ApiPedido }>(`/pedido?id=${id}`),
+    crear: (datos: { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string }) =>
       request<{ status: string; message?: string; pedido?: ApiPedido }>('/pedidos', {
         method: 'POST',
         body: JSON.stringify(datos),
       }),
+  },
+
+  direcciones: {
+    listar: () => request<{ status: string; direcciones: ApiDireccion[] }>('/direcciones'),
+    guardar: (datos: { id?: number; nombre: string; direccion: string; ciudad: string; referencia?: string; telefono?: string; principal?: boolean }) =>
+      request<{ status: string; message?: string; id?: number; direcciones?: ApiDireccion[] }>('/direcciones', { method: 'POST', body: JSON.stringify(datos) }),
+    eliminar: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/eliminar', { method: 'POST', body: JSON.stringify({ id }) }),
+    principal: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/principal', { method: 'POST', body: JSON.stringify({ id }) }),
+  },
+  favoritos: {
+    listar: () => request<{ status: string; productos: ApiFavorito[] }>('/favoritos'),
+    alternar: (id_producto: number) => request<{ status: string; message?: string; favorito?: boolean }>('/favoritos/alternar', { method: 'POST', body: JSON.stringify({ id_producto }) }),
+  },
+  cuenta: {
+    datos: () => request<{ status: string; datos: ApiDatosCuenta | null }>('/cuenta/datos'),
+    guardar: (datos: { nombre: string; telefono: string; avisos_pedidos: boolean; avisos_novedades: boolean }) => request<{ status: string; message?: string; datos?: ApiDatosCuenta }>('/cuenta/datos', { method: 'POST', body: JSON.stringify(datos) }),
+    clave: (actual: string, nueva: string) => request<{ status: string; message?: string }>('/cuenta/clave', { method: 'POST', body: JSON.stringify({ actual, nueva }) }),
+    avisos: () => request<{ status: string; avisos: { id_notificacion: number; id_pedido: number | null; mensaje_notificacion: string; fecha_creacion: string }[] }>('/cuenta/avisos'),
   },
 };

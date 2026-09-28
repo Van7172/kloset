@@ -9,7 +9,7 @@ import { Seo } from '../components/Seo';
 export function ProductPage() {
   const { url = '' } = useParams();
   const navigate = useNavigate();
-  const { medidas, corte, usuario, añadirABolsa, setIntencion } = useKloset();
+  const { medidas, corte, tienePerfil, usuario, añadirABolsa, setIntencion } = useKloset();
 
   const [detalle, setDetalle] = useState<ApiDetalle | null>(null);
   const [error, setError] = useState('');
@@ -17,9 +17,13 @@ export function ProductPage() {
   const [talla, setTalla] = useState<Talla | null>(null);
   const [errorBolsa, setErrorBolsa] = useState('');
   const [añadiendo, setAñadiendo] = useState(false);
+  const [favorito, setFavorito] = useState(false);
+  const [favoritoOcupado, setFavoritoOcupado] = useState(false);
 
   useEffect(() => {
     setDetalle(null);
+    setError('');
+    setTalla(null);
     setFoto(0);
     api
       .producto(url)
@@ -29,6 +33,13 @@ export function ProductPage() {
       })
       .catch(() => setError('API no disponible'));
   }, [url]);
+
+  useEffect(() => {
+    if (!usuario || !detalle?.producto) { setFavorito(false); return; }
+    void api.favoritos.listar().then((res) => {
+      if (res.status === 'success') setFavorito(res.productos.some((p) => p.id_producto === detalle.producto.id_producto));
+    }).catch(() => undefined);
+  }, [usuario, detalle]);
 
   if (error) {
     return (
@@ -79,6 +90,17 @@ export function ProductPage() {
     setAñadiendo(false);
     if (fallo) return setErrorBolsa(fallo);
     navigate('/bolsa');
+  };
+
+  const alternarFavorito = async () => {
+    if (!usuario) { navigate('/entrar'); return; }
+    setFavoritoOcupado(true);
+    try {
+      const res = await api.favoritos.alternar(p.id_producto);
+      if (res.status === 'success') setFavorito(Boolean(res.favorito));
+      else setErrorBolsa(res.message || 'No se pudo guardar el favorito');
+    } catch { setErrorBolsa('No hay conexión con la API'); }
+    finally { setFavoritoOcupado(false); }
   };
 
   const specs = [
@@ -145,9 +167,7 @@ export function ProductPage() {
           <div className="inline-block border-b-[3px] border-red pb-[5px] font-narrow text-xs uppercase tracking-[0.14em] text-ink">
             {p.nombre_categoria ?? 'Kloset'}
           </div>
-          <h2 className="mb-[10px] mt-4 font-display text-4xl font-normal leading-[1.06] tracking-[-0.025em]">
-            {p.nombre_producto}
-          </h2>
+          <div className="mb-[10px] mt-4 flex items-start justify-between gap-3"><h2 className="font-display text-4xl font-normal leading-[1.06] tracking-[-0.025em]">{p.nombre_producto}</h2><button type="button" onClick={() => void alternarFavorito()} disabled={favoritoOcupado} aria-label={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} title={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-2xl text-red disabled:opacity-50">{favorito ? '♥' : '♡'}</button></div>
           <div className="mb-[18px] flex items-baseline gap-[14px]">
             <span className="font-display text-2xl">{money(precio)}</span>
             <span className="text-[13px] text-soft">{corte} · {stock} uds en stock</span>
@@ -159,7 +179,7 @@ export function ProductPage() {
           <div className="flex items-baseline justify-between border-b border-ink pb-[10px]">
             <span className="font-narrow text-xs uppercase tracking-[0.12em] text-soft">Talla</span>
             <span className="text-[13px] text-body">
-              Sugerida para ti: <span className="font-semibold text-red">{recomendada}</span>
+              {tienePerfil ? <>Sugerida para ti: <span className="font-semibold text-red">{recomendada}</span></> : <button type="button" onClick={() => navigate('/medidas')} className="cursor-pointer border-none bg-transparent text-red underline">Encuentra tu talla con tus medidas</button>}
             </span>
           </div>
           <div className="mb-[22px] grid grid-cols-5 border border-t-0 border-ink">
@@ -178,7 +198,7 @@ export function ProductPage() {
                 {s}
                 <span
                   className="absolute bottom-[5px] left-1/2 h-[3px] -translate-x-1/2 bg-red"
-                  style={{ width: s === recomendada ? '16px' : '0px' }}
+                  style={{ width: tienePerfil && s === recomendada ? '16px' : '0px' }}
                 />
               </button>
             ))}

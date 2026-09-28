@@ -9,6 +9,7 @@
                 <button class="kl-filter" type="button" data-filtro="pagado">pagado</button>
                 <button class="kl-filter" type="button" data-filtro="en_preparacion">en preparación</button>
                 <button class="kl-filter" type="button" data-filtro="enviado">enviado</button>
+                <button class="kl-filter" type="button" data-filtro="en_reparto">en reparto</button>
                 <button class="kl-filter" type="button" data-filtro="entregado">entregado</button>
             </div>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($pedidos) ?></span> filas</span>
@@ -69,10 +70,16 @@
         <div class="kl-detail-section">
             <div class="kl-kicker" style="margin-bottom:10px;">Cambiar estado_pedido</div>
             <div class="kl-grid-2" id="ped-estados" style="gap:6px;"></div>
+            <label class="kl-kicker" for="ped-transportista" style="display:block;margin-top:16px;">Transportista (opcional)</label>
+            <input class="kl-field" id="ped-transportista" maxlength="120" placeholder="Nombre del operador" style="border-bottom:1px solid var(--rule);">
+            <label class="kl-kicker" for="ped-seguimiento" style="display:block;margin-top:12px;">Número de seguimiento (opcional)</label>
+            <input class="kl-field" id="ped-seguimiento" maxlength="100" placeholder="Código proporcionado por el operador" style="border-bottom:1px solid var(--rule);">
+            <label class="kl-kicker" for="ped-entrega" style="display:block;margin-top:12px;">Entrega estimada (opcional)</label>
+            <input class="kl-field" id="ped-entrega" type="date" style="border-bottom:1px solid var(--rule);">
             <input class="kl-field" id="ped-comentario" placeholder="Comentario para el historial (opcional)" style="border-bottom:1px solid var(--rule); margin-top:12px;">
             <div class="kl-form-error" id="form-pedido-error" hidden style="margin-top:12px;"></div>
             <button class="kl-btn" type="button" id="ped-guardar" style="width:100%; margin-top:14px;">Guardar cambio de estado</button>
-            <p style="margin:12px 0 0; font-size:12px; color:var(--soft); line-height:1.5;">Al guardar se inserta en historial_estados_pedidos y se crea una notificación para el cliente.</p>
+            <p style="margin:12px 0 0; font-size:12px; color:var(--soft); line-height:1.5;">El historial y el seguimiento aparecen en la cuenta del cliente. Se crea un aviso si tiene activada esa preferencia. Al cancelar se devuelve el stock y el pedido queda cerrado.</p>
         </div>
 
         <div class="kl-detail-section">
