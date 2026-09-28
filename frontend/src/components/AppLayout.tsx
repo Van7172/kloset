@@ -4,8 +4,7 @@ import logo from '../assets/kloset-logo-transparente.png';
 import logoSquare from '../assets/kloset-logo-square.png';
 
 const TABS = [
-  { key: 'catalogo', label: 'Catálogo', to: '/', rutas: ['/', '/producto'], soloMovil: false, ocultaConSesion: false, enBarra: true },
-  { key: 'ajuste', label: 'Ajuste', to: '/medidas', rutas: ['/medidas', '/resultado', '/avatar'], soloMovil: false, ocultaConSesion: true, enBarra: true },
+  { key: 'catalogo', label: 'Catálogo', to: '/catalogo', rutas: ['/catalogo', '/producto'], soloMovil: false, ocultaConSesion: false, enBarra: true },
   { key: 'cobertura', label: 'Cobertura', to: '/cobertura', rutas: ['/cobertura'], soloMovil: false, ocultaConSesion: false, enBarra: false },
   { key: 'nosotros', label: 'Nosotros', to: '/nosotros', rutas: ['/nosotros'], soloMovil: false, ocultaConSesion: false, enBarra: false },
   { key: 'contacto', label: 'Contáctanos', to: '/contacto', rutas: ['/contacto'], soloMovil: false, ocultaConSesion: false, enBarra: false },
@@ -17,7 +16,7 @@ const COLUMNAS_PIE = [
   {
     title: 'Tienda',
     links: [
-      { label: 'Catálogo', to: '/' },
+      { label: 'Catálogo', to: '/catalogo' },
       { label: 'Ajuste de talla', to: '/medidas' },
       { label: 'Cobertura en Lima', to: '/cobertura' },
     ],

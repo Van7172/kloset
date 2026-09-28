@@ -97,8 +97,10 @@ export type ApiPedido = {
 export type ApiDireccion = {
   id: number;
   nombre: string;
+  tipo: string;
   direccion: string;
   ciudad: string;
+  departamento: string;
   referencia: string | null;
   telefono: string | null;
   principal: number;
@@ -173,11 +175,37 @@ export const api = {
       body: JSON.stringify({ correo, password }),
     }),
 
-  register: (nombre: string, correo: string, password: string) =>
-    request<{ status: string; token?: string; usuario?: ApiUsuario; message?: string }>('/auth/register', {
+  register: (nombre: string, correo: string, password: string, confirmar_password: string) =>
+    request<{ status: string; message?: string; reenviar_en?: number }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ nombre, correo, password }),
+      body: JSON.stringify({ nombre, correo, password, confirmar_password }),
     }),
+
+  registro: {
+    reenviar: (correo: string) =>
+      request<{ status: string; message?: string; reenviar_en?: number }>('/auth/registro-reenviar', {
+        method: 'POST',
+        body: JSON.stringify({ correo }),
+      }),
+    verificar: (correo: string, codigo: string) =>
+      request<{ status: string; message?: string }>('/auth/registro-verificar', {
+        method: 'POST',
+        body: JSON.stringify({ correo, codigo }),
+      }),
+  },
+
+  recuperacion: {
+    solicitar: (correo: string) =>
+      request<{ status: string; message?: string; reenviar_en?: number }>('/auth/recuperacion', {
+        method: 'POST',
+        body: JSON.stringify({ correo }),
+      }),
+    restablecer: (correo: string, codigo: string, password: string, confirmar_password: string) =>
+      request<{ status: string; message?: string }>('/auth/restablecer', {
+        method: 'POST',
+        body: JSON.stringify({ correo, codigo, password, confirmar_password }),
+      }),
+  },
 
   me: () => request<{ status: string; usuario?: ApiUsuario }>('/auth/me'),
 
@@ -225,7 +253,7 @@ export const api = {
 
   direcciones: {
     listar: () => request<{ status: string; direcciones: ApiDireccion[] }>('/direcciones'),
-    guardar: (datos: { id?: number; nombre: string; direccion: string; ciudad: string; referencia?: string; telefono?: string; principal?: boolean }) =>
+    guardar: (datos: { id?: number; nombre: string; tipo: string; direccion: string; ciudad: string; departamento: string; referencia?: string; telefono?: string; principal?: boolean }) =>
       request<{ status: string; message?: string; id?: number; direcciones?: ApiDireccion[] }>('/direcciones', { method: 'POST', body: JSON.stringify(datos) }),
     eliminar: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/eliminar', { method: 'POST', body: JSON.stringify({ id }) }),
     principal: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/principal', { method: 'POST', body: JSON.stringify({ id }) }),

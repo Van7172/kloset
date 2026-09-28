@@ -23,17 +23,47 @@ function expect(bool $condition, string $label, ?array $response = null): void {
     if (!$condition) throw new RuntimeException($label . ': ' . json_encode($response));
     echo "ok $label\n";
 }
-$userId = null; $otherUserId = null; $orderId = null; $variantId = null; $stockBefore = null; $cancelado = false;
+$userId = null; $otherUserId = null; $orderId = null; $variantId = null; $stockBefore = null; $cancelado = false; $email = null;
 try {
     [, $detail] = callApi('producto?url=malla-vector-long');
     $p = $detail['producto']; $v = array_values(array_filter($detail['variantes'], fn($x) => (int)$x['stock_variante'] > 5))[0];
     $variantId = (int)$v['id_variante']; $stockBefore = (int)$v['stock_variante'];
-    $email = 'qa-' . bin2hex(random_bytes(5)) . '@example.invalid'; $oldPass = bin2hex(random_bytes(8)); $newPass = bin2hex(random_bytes(9));
-    [$code, $r] = callApi('auth/register', ['nombre' => 'Prueba Integral', 'correo' => $email, 'password' => $oldPass]);
-    expect($code === 200 && $r['status'] === 'success', 'registro', $r); $userId = (int)$r['usuario']['id']; $token = $r['token'];
-    [, $other] = callApi('auth/register', ['nombre' => 'Prueba aislamiento', 'correo' => 'otra-' . $email, 'password' => $oldPass]);
-    expect($other['status'] === 'success', 'segunda cuenta QA', $other);
-    $otherUserId = (int)$other['usuario']['id']; $otherToken = $other['token'];
+    $email = 'qa-' . bin2hex(random_bytes(5)) . '@example.invalid'; $oldPass = 'Aa1!' . bin2hex(random_bytes(8)); $newPass = 'Bb2@' . bin2hex(random_bytes(9));
+    $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $db->prepare("INSERT INTO codigos_verificacion (tipo_codigo, nombre_registro, correo_codigo, contrasena_hash, codigo_hash, expira_en) VALUES ('registro', ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))")
+        ->execute(['Prueba Integral', $email, password_hash($oldPass, PASSWORD_DEFAULT), password_hash($verificationCode, PASSWORD_DEFAULT)]);
+    [, $r] = callApi('auth/registro-reenviar', ['correo' => $email]);
+    expect($r['status'] === 'success' && $r['reenviar_en'] > 0, 'reenvío protegido por contador', $r);
+    $invalidCode = str_pad((string) (((int)$verificationCode + 1) % 1000000), 6, '0', STR_PAD_LEFT);
+    [$code, $r] = callApi('auth/registro-verificar', ['correo' => $email, 'codigo' => $invalidCode]);
+    expect($code === 422 && $r['status'] === 'error', 'código de registro incorrecto rechazado', $r);
+    [$code, $r] = callApi('auth/registro-verificar', ['correo' => $email, 'codigo' => $verificationCode]);
+    expect($code === 200 && $r['status'] === 'success', 'verificar registro', $r);
+    $userId = (int)$db->query("SELECT id_usuario_sistema FROM sistema_usuarios WHERE correo_usuario_sistema = " . $db->quote($email))->fetchColumn();
+    [, $r] = callApi('auth/login', ['correo' => $email, 'password' => $oldPass]);
+    expect($r['status'] === 'success', 'inicio después de verificar registro', $r); $token = $r['token'];
+
+    $recoveryCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    $db->prepare("INSERT INTO codigos_verificacion (tipo_codigo, id_usuario_sistema, correo_codigo, codigo_hash, expira_en) VALUES ('recuperacion', ?, ?, ?, DATE_ADD(NOW(), INTERVAL 10 MINUTE))")
+        ->execute([$userId, $email, password_hash($recoveryCode, PASSWORD_DEFAULT)]);
+    [$code, $r] = callApi('auth/restablecer', ['correo' => $email, 'codigo' => $recoveryCode, 'password' => $oldPass, 'confirmar_password' => $oldPass]);
+    expect($code === 422 && str_contains($r['message'], 'distinta'), 'recuperación rechaza contraseña actual', $r);
+    [$code, $r] = callApi('auth/restablecer', ['correo' => $email, 'codigo' => $recoveryCode, 'password' => $newPass, 'confirmar_password' => $oldPass]);
+    expect($code === 422 && $r['message'] === 'Las contraseñas no coinciden.', 'recuperación exige confirmación igual', $r);
+    [, $r] = callApi('auth/restablecer', ['correo' => $email, 'codigo' => $recoveryCode, 'password' => $newPass, 'confirmar_password' => $newPass]);
+    expect($r['status'] === 'success', 'recuperación actualiza con contraseña fuerte', $r);
+    $oldPass = $newPass;
+    [, $r] = callApi('auth/login', ['correo' => $email, 'password' => $oldPass]);
+    expect($r['status'] === 'success', 'login con contraseña restablecida', $r); $token = $r['token'];
+    $newPass = 'Cc3%' . bin2hex(random_bytes(9));
+
+    $otherEmail = 'otra-' . $email;
+    $db->prepare('INSERT INTO sistema_usuarios (id_rol, nombre_usuario_sistema, correo_usuario_sistema, contrasena_usuario_sistema) VALUES (2, ?, ?, ?)')
+        ->execute(['Prueba aislamiento', $otherEmail, password_hash($oldPass, PASSWORD_DEFAULT)]);
+    $otherUserId = (int)$db->lastInsertId();
+    [, $other] = callApi('auth/login', ['correo' => $otherEmail, 'password' => $oldPass]);
+    expect($other['status'] === 'success', 'segunda sesión QA', $other);
+    $otherToken = $other['token'];
     [, $r] = callApi('cuenta/datos', ['nombre' => 'Prueba Actualizada', 'telefono' => '999000111', 'avisos_pedidos' => true, 'avisos_novedades' => false], $token);
     expect($r['status'] === 'success' && $r['datos']['telefono'] === '999000111', 'datos cuenta', $r);
     [, $r] = callApi('direcciones', ['nombre' => 'Casa', 'direccion' => 'Av. Prueba 123', 'ciudad' => 'Miraflores', 'principal' => true], $token);
@@ -93,6 +123,7 @@ try {
     [$code, $r] = callApi('pedidos/cancelar', ['id' => $orderId], $token);
     expect($code === 422 && $r['status'] === 'error', 'doble anulación rechazada', $r);
 } finally {
+    if ($email) $db->prepare('DELETE FROM codigos_verificacion WHERE correo_codigo = ?')->execute([$email]);
     if ($otherUserId) $db->prepare('DELETE FROM sistema_usuarios WHERE id_usuario_sistema = ?')->execute([$otherUserId]);
     if ($userId) {
         $db->beginTransaction();

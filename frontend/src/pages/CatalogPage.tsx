@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type ApiProducto } from '../services/api';
 import { useKloset } from '../store/KlosetContext';
 import { CORTES, money, tallaRecomendada, type Corte } from '../lib/fit';
@@ -44,11 +44,14 @@ function MapaCobertura() {
   </div>;
 }
 
-export function CatalogPage() {
+export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }) {
   const { medidas, corte, tienePerfil, setCorte } = useKloset();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const categoriaUrl = searchParams.get('categoria') ?? 'Todo';
   const [productos, setProductos] = useState<ApiProducto[]>([]);
   const [q, setQ] = useState('');
-  const [cat, setCat] = useState('Todo');
+  const [cat, setCat] = useState(categoriaUrl);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(true);
 
@@ -64,52 +67,23 @@ export function CatalogPage() {
     (cat === 'Todo' || p.nombre_categoria === cat) &&
     (!q || (p.nombre_producto + ' ' + (p.nombre_categoria ?? '')).toLowerCase().includes(q.toLowerCase()))
   ), [productos, cat, q]);
+  useEffect(() => {
+    if (irAlCatalogo) document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+  }, [irAlCatalogo]);
+
+  useEffect(() => {
+    const categoriasValidas = ['Todo', ...categorias.map((item) => item.nombre)];
+    setCat(categoriasValidas.includes(categoriaUrl) ? categoriaUrl : 'Todo');
+    setQ('');
+  }, [categoriaUrl]);
+
   const talla = tallaRecomendada(medidas, corte);
 
   function elegirCategoria(nombre: string) {
-    setCat(nombre);
-    setQ('');
-    document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
+    navigate('/catalogo?categoria=' + encodeURIComponent(nombre));
   }
 
-  return <div className="kl-rise home">
-    <Seo title="Kloset | Ropa que ya sabe cómo te queda" description="Ropa deportiva que combina comodidad, estilo y tu talla ideal. Explora camisetas, mallas, shorts, capas, tops y pantalones en Kloset." path="/" />
-
-    <section className="home-hero" aria-labelledby="home-title">
-      <img src={ASSETS + '/imagenes/hero.webp'} alt="Modelos con ropa deportiva negra de Kloset" fetchPriority="high" />
-      <div className="home-hero-shade" />
-      <div className="home-hero-copy">
-        <p className="home-eyebrow">TU ESTILO, SIN LÍMITES</p>
-        <h1 id="home-title">Ropa que ya sabe <em>cómo te queda.</em></h1>
-        <p className="home-lede">Prendas deportivas que combinan comodidad, estilo y rendimiento. Encuentra tu talla ideal con KLOSET.</p>
-        <div className="home-actions">
-          <a className="home-button home-button-red" href="#catalogo">EXPLORAR CATÁLOGO <span aria-hidden="true">→</span></a>
-          <Link className="home-button home-button-outline" to="/nosotros">CONOCE MÁS</Link>
-        </div>
-      </div>
-      <p className="home-hero-note">Tu estilo.<br />Tu talla.<br />Sin dudas.</p>
-    </section>
-
-    <section className="home-benefits" aria-label="Beneficios de comprar en Kloset">
-      <div><Icono nombre="escudo" /><p><strong>Compra segura</strong><span>Proceso claro de principio a fin</span></p></div>
-      <div><Icono nombre="cambio" /><p><strong>Devoluciones fáciles</strong><span>Hasta 30 días</span></p></div>
-      <div><Icono nombre="ajuste" /><p><strong>Ajuste personalizado</strong><span>Guía de tallas a tu medida</span></p></div>
-      <div><Icono nombre="soporte" /><p><strong>Siempre contigo</strong><span>Te ayudamos a elegir</span></p></div>
-    </section>
-
-    <section className="home-categories" aria-labelledby="categorias-title">
-      <div className="home-section-heading">
-        <div><p className="home-eyebrow">NUESTRO CATÁLOGO</p><h2 id="categorias-title">Encuentra tu próximo look</h2><p>Explora prendas que se adaptan a tu estilo y a tus metas.</p></div>
-        <a href="#catalogo" className="home-text-link">Ver catálogo completo <span aria-hidden="true">→</span></a>
-      </div>
-      <div className="home-category-grid">
-        {categorias.map((item) => <button key={item.nombre} type="button" className="home-category" onClick={() => elegirCategoria(item.nombre)}>
-          <span className="home-category-photo"><img src={item.imagen} alt="" loading="lazy" /></span>
-          <strong>{item.nombre}</strong><small>Ver más <span aria-hidden="true">→</span></small>
-        </button>)}
-      </div>
-    </section>
-
+  const listadoCatalogo = (
     <section id="catalogo" className="home-products" aria-labelledby="catalogo-title">
       <div className="home-section-heading">
         <div><p className="home-eyebrow">PRENDAS PARA MOVERTE</p><h2 id="catalogo-title">El catálogo Kloset</h2><p>Elige tu corte y descubre las prendas hechas para tu ritmo.</p></div>
@@ -131,6 +105,52 @@ export function CatalogPage() {
           <Marco src={p.url_imagen} alt={p.nombre_producto} etiqueta="foto de producto" className="p-3" prioridad={i < 4}>{tienePerfil && <div className="home-size-tag">TU TALLA · {talla}</div>}</Marco>
           <div className="home-product-details"><div><strong>{p.nombre_producto}</strong><small>{corte} · {p.nombre_categoria ?? 'Sin categoría'}</small></div><span>{money(Number(p.precio_producto))}</span></div>
         </Link>)}
+      </div>
+    </section>
+  );
+
+  if (irAlCatalogo) {
+    return <div className="kl-rise home">
+      <Seo title="Catálogo deportivo | Kloset" description="Explora el catálogo de ropa deportiva Kloset y encuentra prendas para tu estilo y tu talla." path="/catalogo" />
+      {listadoCatalogo}
+    </div>;
+  }
+
+  return <div className="kl-rise home">
+    <Seo title="Kloset | Ropa que ya sabe cómo te queda" description="Ropa deportiva que combina comodidad, estilo y tu talla ideal. Explora camisetas, mallas, shorts, capas, tops y pantalones en Kloset." path={irAlCatalogo ? '/catalogo' : '/'} />
+
+    <section className="home-hero" aria-labelledby="home-title">
+      <img src={ASSETS + '/imagenes/hero.webp'} alt="Modelos con ropa deportiva negra de Kloset" fetchPriority="high" />
+      <div className="home-hero-shade" />
+      <div className="home-hero-copy">
+        <p className="home-eyebrow">TU ESTILO, SIN LÍMITES</p>
+        <h1 id="home-title">Ropa que ya sabe <em>cómo te queda.</em></h1>
+        <p className="home-lede">Prendas deportivas que combinan comodidad, estilo y rendimiento. Encuentra tu talla ideal con KLOSET.</p>
+        <div className="home-actions">
+          <Link className="home-button home-button-red" to="/catalogo">EXPLORAR CATÁLOGO <span aria-hidden="true">→</span></Link>
+          <Link className="home-button home-button-outline" to="/nosotros">CONOCE MÁS</Link>
+        </div>
+      </div>
+      <p className="home-hero-note">Tu estilo.<br />Tu talla.<br />Sin dudas.</p>
+    </section>
+
+    <section className="home-benefits" aria-label="Beneficios de comprar en Kloset">
+      <div><Icono nombre="escudo" /><p><strong>Compra segura</strong><span>Proceso claro de principio a fin</span></p></div>
+      <div><Icono nombre="cambio" /><p><strong>Devoluciones fáciles</strong><span>Hasta 30 días</span></p></div>
+      <div><Icono nombre="ajuste" /><p><strong>Ajuste personalizado</strong><span>Guía de tallas a tu medida</span></p></div>
+      <div><Icono nombre="soporte" /><p><strong>Siempre contigo</strong><span>Te ayudamos a elegir</span></p></div>
+    </section>
+
+    <section className="home-categories" aria-labelledby="categorias-title">
+      <div className="home-section-heading">
+        <div><p className="home-eyebrow">NUESTRO CATÁLOGO</p><h2 id="categorias-title">Encuentra tu próximo look</h2><p>Explora prendas que se adaptan a tu estilo y a tus metas.</p></div>
+        <Link to="/catalogo" className="home-text-link">Ver catálogo completo <span aria-hidden="true">→</span></Link>
+      </div>
+      <div className="home-category-grid">
+        {categorias.map((item) => <button key={item.nombre} type="button" className="home-category" onClick={() => elegirCategoria(item.nombre)}>
+          <span className="home-category-photo"><img src={item.imagen} alt="" loading="lazy" /></span>
+          <strong>{item.nombre}</strong><small>Ver más <span aria-hidden="true">→</span></small>
+        </button>)}
       </div>
     </section>
 
@@ -168,7 +188,7 @@ export function CatalogPage() {
     <section className="home-promo" aria-labelledby="promo-title">
       <img src={ASSETS + '/imagenes/banner.webp'} alt="Zapatillas deportivas blancas con mallas negras" loading="lazy" />
       <div className="home-promo-copy"><h2 id="promo-title">Vístete con confianza<br />todos los días.</h2><p>Ropa deportiva que se adapta a ti, para que solo te preocupes por llegar más lejos.</p>
-        <a href="#catalogo" className="home-button home-button-red">IR AL CATÁLOGO <span aria-hidden="true">→</span></a>
+        <Link to="/catalogo" className="home-button home-button-red">IR AL CATÁLOGO <span aria-hidden="true">→</span></Link>
       </div>
       <p className="home-promo-mark">TU CUERPO.<br />TU RITMO.<br />TU KLOSET.</p>
     </section>

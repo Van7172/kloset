@@ -7,7 +7,7 @@ require dirname(__DIR__) . '/inc.core.php';
 require APP_UTILITIES . 'Libs.php';
 $db = \Develoweb\App\Model\Conexion::getInstance();
 $suffix = bin2hex(random_bytes(5));
-$password = bin2hex(random_bytes(12));
+$password = 'Aa1!' . bin2hex(random_bytes(12));
 $email = 'qa-panel-' . $suffix . '@example.invalid';
 $ids = []; $csrf = ''; $token = null;
 $unreadBefore = (int)$db->query('SELECT COUNT(*) FROM notificaciones WHERE leido_notificacion=0')->fetchColumn();
@@ -83,8 +83,11 @@ try {
     successPanel('Variantes','updateVariante',$var+['id'=>$ids['var']]);
     [, $r]=adminCall('Variantes','store',$var); checkPanel($r['status']==='error','SKU duplicado rechazado');
     [, $r]=adminCall('Variantes','updateVariante',array_merge($var,['id'=>$ids['var'],'stock'=>'-1'])); checkPanel($r['status']==='error','stock negativo rechazado');
-    [, $raw]=requestLocal('api/v1/auth/register',['nombre'=>'QA Cliente <prueba>','correo'=>'qa-cliente-'.$suffix.'@example.invalid','password'=>$password],true);
-    $r=json_decode($raw,true); checkPanel($r['status']==='success','cliente API creado'); $ids['client']=(int)$r['usuario']['id']; $token=$r['token'];
+    $clientEmail='qa-cliente-'.$suffix.'@example.invalid';
+    $db->prepare('INSERT INTO sistema_usuarios (id_rol,nombre_usuario_sistema,correo_usuario_sistema,contrasena_usuario_sistema) VALUES (2,?,?,?)')->execute(['QA Cliente <prueba>',$clientEmail,password_hash($password,PASSWORD_DEFAULT)]);
+    $ids['client']=(int)$db->lastInsertId();
+    [, $raw]=requestLocal('api/v1/auth/login',['correo'=>$clientEmail,'password'=>$password],true);
+    $r=json_decode($raw,true); checkPanel($r['status']==='success','sesión cliente QA'); $token=$r['token'];
     $apiCurl = curl_init();
     function clientApi(string $path,array $body): array {
         global $apiCurl,$token;

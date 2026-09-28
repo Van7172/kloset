@@ -22,6 +22,12 @@ al catálogo. Si las ocho prendas demo aún no existen, carga antes
 Para los flujos de cuenta aplica, en este orden, las migraciones
 `database/migrations/2026-09-27_cuenta_y_favoritos.sql` y
 `database/migrations/2026-09-27_seguimiento_y_guardados.sql` una sola vez.
+Si ya se aplicó `database/migrations/2026-09-28_dni_cliente.sql`, ejecuta
+`database/migrations/2026-09-28_eliminar_dni_cliente.sql` para quitar la columna.
+Para habilitar la recuperación de contraseña y la verificación del registro, aplica también
+`database/migrations/2026-09-28_recuperacion_contrasena.sql`.
+Para guardar tipo y departamento de las direcciones, aplica
+`database/migrations/2026-09-28_detalles_direccion.sql`.
 
 Credenciales admin por defecto: `admin@kloset.local` / `password`
 
@@ -113,8 +119,12 @@ patrones de contenido: panel general con KPIs, tabla con panel de detalle
 - Las medidas se pueden descargar en JSON o borrar; la contraseña se puede
   cambiar verificando la actual. Los avisos de pedido respetan la preferencia
   guardada y aparecen en la cuenta. El envío de campañas/correos no está conectado.
-- La recuperación por correo y la verificación de registro se retiraron de la
-  maqueta, pues antes aparentaban funcionar sin enviar ni validar códigos.
+- La recuperación y el registro verifican el correo con códigos de un solo uso
+  de 6 dígitos, válidos durante 10 minutos y almacenados en `codigos_verificacion`.
+  Ambos flujos requieren SMTP configurado.
+- Las contraseñas requieren 8–128 caracteres, mayúscula, minúscula, número y
+  carácter especial; registro y recuperación también exigen confirmación. El
+  restablecimiento no permite reutilizar la contraseña actual.
 
 ## Publicar en kloset.shop
 
@@ -136,6 +146,8 @@ dominio**, con el document root apuntando a la carpeta del proyecto.
    KLOSET_JWT_SECRET   cadena larga y aleatoria — obligatorio
    KLOSET_DB_HOST      KLOSET_DB_NAME  KLOSET_DB_USER  KLOSET_DB_PASS  KLOSET_DB_PORT
    KLOSET_URL          solo si la detección automática falla (con barra final)
+  KLOSET_SMTP_HOST    KLOSET_SMTP_USER  KLOSET_SMTP_PASS
+  KLOSET_SMTP_PORT    587 por defecto  |  KLOSET_SMTP_SECURITY: tls, ssl o none
    ```
 
 5. Importa la base de datos y cambia la contraseña de `admin@kloset.local`.

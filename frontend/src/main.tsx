@@ -15,6 +15,7 @@ const CartPage = lazy(() => import('./pages/CartPage').then((m) => ({ default: m
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ default: m.OrdersPage })));
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
 const CoveragePage = lazy(() => import('./pages/CoveragePage').then((m) => ({ default: m.CoveragePage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
@@ -32,6 +33,7 @@ createRoot(document.getElementById('root')!).render(
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<CatalogPage />} />
+            <Route path="catalogo" element={<CatalogPage irAlCatalogo />} />
             <Route
               path="producto/:url"
               element={
@@ -97,6 +99,14 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <Suspense fallback={<Cargando />}>
                   <AuthPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="recuperar"
+              element={
+                <Suspense fallback={<Cargando />}>
+                  <ForgotPasswordPage />
                 </Suspense>
               }
             />

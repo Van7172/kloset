@@ -42,9 +42,9 @@ class CuentaApi
         if (!$id = self::id()) return ['status' => 'error', 'message' => 'No autorizado'];
         $actual = (string) ($_POST['actual'] ?? '');
         $nueva = (string) ($_POST['nueva'] ?? '');
-        if (strlen($nueva) < 8 || strlen($nueva) > 128) {
+        if (!AuthApi::cumplePoliticaContrasena($nueva)) {
             http_response_code(422);
-            return ['status' => 'error', 'message' => 'La nueva contraseña debe tener entre 8 y 128 caracteres.'];
+            return ['status' => 'error', 'message' => AuthApi::mensajePoliticaContrasena()];
         }
         $con = Conexion::getInstance();
         $sth = $con->prepare('SELECT contrasena_usuario_sistema FROM sistema_usuarios WHERE id_usuario_sistema = ?');

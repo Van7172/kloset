@@ -1,26 +1,26 @@
 import { Seo } from '../components/Seo';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api, type ApiDetalle } from '../services/api';
-import { useKloset, type ItemBolsa } from '../store/KlosetContext';
+import { useKloset } from '../store/KlosetContext';
 import {
-  ANCHO_FIGURA,
   APRIETE_FIGURA,
-  COPY_CORTE,
-  CORTES,
+  RANGOS_MEDIDAS,
+  TALLAS,
   VEREDICTO_CORTE,
-  confianza,
-  money,
   tallaRecomendada,
   type Corte,
+  type Medidas,
+  type Talla,
 } from '../lib/fit';
 
-const VISTAS = [
-  { label: 'Frente', v: 0 },
-  { label: '3/4', v: 45 },
-  { label: 'Perfil', v: 90 },
-  { label: 'Espalda', v: 180 },
-];
+const GUIA_TALLAS: Record<Talla, { pecho: string; cintura: string; cadera: string }> = {
+  XS: { pecho: '82–87 cm', cintura: '68–73 cm', cadera: '84–89 cm' },
+  S: { pecho: '88–93 cm', cintura: '74–79 cm', cadera: '90–95 cm' },
+  M: { pecho: '94–99 cm', cintura: '80–85 cm', cadera: '96–101 cm' },
+  L: { pecho: '100–105 cm', cintura: '86–91 cm', cadera: '102–107 cm' },
+  XL: { pecho: '106–112 cm', cintura: '92–98 cm', cadera: '108–114 cm' },
+};
 
 /**
  * Escenario del avatar. Renderiza la silueta paramétrica del diseño; el modelo
@@ -30,49 +30,99 @@ function Escenario({
   corte,
   talla,
   rot,
-  comparando,
+  zoom,
+  medidas,
+  imagenPrenda,
+  onGirar,
+  onAcercar,
 }: {
   corte: Corte;
-  talla: string;
+  talla: Talla;
   rot: number;
-  comparando: boolean;
+  zoom: number;
+  medidas: Medidas;
+  imagenPrenda: string | null;
+  onGirar: (rot: number) => void;
+  onAcercar: (zoom: number) => void;
 }) {
+  const arrastre = useRef<{ x: number; rot: number } | null>(null);
+  const anchoTorso = Math.min(1.2, Math.max(0.86, medidas.chest / 98));
+  const iniciarGiro = (event: PointerEvent<HTMLDivElement>) => {
+    arrastre.current = { x: event.clientX, rot };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moverGiro = (event: PointerEvent<HTMLDivElement>) => {
+    if (!arrastre.current) return;
+    const angulo = arrastre.current.rot + (event.clientX - arrastre.current.x) * 0.8;
+    onGirar(Math.max(-180, Math.min(180, Math.round(angulo))));
+  };
+  const terminarGiro = () => { arrastre.current = null; };
+  const controlarZoom = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    onAcercar(Math.max(80, Math.min(140, zoom + (event.deltaY < 0 ? 5 : -5))));
+  };
+
   return (
-    <div
-      className="relative flex min-h-[420px] items-end justify-center overflow-hidden border border-rule lg:min-h-[560px]"
-      style={{ background: 'linear-gradient(180deg,var(--surface),var(--surface-2))' }}
-    >
-      <div className="kl-stripes absolute inset-0" />
+    <div>
       <div
-        className="absolute inset-x-0 top-0 flex items-center justify-between border-b border-rule px-[14px] py-3"
-        style={{ background: 'var(--stage-veil)' }}
+        className="relative flex h-[330px] items-center justify-center overflow-hidden border border-rule bg-surface sm:h-[390px]"
+        style={{ perspective: '900px', touchAction: 'none', cursor: arrastre.current ? 'grabbing' : 'grab' }}
+        onPointerDown={iniciarGiro}
+        onPointerMove={moverGiro}
+        onPointerUp={terminarGiro}
+        onPointerCancel={terminarGiro}
+        onWheel={controlarZoom}
+        aria-label="Avatar para previsualizar la prenda"
       >
-        <span className="font-display text-[17px] text-ink">{corte}</span>
-        <span className="whitespace-nowrap pl-2 font-narrow text-[11px] uppercase tracking-[0.08em] text-soft">
-          {comparando ? `talla ${talla}` : `corte ${corte.toLowerCase()} · talla ${talla}`}
-        </span>
+        <div className="absolute inset-[7%_15%] border border-rule" />
+        <div className="absolute bottom-[8%] left-1/2 h-px w-[58%] -translate-x-1/2 bg-rule" />
+        <div
+          className="relative h-[92%] w-[230px] transition-transform duration-200"
+          style={{ transform: `rotateY(${rot}deg) scale(${zoom / 100})` }}
+        >
+          <svg viewBox="0 0 280 500" role="img" aria-label={`Avatar con corte ${corte} y talla ${talla}`} className="h-full w-full overflow-visible">
+            <defs>
+              <linearGradient id="piel-avatar" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stopColor="#dedfe0" />
+                <stop offset="1" stopColor="#9299a3" />
+              </linearGradient>
+              <linearGradient id="ropa-avatar" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stopColor="#343536" />
+                <stop offset="1" stopColor="#101112" />
+              </linearGradient>
+              <clipPath id="camiseta-avatar">
+                <path d="M107 126 82 137 58 165l22 22 16-17-7 74q51 19 102 0l-7-74 16 17 22-22-24-28-25-11-15 13h-36z" />
+              </clipPath>
+            </defs>
+            <ellipse cx="140" cy="476" rx="82" ry="8" fill="#d9d9d7" />
+            <g fill="url(#piel-avatar)" stroke="#9da0a4" strokeWidth="1.2">
+              <circle cx="140" cy="53" r="24" />
+              <path d="M132 77h16v28h-16z" />
+              <path d="M88 143q-12 6-17 29l-13 91q-2 15 11 16 9 1 12-13l20-71 8-43z" />
+              <path d="M192 143q12 6 17 29l13 91q2 15-11 16-9 1-12-13l-20-71-8-43z" />
+              <path d="M108 266q-4 52-2 103l-8 88q-1 14 14 14 10 0 13-13l15-77 15 77q3 13 13 13 15 0 14-14l-8-88q2-51-2-103z" />
+              <path d="M98 453q-9 8-14 14-6 8 7 10l31-3 3-17zM182 453l-27 4 3 17 31 3q13-2 7-10-5-6-14-14z" />
+            </g>
+            <g transform={`translate(140 0) scale(${anchoTorso * APRIETE_FIGURA[corte]},1) translate(-140 0)`}>
+              <path d="M107 126 82 137 58 165l22 22 16-17-7 74q51 19 102 0l-7-74 16 17 22-22-24-28-25-11-15 13h-36z" fill="url(#ropa-avatar)" />
+              {imagenPrenda && <image href={imagenPrenda} x="55" y="125" width="170" height="128" preserveAspectRatio="xMidYMid slice" clipPath="url(#camiseta-avatar)" style={{ mixBlendMode: 'multiply' }} />}
+              <path d="M107 126q33 14 66 0" fill="none" stroke="#5b5d5f" strokeWidth="2" />
+            </g>
+            <path d="M126 100q14 9 28 0" fill="none" stroke="#858b93" strokeWidth="2" />
+          </svg>
+        </div>
+        <span className="absolute bottom-2 left-2 right-2 text-center text-[11px] text-soft">Arrastra para girar · usa la rueda o el control para acercar</span>
       </div>
-
-      <div
-        className="relative mb-14 h-[74%] border"
-        style={{
-          width: ANCHO_FIGURA[corte],
-          borderRadius: '46% 46% 30% 30% / 22% 22% 12% 12%',
-          background: 'repeating-linear-gradient(105deg, var(--fig-a) 0 2px, var(--fig-b) 2px 9px)',
-          borderColor: 'var(--fig-bd)',
-          transform: `rotateY(${rot}deg) scaleX(${APRIETE_FIGURA[corte]})`,
-          transition: 'transform .5s cubic-bezier(.2,.8,.2,1), width .5s cubic-bezier(.2,.8,.2,1)',
-          animation: 'kl-settle .55s ease both',
-        }}
-      />
-
-      <div className="absolute left-[10%] top-1/2 w-[80%] -translate-y-1/2 text-center font-narrow text-[11px] uppercase leading-[1.5] tracking-[0.04em] text-soft">
-        {comparando ? `render 3D · ${rot}°` : `render avatar 3D · talla ${talla} · ${rot}°`}
+      <div className="mt-3 flex items-center gap-3 border-b border-rule pb-3">
+        <label htmlFor="avatar-zoom" className="shrink-0 font-narrow text-[11px] font-semibold uppercase tracking-[0.1em] text-soft">Zoom</label>
+        <input id="avatar-zoom" type="range" min="80" max="140" value={zoom} onChange={(event) => onAcercar(Number(event.target.value))} aria-label="Acercar avatar" className="h-6 min-w-0 flex-1" />
+        <span className="w-10 text-right text-xs tabular-nums text-soft">{zoom}%</span>
       </div>
-
-      <div className="absolute inset-x-0 bottom-0 bg-ink px-3 py-[11px] text-center font-narrow text-[11.5px] uppercase tracking-[0.08em] text-paper">
-        {VEREDICTO_CORTE[corte]}
-      </div>
+      <label className="mt-3 flex items-center gap-3 text-xs text-soft">
+        <span className="shrink-0 font-narrow font-semibold uppercase tracking-[0.1em]">Girar avatar</span>
+        <input type="range" min={-180} max={180} value={rot} onChange={(event) => onGirar(Number(event.target.value))} aria-label="Girar avatar" className="h-6 flex-1" />
+        <span className="w-9 text-right tabular-nums">{rot}°</span>
+      </label>
     </div>
   );
 }
@@ -81,13 +131,14 @@ export function AvatarPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const url = params.get('producto');
-  const { medidas, corte, setCorte, usuario, añadirABolsa, setIntencion } = useKloset();
+  const { medidas, corte } = useKloset();
 
   const [detalle, setDetalle] = useState<ApiDetalle | null>(null);
+  const [medidasPrueba, setMedidasPrueba] = useState<Medidas>(() => ({ ...medidas }));
   const [rot, setRot] = useState(0);
-  const [comparar, setComparar] = useState(false);
-  const [errorBolsa, setErrorBolsa] = useState('');
-  const [añadiendo, setAñadiendo] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [tallaElegida, setTallaElegida] = useState<Talla>(() => tallaRecomendada(medidas, corte));
+  const [tallaCalculada, setTallaCalculada] = useState<Talla>(() => tallaRecomendada(medidas, corte));
 
   useEffect(() => {
     if (!url) return;
@@ -99,43 +150,19 @@ export function AvatarPage() {
       .catch(() => undefined);
   }, [url]);
 
-  const talla = tallaRecomendada(medidas, corte);
+  const talla = tallaCalculada;
+  const recomendada = tallaRecomendada(medidasPrueba, corte);
   const producto = detalle?.producto;
-  const precio = producto ? Number(producto.precio_producto) : 0;
-  const cortesEnEscena: Corte[] = comparar ? [...CORTES] : [corte];
 
-  const añadir = async () => {
-    if (!producto) {
-      navigate('/');
-      return;
-    }
-    const item: ItemBolsa = {
-      id_producto: producto.id_producto,
-      url_producto: producto.url_producto,
-      name: producto.nombre_producto,
-      size: talla,
-      fit: corte,
-      price: precio,
-      imagen: detalle?.imagenes[0]?.url_imagen ?? null,
-      cantidad: 1,
-    };
-    if (!usuario) {
-      setIntencion({ then: 'cart', item });
-      navigate('/entrar');
-      return;
-    }
-    setErrorBolsa('');
-    setAñadiendo(true);
-    const fallo = await añadirABolsa(item);
-    setAñadiendo(false);
-    if (fallo) return setErrorBolsa(fallo);
-    navigate('/bolsa');
+  const calcularTalla = () => {
+    setTallaCalculada(recomendada);
+    setTallaElegida(recomendada);
   };
 
   return (
-    <div className="kl-rise">
+    <div className="kl-rise mx-auto max-w-[1240px]">
       <Seo title="Pruébalo en tu avatar" description="Prueba la prenda sobre tu silueta en los tres cortes —Slim, Regular y Oversize— y comprueba cómo cae antes de pagar." path="/avatar" />
-      <div className="mb-[18px] flex items-center gap-[14px] border-b border-ink pb-[14px] pt-[2px]">
+      <div className="mb-6 flex items-center gap-[14px] border-b border-ink pb-[14px] pt-[2px]">
         <button
           type="button"
           onClick={() => navigate(url ? `/producto/${url}` : '/')}
@@ -143,130 +170,77 @@ export function AvatarPage() {
         >
           ← {producto ? producto.nombre_producto : 'Catálogo'}
         </button>
-        <div className="flex-1" />
-        <button
-          type="button"
-          onClick={() => setComparar((c) => !c)}
-          className="hidden min-h-[42px] cursor-pointer border border-ink px-[14px] font-narrow text-[13px] font-semibold uppercase tracking-[0.06em] md:block"
-          style={{
-            background: comparar ? 'var(--ink)' : 'transparent',
-            color: comparar ? 'var(--paper)' : 'var(--ink)',
-          }}
-        >
-          {comparar ? 'Ver un solo corte' : 'Comparar los tres cortes'}
-        </button>
+        <span className="flex-1" />
       </div>
 
-      <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:gap-14">
-        <div
-          className="grid flex-[1.15] gap-2"
-          style={{ gridTemplateColumns: `repeat(${cortesEnEscena.length}, minmax(0,1fr))` }}
-        >
-          {cortesEnEscena.map((f) => (
-            <Escenario
-              key={f}
-              corte={f}
-              talla={tallaRecomendada(medidas, f)}
-              rot={rot}
-              comparando={comparar}
-            />
-          ))}
-        </div>
+      <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
+        <section>
+          <p className="mb-2 font-narrow text-xs font-semibold uppercase tracking-[0.14em] text-soft">Asistente de talla</p>
+          <h1 className="mb-5 font-display text-[30px] leading-tight sm:text-[34px]">Tus medidas corporales</h1>
+          <div className="space-y-1">
+            {RANGOS_MEDIDAS.map((campo) => (
+              <label key={campo.key} className="block border-b border-rule py-3">
+                <span className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-semibold">{campo.label}</span>
+                  <span className="flex items-baseline gap-1 text-sm"><strong className="text-base">{medidasPrueba[campo.key]}</strong><span className="text-soft">cm</span></span>
+                </span>
+                <input
+                  type="range"
+                  min={campo.min}
+                  max={campo.max}
+                  value={medidasPrueba[campo.key]}
+                  onChange={(event) => setMedidasPrueba({ ...medidasPrueba, [campo.key]: Number(event.target.value) })}
+                  aria-label={`${campo.label}, ${medidasPrueba[campo.key]} centímetros`}
+                  className="mt-1 h-7 w-full cursor-pointer"
+                />
+              </label>
+            ))}
+          </div>
+          <button type="button" onClick={calcularTalla} className="mt-5 min-h-[50px] w-full cursor-pointer border-none bg-ink font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-paper hover:bg-red">Calcular mi talla</button>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
-          <div>
-            <div className="border-b border-ink pb-[10px] font-narrow text-xs uppercase tracking-[0.12em] text-soft">
-              Corte
-            </div>
-            <div className="grid grid-cols-3 border border-t-0 border-ink">
-              {CORTES.map((f, i) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setCorte(f)}
-                  className="min-h-[46px] cursor-pointer border-none font-narrow text-[13.5px] font-semibold uppercase tracking-[0.06em] transition-colors"
-                  style={{
-                    background: corte === f ? 'var(--ink)' : 'transparent',
-                    color: corte === f ? 'var(--paper)' : 'var(--soft)',
-                    borderRight: i === CORTES.length - 1 ? 'none' : '1px solid var(--ink)',
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-            <p className="mt-[14px] text-sm leading-[1.6] text-body">{COPY_CORTE[corte]}</p>
+          <div className="mt-4 border border-rule bg-surface p-4">
+            <p className="text-sm text-soft">Talla recomendada: <strong className="ml-1 text-lg text-ink">{talla}</strong></p>
+            <p className="mt-1 text-sm text-body">Tus medidas coinciden con esta talla en la guía de la marca.</p>
           </div>
 
-          <div>
-            <div className="flex items-baseline justify-between border-b border-ink pb-[10px]">
-              <span className="font-narrow text-xs uppercase tracking-[0.12em] text-soft">Girar avatar</span>
-              <span className="font-display text-[19px]">{rot}°</span>
+          <fieldset className="mt-5 border-0 p-0">
+            <legend className="mb-3 text-sm font-semibold">Probar otra talla</legend>
+            <div className="grid max-w-[420px] grid-cols-5 gap-2">
+              {TALLAS.map((opcion) => <button
+                key={opcion}
+                type="button"
+                aria-pressed={tallaElegida === opcion}
+                onClick={() => setTallaElegida(opcion)}
+                className="min-h-12 cursor-pointer border font-narrow text-sm font-semibold"
+                style={{ background: tallaElegida === opcion ? 'var(--ink)' : 'transparent', color: tallaElegida === opcion ? 'var(--paper)' : 'var(--ink)', borderColor: 'var(--rule)' }}
+              >{opcion}</button>)}
             </div>
-            <input
-              type="range"
-              min={-180}
-              max={180}
-              value={rot}
-              onChange={(e) => setRot(Number(e.target.value))}
-              aria-label="Girar avatar"
-              className="mt-[10px] h-[26px] w-full"
-            />
-            <div className="mt-2 grid grid-cols-4 border border-ink">
-              {VISTAS.map((v, i) => (
-                <button
-                  key={v.label}
-                  type="button"
-                  onClick={() => setRot(v.v)}
-                  className="min-h-[42px] cursor-pointer border-none font-narrow text-[12.5px] uppercase tracking-[0.06em]"
-                  style={{
-                    background: rot === v.v ? 'var(--ink)' : 'transparent',
-                    color: rot === v.v ? 'var(--paper)' : 'var(--soft)',
-                    borderRight: i === VISTAS.length - 1 ? 'none' : '1px solid var(--ink)',
-                  }}
-                >
-                  {v.label}
-                </button>
-              ))}
-            </div>
+          </fieldset>
+        </section>
+
+        <section className="min-w-0">
+          <Escenario corte={corte} talla={tallaElegida} rot={rot} zoom={zoom} medidas={medidasPrueba} imagenPrenda={detalle?.imagenes[0]?.url_imagen ?? null} onGirar={setRot} onAcercar={setZoom} />
+          <div className="mt-3 grid grid-cols-3 border border-rule text-center text-xs text-body">
+            <div className="border-r border-rule px-2 py-3">Talla <strong className="text-ink">{tallaElegida}</strong></div>
+            <div className="border-r border-rule px-2 py-3">Corte <strong className="text-ink">{corte}</strong></div>
+            <div className="px-2 py-3">Ajuste <strong className="text-ink">{VEREDICTO_CORTE[corte]}</strong></div>
           </div>
 
-          <div className="border-t-2 border-ink pt-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <div>
-                <div className="font-display text-xl">
-                  Talla {talla} · {corte}
-                </div>
-                <div className="mt-1 text-[12.5px] text-soft">
-                  {producto ? `${producto.nombre_producto} · ${money(precio)}` : 'Elige una prenda del catálogo'}
-                </div>
-              </div>
-              <span className="whitespace-nowrap font-narrow text-[11.5px] uppercase tracking-[0.08em] text-red">
-                Ajuste {confianza(corte)}%
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={añadir}
-              disabled={añadiendo}
-              className="mt-4 min-h-[54px] w-full cursor-pointer border-none bg-ink font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0] disabled:opacity-50"
-            >
-              {añadiendo ? 'Añadiendo…' : producto ? 'Añadir a la bolsa' : 'Ir al catálogo'}
-            </button>
-            {errorBolsa && (
-              <div className="mt-3 border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">
-                {errorBolsa}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => navigate('/medidas')}
-              className="mt-[6px] min-h-[44px] w-full cursor-pointer border-none bg-transparent text-[13px] text-soft underline"
-            >
-              Ajustar mis medidas
-            </button>
+          <div className="mt-5 overflow-x-auto border border-rule">
+            <table className="w-full min-w-[440px] border-collapse text-left text-xs">
+              <caption className="border-b border-rule px-3 py-3 text-left font-narrow font-semibold uppercase tracking-[0.1em] text-soft">Guía de tallas (cm)</caption>
+              <thead className="bg-surface text-ink">
+                <tr><th scope="col" className="px-3 py-3">Talla</th><th scope="col" className="px-3 py-3">Pecho</th><th scope="col" className="px-3 py-3">Cintura</th><th scope="col" className="px-3 py-3">Cadera</th></tr>
+              </thead>
+              <tbody>
+                {TALLAS.map((opcion) => <tr key={opcion} className="border-t border-rule" style={{ background: tallaElegida === opcion ? 'var(--surface)' : 'transparent', fontWeight: tallaElegida === opcion ? 700 : 400 }}>
+                  <th scope="row" className="px-3 py-3">{opcion}</th><td className="px-3 py-3">{GUIA_TALLAS[opcion].pecho}</td><td className="px-3 py-3">{GUIA_TALLAS[opcion].cintura}</td><td className="px-3 py-3">{GUIA_TALLAS[opcion].cadera}</td>
+                </tr>)}
+              </tbody>
+            </table>
           </div>
-        </div>
+
+        </section>
       </div>
     </div>
   );

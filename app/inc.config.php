@@ -40,7 +40,7 @@ return [
 		'name' => getenv('KLOSET_DB_NAME') ?: 'kloset_bd',
 		'user' => getenv('KLOSET_DB_USER') ?: 'root',
 		'password' => getenv('KLOSET_DB_PASS') ?: '',
-		'port' => getenv('KLOSET_DB_PORT') ?: '3307',
+		'port' => getenv('KLOSET_DB_PORT') ?: '3306',
 	],
 	'plantilla' => [
 		'front' => 'kloset',

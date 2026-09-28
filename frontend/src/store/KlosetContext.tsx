@@ -80,7 +80,6 @@ type Acciones = {
   recargarPedidos: () => Promise<void>;
   setIntencion: (i: Intencion) => void;
   entrar: (correo: string, password: string) => Promise<string | null>;
-  registrarse: (nombre: string, correo: string, password: string) => Promise<string | null>;
   salir: () => void;
 };
 
@@ -276,20 +275,6 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const registrarse = useCallback(async (nombre: string, correo: string, password: string) => {
-    try {
-      const res = await api.register(nombre, correo, password);
-      if (res.status !== 'success' || !res.token || !res.usuario) {
-        return res.message || 'No pudimos crear tu cuenta';
-      }
-      setToken(res.token);
-      setUsuario(res.usuario);
-      return null;
-    } catch {
-      return 'No hay conexión con la API';
-    }
-  }, []);
-
   const guardarPerfil = useCallback(async (m: Medidas) => {
     setMedidasState(m);
     setTienePerfil(true);
@@ -306,7 +291,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
 
   const añadirABolsa = useCallback(async (item: ItemBolsa) => {
     // `getToken()` (no el estado `usuario`) porque esto puede llamarse justo tras
-    // `entrar()`/`registrarse()`, antes de que el contexto vuelva a renderizar.
+    // `entrar()`, antes de que el contexto vuelva a renderizar.
     if (!getToken()) return 'Inicia sesión para guardar tu bolsa';
     try {
       const res = await api.carrito.agregar({
@@ -426,7 +411,6 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       actualizarNombre: (nombre: string) => setUsuario((u) => u ? { ...u, nombre } : u),
       setIntencion,
       entrar,
-      registrarse,
       salir: () => {
         setToken(null);
         setUsuario(null);
@@ -457,7 +441,6 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       borrarPerfil,
       recargarPedidos,
       entrar,
-      registrarse,
     ],
   );
 
