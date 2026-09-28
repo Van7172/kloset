@@ -98,6 +98,17 @@ class Variantes
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT * FROM productos_variantes WHERE id_variante = ?');
+		$existe->execute([$id]);
+		$actual = $existe->fetch();
+		if (!$actual) return ['status' => 'error', 'message' => 'Variante no encontrada'];
+		if ((int)$actual['id_producto'] !== $datos['id_producto'] || $actual['talla_variante'] !== $datos['talla'] || $actual['corte_variante'] !== $datos['corte']) {
+			foreach (['pedidos_items', 'carritos_items', 'prendas_guardadas_clientes'] as $tabla) {
+				$usos = $con->prepare("SELECT COUNT(*) FROM $tabla WHERE id_variante = ?");
+				$usos->execute([$id]);
+				if ($usos->fetchColumn()) return ['status' => 'error', 'message' => 'No cambies producto, talla o corte de una variante usada por clientes. Crea otra variante.'];
+			}
+		}
 		$sth = $con->prepare(
 			'UPDATE productos_variantes SET id_producto = :producto, talla_variante = :talla,
 			 corte_variante = :corte, sku_variante = :sku, stock_variante = :stock
@@ -142,6 +153,7 @@ class Variantes
 
 		$sth = $con->prepare('DELETE FROM productos_variantes WHERE id_variante = :id');
 		$sth->execute([':id' => $id]);
+		if ($sth->rowCount() === 0) return ['status'=>'error', 'message'=>'Variante no encontrada'];
 
 		return ['status' => 'success', 'message' => 'Variante eliminada'];
 	}
@@ -153,10 +165,14 @@ class Variantes
 		$corte = (string) ($_POST['corte'] ?? '');
 		$sku = trim((string) ($_POST['sku'] ?? ''));
 		$stock = (int) ($_POST['stock'] ?? 0);
+		if (filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT) === false || $stock > 2147483647 || mb_strlen($sku) > 50) return ['status'=>'error', 'message'=>'Revisa el stock entero y el SKU (máximo 50 caracteres)'];
 
 		if ($idProducto <= 0) {
 			return ['status' => 'error', 'message' => 'Selecciona un producto'];
 		}
+		$existe = Conexion::getInstance()->prepare('SELECT 1 FROM productos WHERE id_producto = ?');
+		$existe->execute([$idProducto]);
+		if (!$existe->fetchColumn()) return ['status'=>'error', 'message'=>'El producto no existe'];
 		if (!in_array($talla, self::TALLAS, true)) {
 			return ['status' => 'error', 'message' => 'Talla no válida'];
 		}

@@ -34,6 +34,9 @@ class Notificaciones
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM notificaciones WHERE id_notificacion = ?');
+		$existe->execute([$id]);
+		if (!$existe->fetchColumn()) return ['status'=>'error', 'message'=>'Notificación no encontrada'];
 		$sth = $con->prepare('UPDATE notificaciones SET leido_notificacion = 1 WHERE id_notificacion = :id');
 		$sth->execute([':id' => $id]);
 

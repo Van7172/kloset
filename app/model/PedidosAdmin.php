@@ -108,15 +108,21 @@ class PedidosAdmin
 		}
 
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT id_usuario_sistema, estado_pedido FROM pedidos WHERE id_pedido = :id');
+		$sth = $con->prepare('SELECT id_usuario_sistema, estado_pedido, transportista_pedido, seguimiento_pedido, entrega_estimada_pedido FROM pedidos WHERE id_pedido = :id');
 		$sth->execute([':id' => $id]);
 		$pedido = $sth->fetch();
 		if (!$pedido) {
 			return ['status' => 'error', 'message' => 'Pedido no encontrado'];
 		}
+		if (!array_key_exists('transportista', $_POST)) $transportista = $pedido['transportista_pedido'];
+		if (!array_key_exists('seguimiento', $_POST)) $seguimiento = $pedido['seguimiento_pedido'];
+		if (!array_key_exists('entrega_estimada', $_POST)) $entrega = $pedido['entrega_estimada_pedido'];
+		if ($estado !== 'cancelado' && $estado === $pedido['estado_pedido'] && $comentario === '' && ($transportista ?: null) === $pedido['transportista_pedido'] && ($seguimiento ?: null) === $pedido['seguimiento_pedido'] && ($entrega ?: null) === $pedido['entrega_estimada_pedido']) return ['status'=>'success', 'message'=>'El pedido ya tiene estos datos'];
 		if ($pedido['estado_pedido'] === 'cancelado' || ($pedido['estado_pedido'] === 'entregado' && $estado !== 'entregado')) {
 			return ['status' => 'error', 'message' => 'Este pedido está cerrado'];
 		}
+		$orden = array_flip(self::ESTADOS);
+		if ($estado !== 'cancelado' && $orden[$estado] < $orden[$pedido['estado_pedido']]) return ['status'=>'error', 'message'=>'El pedido no puede retroceder a un estado anterior'];
 
 		$admin = Acl::usuario();
 		$comentarioFinal = $comentario !== '' ? $comentario : 'Cambio manual desde el panel';
@@ -147,7 +153,7 @@ class PedidosAdmin
 			$mensaje = self::MENSAJES[$estado] ?? ('Tu pedido cambió a ' . str_replace('_', ' ', $estado) . '.');
 			$preferencia = $con->prepare('SELECT avisos_pedidos_usuario FROM sistema_usuarios WHERE id_usuario_sistema = ?');
 			$preferencia->execute([$pedido['id_usuario_sistema']]);
-			if ($preferencia->fetchColumn()) {
+			if ($preferencia->fetchColumn() && $estado !== $pedido['estado_pedido']) {
 				$con->prepare('INSERT INTO notificaciones (id_usuario_sistema, id_pedido, mensaje_notificacion) VALUES (:usuario, :pedido, :mensaje)')
 					->execute([':usuario' => $pedido['id_usuario_sistema'], ':pedido' => $id, ':mensaje' => $mensaje]);
 			}

@@ -15,7 +15,7 @@
   function kv(clave, valor, clase) {
     return (
       '<dl class="kl-kv" style="margin:0;"><dt>' + clave + '</dt>' +
-      '<dd class="' + (clase || '') + '">' + valor + '</dd></dl>'
+      '<dd class="' + (clase || '') + '">' + Kloset.escapeHtml(valor) + '</dd></dl>'
     );
   }
 

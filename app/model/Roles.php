@@ -91,6 +91,13 @@ class Roles
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT nombre_rol FROM sistema_roles WHERE id_rol = ?');
+		$existe->execute([$id]);
+		$nombreActual = $existe->fetchColumn();
+		if (!$nombreActual) return ['status'=>'error', 'message'=>'Rol no encontrado'];
+		if (in_array($nombreActual, ['Administrador', 'Cliente'], true) && ($datos['nombre'] !== $nombreActual || $datos['estado'] !== 'activo')) return ['status'=>'error', 'message'=>'Los roles base Administrador y Cliente deben conservar su nombre y estado activo'];
+		$admin = Acl::usuario();
+		if ($admin && $admin->getRol()->getId() === $id && $datos['estado'] !== 'activo') return ['status'=>'error', 'message'=>'No puedes desactivar tu propio rol'];
 		$sth = $con->prepare(
 			'UPDATE sistema_roles SET nombre_rol = :nombre, descripcion_rol = :descripcion, estado_rol = :estado
 			 WHERE id_rol = :id'
@@ -115,6 +122,10 @@ class Roles
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT nombre_rol FROM sistema_roles WHERE id_rol = ?');
+		$existe->execute([$id]);
+		$nombreActual = $existe->fetchColumn();
+		if (!$nombreActual || in_array($nombreActual, ['Administrador', 'Cliente'], true)) return ['status'=>'error', 'message'=>'Rol no encontrado o rol base protegido'];
 		// sistema_usuarios.id_rol es ON DELETE RESTRICT.
 		$sth = $con->prepare('SELECT COUNT(*) FROM sistema_usuarios WHERE id_rol = :id');
 		$sth->execute([':id' => $id]);
@@ -137,6 +148,7 @@ class Roles
 		if ($nombre === '') {
 			return ['status' => 'error', 'message' => 'El nombre del rol es obligatorio'];
 		}
+		if (mb_strlen($nombre) > 60 || mb_strlen($descripcion) > 255) return ['status'=>'error', 'message'=>'Nombre o descripción del rol demasiado largos'];
 
 		return ['nombre' => $nombre, 'descripcion' => $descripcion, 'estado' => $estado];
 	}

@@ -153,6 +153,9 @@ de pago real; cambiar la contraseña de administración; y regenerar
 
 ## Documentación
 
+- `docs/bitacora-panel-2026-09-27.md` — revisión administrativa, SQL ejecutado y pruebas
+- `database/migrations/2026-09-27_entrega_local_consolidada.sql` — preparación reejecutable del esquema existente
+- `database/preparar_entrega.php` — ejecutor CLI con registro SHA-256 en `sistema_migraciones`
 - `docs/revision-flujos-cuenta.md` — encaje de las 12 referencias y revisión funcional
 - `docs/superpowers/specs/2026-08-28-kloset-design.md`
 - `docs/superpowers/plans/2026-08-28-kloset-implementation.md`

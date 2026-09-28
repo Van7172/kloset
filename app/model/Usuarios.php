@@ -96,6 +96,10 @@ class Usuarios
 		}
 
 		$con = Conexion::getInstance();
+		$rol = $con->prepare("SELECT 1 FROM sistema_roles WHERE id_rol = ? AND estado_rol = 'activo'");
+		$rol->execute([$idRol]);
+		if (!$rol->fetchColumn()) return ['status'=>'error', 'message'=>'Selecciona un rol activo existente'];
+		if (mb_strlen($nombre) > 120 || mb_strlen($correo) > 150 || strlen($password) > 72) return ['status'=>'error', 'message'=>'Nombre, correo o contraseña demasiado largos'];
 		$sth = $con->prepare('SELECT COUNT(*) FROM sistema_usuarios WHERE correo_usuario_sistema = :correo');
 		$sth->execute([':correo' => $correo]);
 		if ((int) $sth->fetchColumn() > 0) {
@@ -134,6 +138,11 @@ class Usuarios
 		$secciones = array_values(array_unique(array_filter($secciones, fn ($v) => $v > 0)));
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM sistema_usuarios WHERE id_usuario_sistema = ?');
+		$existe->execute([$id]);
+		if (!$existe->fetchColumn()) return ['status'=>'error', 'message'=>'Usuario no encontrado'];
+		$validas = array_map('intval', array_column($con->query("SELECT id_seccion FROM sistema_secciones WHERE estado_seccion = 'activo'")->fetchAll(), 'id_seccion'));
+		if (array_diff($secciones, $validas)) return ['status'=>'error', 'message'=>'Una sección solicitada no existe o está inactiva'];
 
 		// Evita que el administrador se deje a sí mismo sin acceso al ACL
 		$actual = Acl::usuario();

@@ -14,7 +14,7 @@
   function kv(clave, valor, clase) {
     return (
       '<dl class="kl-kv" style="margin:0;"><dt>' + clave + '</dt>' +
-      '<dd class="' + (clase || '') + '">' + valor + '</dd></dl>'
+      '<dd class="' + (clase || '') + '">' + Kloset.escapeHtml(valor) + '</dd></dl>'
     );
   }
 
@@ -53,7 +53,7 @@
         (s) =>
           '<label class="kl-perm">' +
           '<input type="checkbox" name="secciones[]" value="' + s.id_seccion + '"' + (s.activa ? ' checked' : '') + '>' +
-          '<div><b>' + s.nombre_seccion + '</b><small>' + s.nombre_modulo + ' · /' + s.url_seccion + '</small></div>' +
+          '<div><b>' + Kloset.escapeHtml(s.nombre_seccion) + '</b><small>' + Kloset.escapeHtml(s.nombre_modulo) + ' · /' + Kloset.escapeHtml(s.url_seccion) + '</small></div>' +
           '<span class="kl-switch"><i></i></span>' +
           '</label>'
       )

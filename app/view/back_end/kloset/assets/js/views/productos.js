@@ -23,7 +23,7 @@
       const fig = document.createElement('figure');
       fig.className = 'kl-img';
       fig.innerHTML =
-        '<img src="' + img.url_imagen + '" alt="">' +
+        '<img src="' + Kloset.escapeHtml(img.url_imagen) + '" alt="">' +
         '<button type="button" class="kl-img-del" data-id-imagen="' + img.id_imagen + '" title="Eliminar">&times;</button>';
       galeria.appendChild(fig);
     });

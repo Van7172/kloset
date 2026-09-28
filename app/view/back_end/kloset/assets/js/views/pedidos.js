@@ -20,6 +20,7 @@
 
   let idActual = null;
   let estadoElegido = null;
+  let estadoRegistrado = null;
 
   function kv(clave, valor, clase) {
     return (
@@ -34,7 +35,7 @@
       const cur = e === estadoElegido;
       return (
         '<button type="button" class="kl-btn' + (cur ? '' : ' kl-btn--ghost') + '" style="font-size:11.5px; min-height:40px;" data-estado="' + e + '"' +
-        (cur ? ' disabled' : '') + '>' + label(e) + '</button>'
+        (cur || estadoRegistrado === 'cancelado' || (estadoRegistrado === 'entregado' && e !== 'entregado') || (e !== 'cancelado' && ESTADOS.indexOf(e) < ESTADOS.indexOf(estadoRegistrado)) ? ' disabled' : '') + '>' + label(e) + '</button>'
       );
     }).join('');
   }
@@ -68,7 +69,9 @@
       ))
       .join('') || '<p class="kl-fg-soft" style="font-size:13px;">Sin ítems.</p>';
 
+    estadoRegistrado = p.estado_pedido;
     pintarEstados(p.estado_pedido);
+    btnGuardar.disabled = p.estado_pedido === 'cancelado';
     document.getElementById('ped-transportista').value = p.transportista_pedido || '';
     document.getElementById('ped-seguimiento').value = p.seguimiento_pedido || '';
     document.getElementById('ped-entrega').value = p.entrega_estimada_pedido || '';
@@ -104,6 +107,7 @@
 
   btnGuardar.addEventListener('click', async () => {
     if (!idActual || !estadoElegido) return;
+    btnGuardar.disabled = true;
     Kloset.showError('form-pedido-error', '');
 
     const res = await Kloset.ajax('PedidosAdmin', 'cambiarEstado', {
@@ -116,6 +120,7 @@
     });
 
     if (res.status !== 'success') {
+      btnGuardar.disabled = false;
       Kloset.showError('form-pedido-error', res.message || 'No se pudo guardar');
       return;
     }

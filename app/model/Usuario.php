@@ -28,11 +28,12 @@ class Usuario
 		}
 
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT * FROM sistema_usuarios WHERE id_usuario_sistema = :id');
+		$sth = $con->prepare("SELECT u.* FROM sistema_usuarios u INNER JOIN sistema_roles r ON r.id_rol = u.id_rol WHERE u.id_usuario_sistema = :id AND r.estado_rol = 'activo'");
 		$sth->bindParam(':id', $this->_id, PDO::PARAM_INT);
 		$sth->execute();
 
 		if ($sth->rowCount() === 0) {
+			$this->_id = 0;
 			return;
 		}
 
@@ -49,6 +50,7 @@ class Usuario
 			 INNER JOIN sistema_secciones s ON s.id_seccion = us.id_seccion
 			 INNER JOIN sistema_modulos m ON m.id_modulo = s.id_modulo
 			 WHERE us.id_usuario_sistema = :id
+			   AND s.estado_seccion = \'activo\' AND m.estado_modulo = \'activo\'
 			 ORDER BY m.orden_modulo, s.orden_seccion'
 		);
 		$sth->bindParam(':id', $this->_id, PDO::PARAM_INT);
@@ -97,6 +99,8 @@ class Usuario
 	{
 		return $this->_id;
 	}
+
+	public function getEstado() { return $this->_estado; }
 
 	public function getLogeado()
 	{

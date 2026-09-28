@@ -78,12 +78,18 @@ class Configuracion
 		}
 
 		$con = Conexion::getInstance();
-		$sth = $con->prepare("UPDATE sistema_configuraciones SET valor_configuracion = :valor WHERE id_configuracion = :id");
-		$n = 0;
+		$llaves = array_column(self::getConfiguration(), 'llave_configuracion', 'id_configuracion');
 		foreach ($valores as $id => $valor) {
-			$sth->execute([":valor" => trim((string) $valor), ":id" => (int) $id]);
-			$n++;
+			if (!isset($llaves[$id]) || !is_scalar($valor)) return ['status'=>'error', 'message'=>'Configuración no válida'];
+			if ($llaves[$id] === 'inventario.alerta_stock' && (filter_var($valor, FILTER_VALIDATE_INT) === false || (int)$valor < 1)) return ['status'=>'error', 'message'=>'El umbral de stock debe ser un entero mayor a cero'];
 		}
+		$con->beginTransaction();
+		try {
+			$sth = $con->prepare("UPDATE sistema_configuraciones SET valor_configuracion = :valor WHERE id_configuracion = :id");
+			$n = 0;
+			foreach ($valores as $id => $valor) { $sth->execute([":valor" => trim((string)$valor), ":id" => (int)$id]); $n++; }
+			$con->commit();
+		} catch (\Throwable $e) { $con->rollBack(); throw $e; }
 
 		return ["status" => "success", "message" => "sistema_configuraciones actualizada (" . $n . " llaves)"];
 	}

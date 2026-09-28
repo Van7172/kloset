@@ -136,6 +136,7 @@ code { font-family: 'Archivo Narrow', sans-serif; letter-spacing: 0.04em; }
 .kl-grid-head { padding: 11px 16px; border-bottom: 1px solid var(--ink); }
 .kl-grid-head > div { font-family: 'Archivo Narrow', sans-serif; font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--soft); }
 .kl-grid-row { padding: 13px 16px; border-bottom: 1px solid var(--rule); background: transparent; cursor: pointer; align-items: center; text-align: left; width: 100%; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; }
+[hidden] { display: none !important; }
 .kl-grid-row:hover { background: var(--hover); }
 .kl-grid-row.active { background: var(--surface-2); }
 .kl-cell { min-width: 0; }

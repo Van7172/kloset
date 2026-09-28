@@ -11,8 +11,11 @@ window.Kloset = (function () {
     }
     body.set('class', clase);
     body.set('method', metodo);
+    body.set('csrf', CSRF_PANEL);
 
-    const res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin' });
+    let res;
+    try { res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin' }); }
+    catch { return { status: 'error', message: 'No hay conexión con el panel' }; }
 
     if (res.status === 401) {
       toast('Tu sesión expiró · vuelve a entrar', 'error');
@@ -180,5 +183,9 @@ window.Kloset = (function () {
     window.location.reload();
   }
 
-  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar };
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+  }
+
+  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar, escapeHtml };
 })();
