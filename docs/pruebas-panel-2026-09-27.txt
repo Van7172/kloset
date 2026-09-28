@@ -1,0 +1,132 @@
+ok JSON Categorias/store
+ok sin sesión rechazado
+ok login y consulta dashboard
+ok token CSRF generado
+ok página dashboard consulta DB
+ok página categorias consulta DB
+ok página productos consulta DB
+ok página variantes consulta DB
+ok página pedidos consulta DB
+ok página pagos consulta DB
+ok página notificaciones consulta DB
+ok página clientes consulta DB
+ok página usuarios consulta DB
+ok página roles consulta DB
+ok página configuracion consulta DB
+ok JSON Categorias/store
+ok CSRF ausente rechazado
+ok JSON Configuracion/update
+ok método legacy no permitido
+ok mutación GET rechazada
+ok JSON Categorias/store
+ok Categorias/store
+ok JSON Categorias/getById
+ok Categorias/getById
+ok JSON Categorias/store
+ok categoría duplicada rechazada
+ok JSON Categorias/updateCategoria
+ok Categorias/updateCategoria
+ok JSON Productos/store
+ok Productos/store
+ok JSON Productos/updateProducto
+ok Productos/updateProducto
+ok JSON Productos/store
+ok categoría inexistente rechazada
+ok JSON Productos/uploadImagenes
+ok Productos/uploadImagenes
+ok imagen subida en DB
+ok archivo de imagen existente
+ok JSON Productos/uploadImagenes
+ok imagen falsa rechazada
+ok JSON Variantes/store
+ok Variantes/store
+ok JSON Variantes/getById
+ok Variantes/getById
+ok JSON Variantes/updateVariante
+ok Variantes/updateVariante
+ok JSON Variantes/store
+ok SKU duplicado rechazado
+ok JSON Variantes/updateVariante
+ok stock negativo rechazado
+ok cliente API creado
+ok bolsa cliente
+ok JSON Productos/deleteProducto
+ok borrado con bolsa conserva imagen
+ok pedido API creado
+ok JSON Clientes/getById
+ok Clientes/getById
+ok JSON PedidosAdmin/getById
+ok PedidosAdmin/getById
+ok detalle pedido contiene prenda
+ok JSON Pagos/getById
+ok Pagos/getById
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok repetición no duplica historial
+ok cambio sin metadata conserva seguimiento
+ok JSON PedidosAdmin/cambiarEstado
+ok pedido entregado no retrocede
+ok JSON Variantes/updateVariante
+ok identidad de variante vendida protegida
+ok JSON Productos/deleteProducto
+ok borrado con venta conserva imagen
+ok JSON Variantes/deleteVariante
+ok variante vendida no se elimina
+ok JSON Notificaciones/marcarLeida
+ok Notificaciones/marcarLeida
+ok lectura notificación persistida
+ok JSON Notificaciones/marcarTodasLeidas
+ok Notificaciones/marcarTodasLeidas
+ok marcar todas persistido
+ok JSON Roles/store
+ok Roles/store
+ok JSON Roles/getById
+ok Roles/getById
+ok JSON Roles/updateRol
+ok Roles/updateRol
+ok JSON Usuarios/store
+ok Usuarios/store
+ok JSON Usuarios/getById
+ok Usuarios/getById
+ok JSON Usuarios/updateSecciones
+ok Usuarios/updateSecciones
+ok JSON Roles/deleteRol
+ok rol en uso protegido
+ok JSON Roles/deleteRol
+ok Roles/deleteRol
+ok JSON Configuracion/saveAll
+ok Configuracion/saveAll
+ok configuración persistida
+ok JSON Configuracion/saveAll
+ok configuración inexistente rechazada
+ok JSON Categorias/getById
+ok revocación ACL inmediata
+ok JSON Categorias/getById
+ok Categorias/getById
+ok JSON Productos/deleteImagen
+ok Productos/deleteImagen
+ok imagen retirada del disco
+ok JSON PedidosAdmin/cambiarEstado
+ok PedidosAdmin/cambiarEstado
+ok cancelación admin devuelve stock
+ok JSON PedidosAdmin/cambiarEstado
+ok segunda cancelación no duplica stock
+ok JSON Variantes/deleteVariante
+ok Variantes/deleteVariante
+ok JSON Productos/deleteProducto
+ok Productos/deleteProducto
+ok JSON Categorias/deleteCategoria
+ok Categorias/deleteCategoria
+ok contacto genera notificación de panel
+ok contacto visible en notificaciones DB
+ok JSON Productos/getById
+ok usuario desactivado pierde sesión
+registros QA del panel retirados

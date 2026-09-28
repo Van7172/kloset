@@ -22,10 +22,13 @@
                 <?php endforeach; ?>
             </select>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($productos) ?></span> filas</span>
+            <button class="kl-create-btn" type="button" id="prod-crear" title="Crear registro" aria-label="Crear registro" <?= empty($categorias) ? 'disabled' : '' ?>>
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 2.4v11.2M2.4 8h11.2" /></svg>
+            </button>
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:2.2fr 1fr .8fr .8fr .7fr .9fr; --min-w:760px;">
+            <div class="kl-grid" style="--cols:2.2fr 1fr .8fr .8fr .7fr .9fr 84px; --min-w:840px;">
                 <div class="kl-grid-head">
                     <div>producto</div>
                     <div>categoría</div>
@@ -33,6 +36,7 @@
                     <div class="kl-cell--right">imágenes</div>
                     <div class="kl-cell--right">stock</div>
                     <div class="kl-cell--right">estado</div>
+                    <div class="kl-cell--right" style="position:sticky; right:0; background:var(--panel);">acciones</div>
                 </div>
 
                 <?php if (empty($productos)): ?>
@@ -56,6 +60,14 @@
                             </div>
                             <div class="kl-cell kl-cell--right kl-cell--tag">
                                 <b class="<?= $prod['estado_producto'] === 'activo' ? 'kl-fg-ok' : 'kl-fg-soft' ?>"><?= htmlspecialchars($prod['estado_producto']) ?></b>
+                            </div>
+                            <div class="kl-row-actions">
+                                <button class="kl-icon-btn" type="button" data-accion="editar" title="Editar" aria-label="Editar">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11.1 2.3l2.6 2.6-8 8H3.1v-2.6l8-8Z" /><path d="M9.6 3.8l2.6 2.6" /></svg>
+                                </button>
+                                <button class="kl-icon-btn kl-icon-btn--danger" type="button" data-accion="eliminar" title="Eliminar" aria-label="Eliminar">
+                                    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2.9 4.6h10.2M6.1 4.6V2.9h3.8v1.7M4.2 4.6l.7 8.5h6.2l.7-8.5M6.6 7v4M9.4 7v4" /></svg>
+                                </button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -122,8 +134,20 @@
 
             <div class="kl-detail-actions">
                 <button class="kl-btn" type="submit" id="prod-guardar">Guardar producto</button>
-                <button class="kl-btn kl-btn--danger kl-btn--sm" type="button" id="prod-eliminar" hidden>Eliminar</button>
+                <button class="kl-btn kl-btn--ghost kl-btn--sm" type="button" data-cerrar-detalle>Cancelar</button>
             </div>
         </form>
+    </aside>
+
+    <aside class="kl-detail kl-confirm" id="confirmar-producto" hidden>
+        <div class="kl-detail-section" style="padding-top:18px;">
+            <div class="kl-kicker kl-fg-red">DELETE · productos</div>
+            <div class="kl-detail-title" data-rol="titulo">¿Eliminar?</div>
+            <p data-rol="texto" style="margin:0; color:var(--body); font-size:13.5px; line-height:1.55;"></p>
+        </div>
+        <div class="kl-detail-actions">
+            <button class="kl-btn kl-btn--danger" type="button" data-rol="ok">Eliminar</button>
+            <button class="kl-btn kl-btn--ghost" type="button" id="confirmar-producto-cancelar">Cancelar</button>
+        </div>
     </aside>
 </div>

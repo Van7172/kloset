@@ -1,0 +1,65 @@
+# Kloset — .htaccess de PRODUCCIÓN
+#
+# Cópialo a la raíz del dominio (sustituye al .htaccess de desarrollo) cuando
+# el document root de kloset.shop apunte a la carpeta del proyecto y hayas
+# volcado ahí el contenido de frontend/dist/.
+#
+# Reparto:
+#   /api/v1/*     → API REST (PHP + JWT)
+#   /dw-panel/*   → panel administrativo (sesión PHP)
+#   /app/*        → imágenes y assets subidos desde el panel
+#   resto         → SPA React (index.html), que resuelve sus rutas en cliente
+
+RewriteEngine On
+
+# --- HTTPS y dominio canónico (sin www) ---
+RewriteCond %{HTTPS} off
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+# --- Backend PHP ---
+RewriteRule ^api/v1/(.*)$ api/index.php [L,QSA]
+RewriteRule ^(api|dw-panel|app)/ - [L]
+
+# --- Archivos reales del build (assets, favicon, sitemap, robots…) ---
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# --- Todo lo demás lo resuelve la SPA ---
+RewriteRule ^ index.html [L]
+
+# --- Caché: los assets del build llevan hash, el HTML nunca se cachea ---
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 6 months"
+  ExpiresByType image/svg+xml "access plus 6 months"
+  ExpiresByType image/webp "access plus 6 months"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "^(index\.html|sitemap\.xml|robots\.txt)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml
+</IfModule>
+
+# --- No exponer configuración ni fuentes ---
+<FilesMatch "^(inc\.core\.php|inc\.config\.php|composer\.(json|lock)|\.env.*)$">
+  Require all denied
+</FilesMatch>

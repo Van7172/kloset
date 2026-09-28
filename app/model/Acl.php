@@ -7,7 +7,7 @@ class Acl
 	public static function usuario(): ?Usuario
 	{
 		$usuario = $_SESSION['usuario'] ?? null;
-		if (!$usuario instanceof Usuario || $usuario->getId() <= 0) {
+		if (!$usuario instanceof Usuario || $usuario->getId() <= 0 || !$usuario->getLogeado()) {
 			return null;
 		}
 		return $usuario;

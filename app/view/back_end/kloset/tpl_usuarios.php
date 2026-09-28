@@ -58,14 +58,33 @@
 
             <div class="kl-detail-body" id="usr-resumen"></div>
 
-            <div class="kl-detail-section">
+            <div class="kl-detail-section" id="usr-alta" hidden>
+                <label class="kl-label" for="usr-nombre">nombre_usuario_sistema *</label>
+                <input class="kl-field" type="text" id="usr-nombre" name="nombre" maxlength="120">
+
+                <label class="kl-label" for="usr-correo">correo_usuario_sistema *</label>
+                <input class="kl-field" type="email" id="usr-correo" name="correo" maxlength="150">
+
+                <label class="kl-label" for="usr-password">contraseña * <span class="kl-hint">— mínimo 8 caracteres</span></label>
+                <input class="kl-field" type="password" id="usr-password" name="password" autocomplete="new-password">
+
+                <label class="kl-label" for="usr-rol">id_rol *</label>
+                <select class="kl-field" id="usr-rol" name="id_rol">
+                    <option value="">Selecciona…</option>
+                    <?php foreach ($roles as $r): ?>
+                        <option value="<?= (int) $r['id_rol'] ?>"><?= htmlspecialchars($r['nombre_rol']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <div class="kl-detail-section" id="usr-perms-wrap">
                 <div class="kl-form-error" id="form-usuario-error" hidden></div>
                 <div class="kl-kicker">usuarios_secciones · acceso por pantalla</div>
                 <div id="usr-perms"></div>
             </div>
 
             <div class="kl-detail-actions">
-                <button class="kl-btn" type="submit">Guardar acceso</button>
+                <button class="kl-btn" type="submit" id="usr-guardar">Guardar acceso</button>
                 <button class="kl-btn kl-btn--ghost kl-btn--sm" type="button" data-cerrar-detalle>Cancelar</button>
             </div>
         </form>

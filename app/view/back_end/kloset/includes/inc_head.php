@@ -4,9 +4,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Archivo:wght@400;500;600&family=Archivo+Narrow:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="<?= ADMIN_CSS ?>kloset-admin.css">
+<link rel="stylesheet" href="<?= ADMIN_CSS ?>kloset-admin.css?v=<?= substr(hash_file('sha256', ADMIN_TEMPLATE_HOST . 'assets/css/kloset-admin.css'), 0, 16) ?>">
 <script>
-  const URL_ADMIN = '<?= DW_PANEL ?>';
+  const URL_ADMIN = <?= json_encode(DW_PANEL) ?>;
+  const CSRF_PANEL = <?= json_encode($_SESSION['csrf_panel']) ?>;
   // Tema antes del primer pintado para evitar el parpadeo
   (function () {
     var saved = null;

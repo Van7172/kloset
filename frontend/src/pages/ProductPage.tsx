@@ -4,19 +4,26 @@ import { api, type ApiDetalle } from '../services/api';
 import { useKloset, type ItemBolsa } from '../store/KlosetContext';
 import { TALLAS, money, tallaRecomendada, type Talla } from '../lib/fit';
 import { Marco } from '../components/Marco';
+import { Seo } from '../components/Seo';
 
 export function ProductPage() {
   const { url = '' } = useParams();
   const navigate = useNavigate();
-  const { medidas, corte, usuario, añadirABolsa, setIntencion } = useKloset();
+  const { medidas, corte, tienePerfil, usuario, añadirABolsa, setIntencion } = useKloset();
 
   const [detalle, setDetalle] = useState<ApiDetalle | null>(null);
   const [error, setError] = useState('');
   const [foto, setFoto] = useState(0);
   const [talla, setTalla] = useState<Talla | null>(null);
+  const [errorBolsa, setErrorBolsa] = useState('');
+  const [añadiendo, setAñadiendo] = useState(false);
+  const [favorito, setFavorito] = useState(false);
+  const [favoritoOcupado, setFavoritoOcupado] = useState(false);
 
   useEffect(() => {
     setDetalle(null);
+    setError('');
+    setTalla(null);
     setFoto(0);
     api
       .producto(url)
@@ -26,6 +33,13 @@ export function ProductPage() {
       })
       .catch(() => setError('API no disponible'));
   }, [url]);
+
+  useEffect(() => {
+    if (!usuario || !detalle?.producto) { setFavorito(false); return; }
+    void api.favoritos.listar().then((res) => {
+      if (res.status === 'success') setFavorito(res.productos.some((p) => p.id_producto === detalle.producto.id_producto));
+    }).catch(() => undefined);
+  }, [usuario, detalle]);
 
   if (error) {
     return (
@@ -61,16 +75,32 @@ export function ProductPage() {
     fit: corte,
     price: precio,
     imagen: imagenes[0]?.url_imagen ?? null,
+    cantidad: 1,
   };
 
-  const añadir = () => {
+  const añadir = async () => {
     if (!usuario) {
       setIntencion({ then: 'cart', item });
       navigate('/entrar');
       return;
     }
-    añadirABolsa(item);
+    setErrorBolsa('');
+    setAñadiendo(true);
+    const fallo = await añadirABolsa(item);
+    setAñadiendo(false);
+    if (fallo) return setErrorBolsa(fallo);
     navigate('/bolsa');
+  };
+
+  const alternarFavorito = async () => {
+    if (!usuario) { navigate('/entrar'); return; }
+    setFavoritoOcupado(true);
+    try {
+      const res = await api.favoritos.alternar(p.id_producto);
+      if (res.status === 'success') setFavorito(Boolean(res.favorito));
+      else setErrorBolsa(res.message || 'No se pudo guardar el favorito');
+    } catch { setErrorBolsa('No hay conexión con la API'); }
+    finally { setFavoritoOcupado(false); }
   };
 
   const specs = [
@@ -80,8 +110,18 @@ export function ProductPage() {
     { k: 'Cambio de talla', v: 'Sin coste durante 30 días' },
   ];
 
+  const resumen = p.descripcion_producto
+    ? p.descripcion_producto.slice(0, 155)
+    : `${p.nombre_producto} en corte ${corte.toLowerCase()}. Talla sugerida para tus medidas: ${recomendada}. Cambio de talla gratis 30 días.`;
+
   return (
     <div className="kl-rise">
+      <Seo
+        title={p.nombre_producto}
+        description={resumen}
+        path={`/producto/${p.url_producto}`}
+        image={imagenes[0]?.url_imagen ?? undefined}
+      />
       <button
         type="button"
         onClick={() => navigate('/')}
@@ -96,6 +136,7 @@ export function ProductPage() {
             src={imagenes[foto]?.url_imagen ?? null}
             alt={p.nombre_producto}
             etiqueta="Foto de producto · frontal"
+            prioridad
           />
           {imagenes.length > 1 && (
             <div className="mt-2 grid grid-cols-4 gap-2">
@@ -107,7 +148,15 @@ export function ProductPage() {
                   className="relative aspect-square cursor-pointer overflow-hidden border p-0"
                   style={{ borderColor: i === foto ? 'var(--ink)' : 'transparent' }}
                 >
-                  <img src={img.url_imagen} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={img.url_imagen}
+                    alt=""
+                    width={120}
+                    height={120}
+                    loading="lazy"
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -118,9 +167,7 @@ export function ProductPage() {
           <div className="inline-block border-b-[3px] border-red pb-[5px] font-narrow text-xs uppercase tracking-[0.14em] text-ink">
             {p.nombre_categoria ?? 'Kloset'}
           </div>
-          <h2 className="mb-[10px] mt-4 font-display text-4xl font-normal leading-[1.06] tracking-[-0.025em]">
-            {p.nombre_producto}
-          </h2>
+          <div className="mb-[10px] mt-4 flex items-start justify-between gap-3"><h2 className="font-display text-4xl font-normal leading-[1.06] tracking-[-0.025em]">{p.nombre_producto}</h2><button type="button" onClick={() => void alternarFavorito()} disabled={favoritoOcupado} aria-label={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} title={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-2xl text-red disabled:opacity-50">{favorito ? '♥' : '♡'}</button></div>
           <div className="mb-[18px] flex items-baseline gap-[14px]">
             <span className="font-display text-2xl">{money(precio)}</span>
             <span className="text-[13px] text-soft">{corte} · {stock} uds en stock</span>
@@ -132,7 +179,7 @@ export function ProductPage() {
           <div className="flex items-baseline justify-between border-b border-ink pb-[10px]">
             <span className="font-narrow text-xs uppercase tracking-[0.12em] text-soft">Talla</span>
             <span className="text-[13px] text-body">
-              Sugerida para ti: <span className="font-semibold text-red">{recomendada}</span>
+              {tienePerfil ? <>Sugerida para ti: <span className="font-semibold text-red">{recomendada}</span></> : <button type="button" onClick={() => navigate('/medidas')} className="cursor-pointer border-none bg-transparent text-red underline">Encuentra tu talla con tus medidas</button>}
             </span>
           </div>
           <div className="mb-[22px] grid grid-cols-5 border border-t-0 border-ink">
@@ -151,7 +198,7 @@ export function ProductPage() {
                 {s}
                 <span
                   className="absolute bottom-[5px] left-1/2 h-[3px] -translate-x-1/2 bg-red"
-                  style={{ width: s === recomendada ? '16px' : '0px' }}
+                  style={{ width: tienePerfil && s === recomendada ? '16px' : '0px' }}
                 />
               </button>
             ))}
@@ -168,11 +215,18 @@ export function ProductPage() {
             <button
               type="button"
               onClick={añadir}
-              className="min-h-[56px] cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover"
+              disabled={añadiendo}
+              className="min-h-[56px] cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover disabled:opacity-50"
             >
-              Añadir a la bolsa · {elegida}
+              {añadiendo ? 'Añadiendo…' : `Añadir a la bolsa · ${elegida}`}
             </button>
           </div>
+
+          {errorBolsa && (
+            <div className="mt-3 border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">
+              {errorBolsa}
+            </div>
+          )}
 
           <div className="mt-[26px] border-t border-ink pt-1">
             {specs.map((s) => (

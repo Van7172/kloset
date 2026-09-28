@@ -4,16 +4,38 @@ import logo from '../assets/kloset-logo-transparente.png';
 import logoSquare from '../assets/kloset-logo-square.png';
 
 const TABS = [
-  { key: 'catalogo', label: 'Catálogo', to: '/', rutas: ['/', '/producto'], soloMovil: false },
-  { key: 'ajuste', label: 'Ajuste', to: '/medidas', rutas: ['/medidas', '/resultado', '/avatar'], soloMovil: false },
-  { key: 'bolsa', label: 'Bolsa', to: '/bolsa', rutas: ['/bolsa'], soloMovil: true },
-  { key: 'cuenta', label: 'Cuenta', to: '/cuenta', rutas: ['/cuenta', '/pedidos', '/entrar'], soloMovil: true },
+  { key: 'catalogo', label: 'Catálogo', to: '/catalogo', rutas: ['/catalogo', '/producto'], soloMovil: false, ocultaConSesion: false, enBarra: true },
+  { key: 'cobertura', label: 'Cobertura', to: '/cobertura', rutas: ['/cobertura'], soloMovil: false, ocultaConSesion: false, enBarra: false },
+  { key: 'nosotros', label: 'Nosotros', to: '/nosotros', rutas: ['/nosotros'], soloMovil: false, ocultaConSesion: false, enBarra: false },
+  { key: 'contacto', label: 'Contáctanos', to: '/contacto', rutas: ['/contacto'], soloMovil: false, ocultaConSesion: false, enBarra: false },
+  { key: 'bolsa', label: 'Bolsa', to: '/bolsa', rutas: ['/bolsa'], soloMovil: true, ocultaConSesion: false, enBarra: true },
+  { key: 'cuenta', label: 'Cuenta', to: '/cuenta', rutas: ['/cuenta', '/pedidos', '/entrar'], soloMovil: true, ocultaConSesion: false, enBarra: true },
 ];
 
 const COLUMNAS_PIE = [
-  { title: 'Ajuste', links: ['Cómo medirte', 'Guía de tallas', 'Tipos de corte', 'Precisión del avatar'] },
-  { title: 'Tienda', links: ['Novedades', 'Camisetas y tops', 'Mallas y shorts', 'Capas'] },
-  { title: 'Ayuda', links: ['Envíos', 'Cambios de talla', 'Contacto', 'Privacidad de medidas'] },
+  {
+    title: 'Tienda',
+    links: [
+      { label: 'Catálogo', to: '/catalogo' },
+      { label: 'Ajuste de talla', to: '/medidas' },
+      { label: 'Cobertura en Lima', to: '/cobertura' },
+    ],
+  },
+  {
+    title: 'Kloset',
+    links: [
+      { label: 'Nosotros', to: '/nosotros' },
+      { label: 'Contáctanos', to: '/contacto' },
+    ],
+  },
+  {
+    title: 'Legal',
+    links: [
+      { label: 'Política de Privacidad', to: '/legal/privacidad' },
+      { label: 'Términos y Condiciones', to: '/legal/terminos' },
+      { label: 'Libro de Reclamaciones', to: '/legal/reclamaciones' },
+    ],
+  },
 ];
 
 function IconoSol() {
@@ -59,12 +81,12 @@ export function AppLayout() {
                 }}
               />
             ) : (
-              <img src={logo} alt="Kloset" className="h-8 w-auto" />
+              <img src={logo} alt="Kloset" width={128} height={32} decoding="async" className="h-8 w-auto" />
             )}
           </Link>
 
-          <nav className="ml-3 hidden items-stretch gap-[2px] md:flex">
-            {TABS.filter((t) => !t.soloMovil).map((t) => (
+          <nav className="ml-3 hidden items-stretch gap-[2px] lg:flex">
+            {TABS.filter((t) => !t.soloMovil && !(t.ocultaConSesion && usuario)).map((t) => (
               <NavLink
                 key={t.key}
                 to={t.to}
@@ -125,7 +147,7 @@ export function AppLayout() {
             </svg>
             {bolsa.length > 0 && (
               <span className="absolute -right-[6px] -top-[6px] flex h-[18px] min-w-[18px] items-center justify-center bg-red px-1 font-narrow text-[11px] font-semibold leading-none text-[#F2F2F0]">
-                {bolsa.length}
+                {bolsa.reduce((total, item) => total + item.cantidad, 0)}
               </span>
             )}
           </button>
@@ -156,7 +178,15 @@ export function AppLayout() {
       <footer className="mt-[60px] border-t-[3px] border-[#C4211F] bg-[#161615] text-[#F0EFEC]">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-[30px] px-4 pb-[26px] pt-[30px] md:flex-row md:gap-14 md:px-7 md:pb-9 md:pt-11">
           <div className="shrink-0">
-            <img src={logoSquare} alt="Kloset" className="block h-[132px] w-[132px] object-cover" />
+            <img
+              src={logoSquare}
+              alt="Kloset"
+              width={132}
+              height={132}
+              loading="lazy"
+              decoding="async"
+              className="block h-[132px] w-[132px] object-cover"
+            />
             <p className="mt-4 max-w-[26ch] text-[13px] leading-relaxed text-[#95948E]">
               Ropa deportiva medida sobre tu cuerpo, no sobre un maniquí estándar.
             </p>
@@ -168,8 +198,10 @@ export function AppLayout() {
                   {col.title}
                 </div>
                 {col.links.map((l) => (
-                  <div key={l} className="py-[7px]">
-                    <span className="cursor-default text-[13.5px] text-[#B6B5AF]">{l}</span>
+                  <div key={l.label} className="py-[7px]">
+                    <Link to={l.to} className="text-[13.5px] text-[#B6B5AF] hover:text-[#F0EFEC]">
+                      {l.label}
+                    </Link>
                   </div>
                 ))}
               </div>
@@ -177,19 +209,23 @@ export function AppLayout() {
           </div>
         </div>
         <div className="border-t border-[#2E2E2B]">
-          <div className="mx-auto flex max-w-[1320px] flex-wrap justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em] text-[#95948E]">
+          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em] text-[#95948E]">
             <span>© 2026 Kloset · Lima</span>
-            <span>Ajuste garantizado · 30 días para cambiar de talla</span>
+            <span className="flex flex-wrap gap-[18px]">
+              <Link to="/legal/privacidad" className="hover:text-[#F0EFEC]">Política de Privacidad</Link>
+              <Link to="/legal/terminos" className="hover:text-[#F0EFEC]">Términos y Condiciones</Link>
+              <Link to="/legal/reclamaciones" className="hover:text-[#F0EFEC]">Libro de Reclamaciones</Link>
+            </span>
           </div>
         </div>
       </footer>
 
       <nav
-        className="sticky bottom-0 z-40 border-t border-ink backdrop-blur-md md:hidden"
+        className="sticky bottom-0 z-40 border-t border-ink backdrop-blur-md lg:hidden"
         style={{ background: 'var(--header-bg)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="grid grid-cols-4">
-          {TABS.map((t) => {
+          {TABS.filter((t) => t.enBarra).map((t) => {
             const on = activa(t.rutas);
             const destino = t.key === 'cuenta' ? (usuario ? '/cuenta' : '/entrar') : t.to;
             return (

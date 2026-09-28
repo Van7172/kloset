@@ -108,6 +108,9 @@ class Categorias
 		}
 
 		$con = Conexion::getInstance();
+		$existe = $con->prepare('SELECT 1 FROM categorias WHERE id_categoria = ?');
+		$existe->execute([$id]);
+		if (!$existe->fetchColumn()) return ['status'=>'error', 'message'=>'Categoría no encontrada'];
 		$sth = $con->prepare(
 			'UPDATE categorias SET nombre_categoria = :nombre, url_categoria = :url,
 			 descripcion_categoria = :descripcion, estado_categoria = :estado
@@ -135,15 +138,12 @@ class Categorias
 			return ['status' => 'error', 'message' => 'Categoría no válida'];
 		}
 
+		// productos.id_categoria es ON DELETE SET NULL: los productos de esta
+		// categoría se conservan, solo quedan sin categoría asignada.
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT COUNT(*) FROM productos WHERE id_categoria = :id');
-		$sth->execute([':id' => $id]);
-		if ((int) $sth->fetchColumn() > 0) {
-			return ['status' => 'error', 'message' => 'No se puede eliminar: la categoría tiene productos asociados'];
-		}
-
 		$sth = $con->prepare('DELETE FROM categorias WHERE id_categoria = :id');
 		$sth->execute([':id' => $id]);
+		if ($sth->rowCount() === 0) return ['status'=>'error', 'message'=>'Categoría no encontrada'];
 
 		return ['status' => 'success', 'message' => 'Categoría eliminada'];
 	}
@@ -159,6 +159,7 @@ class Categorias
 			return ['status' => 'error', 'message' => 'El nombre es obligatorio'];
 		}
 		$url = \url_friend($url !== '' ? $url : $nombre);
+		if (mb_strlen($nombre) > 100 || mb_strlen($url) > 150) return ['status'=>'error', 'message'=>'Nombre o URL demasiado largos'];
 		if ($url === '') {
 			return ['status' => 'error', 'message' => 'La URL no es válida'];
 		}

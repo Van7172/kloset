@@ -10,6 +10,7 @@ export function Marco({
   etiqueta,
   ratio = '4/5',
   fondo = 'var(--surface)',
+  prioridad = false,
   children,
   className = '',
   style,
@@ -19,17 +20,34 @@ export function Marco({
   etiqueta?: string;
   ratio?: string;
   fondo?: string;
+  /** true para imágenes visibles al cargar (evita `loading=lazy` y prioriza la descarga). */
+  prioridad?: boolean;
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
 }) {
+  // width/height explícitos a partir del ratio para que el navegador (y Lighthouse)
+  // reserven el hueco y no haya salto de layout.
+  const [rw, rh] = ratio.split('/').map((n) => Number(n.trim()) || 1);
+  const width = Math.round(rw * 240);
+  const height = Math.round(rh * 240);
+
   return (
     <div
       className={`relative flex items-end overflow-hidden ${className}`}
       style={{ aspectRatio: ratio, background: fondo, ...style }}
     >
       {src ? (
-        <img src={src} alt={alt ?? ''} className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={alt ?? ''}
+          width={width}
+          height={height}
+          loading={prioridad ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={prioridad ? 'high' : 'auto'}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
       ) : (
         <div className="kl-stripes absolute inset-0" />
       )}

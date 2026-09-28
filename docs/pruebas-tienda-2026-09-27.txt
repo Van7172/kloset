@@ -1,0 +1,31 @@
+ok registro
+ok segunda cuenta QA
+ok datos cuenta
+ok primera dirección
+ok dirección ajena protegida
+ok segunda dirección
+ok dirección principal
+ok guardar favorito
+ok listar favoritos
+ok agregar bolsa
+ok bolsa ajena protegida
+ok guardar para después
+ok listar guardados
+ok recuperar guardado
+ok cambiar cantidad
+ok checkout dirección guardada
+ok pedido ajeno protegido
+ok detalle e historial
+ok editar preserva dirección histórica
+ok snapshot de entrega
+ok quitar dirección
+ok guardar medidas
+ok borrar medidas
+ok cambiar contraseña
+ok entrar con nueva contraseña
+ok detalle privado sin sesión
+ok stock descontado
+ok anulación del cliente
+ok stock restituido al cancelar
+ok doble anulación rechazada
+datos de prueba retirados

@@ -11,8 +11,11 @@ window.Kloset = (function () {
     }
     body.set('class', clase);
     body.set('method', metodo);
+    body.set('csrf', CSRF_PANEL);
 
-    const res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin' });
+    let res;
+    try { res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin' }); }
+    catch { return { status: 'error', message: 'No hay conexión con el panel' }; }
 
     if (res.status === 401) {
       toast('Tu sesión expiró · vuelve a entrar', 'error');
@@ -80,6 +83,27 @@ window.Kloset = (function () {
     document.querySelectorAll('.kl-grid-row').forEach((r) => {
       r.classList.toggle('active', r.dataset.id === String(id));
     });
+  }
+
+  /* ------------------------------------------------- Confirmación de borrado
+     Panel lateral rojo (no el confirm() nativo del navegador), con el texto
+     de advertencia propio de cada tabla. Mutuamente excluyente con el panel
+     de detalle: abrir uno cierra el otro. */
+
+  function confirmarEliminar(idConfirmar, idDetalle, opciones) {
+    const panel = document.getElementById(idConfirmar);
+    if (!panel) return;
+    if (idDetalle) cerrarDetalle(idDetalle);
+
+    panel.querySelector('[data-rol="titulo"]').textContent = opciones.titulo;
+    panel.querySelector('[data-rol="texto"]').textContent = opciones.texto;
+
+    const okViejo = panel.querySelector('[data-rol="ok"]');
+    const okNuevo = okViejo.cloneNode(true);
+    okViejo.parentNode.replaceChild(okNuevo, okViejo);
+    okNuevo.addEventListener('click', () => opciones.onConfirmar());
+
+    abrirDetalle(idConfirmar);
   }
 
   /* ---------------------------------------------------------------- Tabla
@@ -159,5 +183,9 @@ window.Kloset = (function () {
     window.location.reload();
   }
 
-  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, tabla, slug, recargar };
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
+  }
+
+  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar, escapeHtml };
 })();
