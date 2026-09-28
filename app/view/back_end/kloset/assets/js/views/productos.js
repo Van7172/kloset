@@ -47,6 +47,15 @@
 
   /* --------------------------------------------------------------- Panel */
 
+  function stockInicial(visible) {
+    const bloque = document.getElementById('prod-stock-inicial');
+    if (!bloque) return;
+    bloque.hidden = !visible;
+    bloque.querySelectorAll('input, select').forEach((campo) => {
+      campo.disabled = !visible;
+    });
+  }
+
   function modoNuevo() {
     form.reset();
     form.elements.id.value = '';
@@ -54,6 +63,7 @@
     kicker.textContent = 'productos · nueva fila';
     titulo.textContent = 'Nuevo producto';
     resumen.hidden = true;
+    stockInicial(true);
     pintarGaleria([]);
     cambios = false;
     Kloset.marcarFila(null);
@@ -77,6 +87,7 @@
     form.elements.precio.value = p.precio_producto || '';
     form.elements.descripcion.value = p.descripcion_producto || '';
     form.elements.estado.value = p.estado_producto || 'activo';
+    stockInicial(false);
 
     kicker.textContent = 'productos · id_producto ' + p.id_producto;
     titulo.textContent = p.nombre_producto;

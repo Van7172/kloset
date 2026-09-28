@@ -118,6 +118,26 @@
                 <label class="kl-label" for="prod-precio">precio_producto (S/) *</label>
                 <input class="kl-field" type="number" id="prod-precio" name="precio" min="0.01" step="0.01" required>
 
+                <div id="prod-stock-inicial">
+                    <label class="kl-label" for="prod-talla">talla_variante *</label>
+                    <select class="kl-field" id="prod-talla" name="talla">
+                        <?php foreach (['XS', 'S', 'M', 'L', 'XL', 'XXL'] as $talla): ?>
+                            <option value="<?= $talla ?>"<?= $talla === 'M' ? ' selected' : '' ?>><?= $talla ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label class="kl-label" for="prod-corte">corte_variante *</label>
+                    <select class="kl-field" id="prod-corte" name="corte">
+                        <?php foreach (['Slim', 'Regular', 'Oversize'] as $corte): ?>
+                            <option value="<?= $corte ?>"<?= $corte === 'Regular' ? ' selected' : '' ?>><?= $corte ?></option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <label class="kl-label" for="prod-stock">stock_variante *</label>
+                    <input class="kl-field" type="number" id="prod-stock" name="stock" min="0" step="1" value="0" required>
+                    <p class="kl-hint" style="margin:6px 0 0;">El stock queda en la primera variante. Otras tallas y cortes se agregan en Variantes.</p>
+                </div>
+
                 <label class="kl-label" for="prod-descripcion">descripcion_producto</label>
                 <textarea class="kl-field kl-textarea" id="prod-descripcion" name="descripcion" rows="3"></textarea>
 

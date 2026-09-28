@@ -64,21 +64,37 @@ class Productos
 			return ['status' => 'error', 'message' => 'La URL ya está en uso'];
 		}
 
+		$inventario = self::readInventarioInicial();
+		if (isset($inventario['status'])) {
+			return $inventario;
+		}
+
 		$con = Conexion::getInstance();
-		$sth = $con->prepare(
-			'INSERT INTO productos (id_categoria, nombre_producto, url_producto, descripcion_producto,
-			                        precio_producto, estado_producto)
-			 VALUES (:categoria, :nombre, :url, :descripcion, :precio, :estado)'
-		);
-		$sth->execute([
-			':categoria' => $datos['categoria'],
-			':nombre' => $datos['nombre'],
-			':url' => $datos['url'],
-			':descripcion' => $datos['descripcion'],
-			':precio' => $datos['precio'],
-			':estado' => $datos['estado'],
-		]);
-		$id = (int) $con->lastInsertId();
+		$con->beginTransaction();
+		try {
+			$sth = $con->prepare(
+				'INSERT INTO productos (id_categoria, nombre_producto, url_producto, descripcion_producto,
+				                        precio_producto, estado_producto)
+				 VALUES (:categoria, :nombre, :url, :descripcion, :precio, :estado)'
+			);
+			$sth->execute([
+				':categoria' => $datos['categoria'],
+				':nombre' => $datos['nombre'],
+				':url' => $datos['url'],
+				':descripcion' => $datos['descripcion'],
+				':precio' => $datos['precio'],
+				':estado' => $datos['estado'],
+			]);
+			$id = (int) $con->lastInsertId();
+			self::crearVarianteInicial($con, $id, $datos['url'], $inventario);
+			$con->commit();
+		} catch (\Throwable $e) {
+			if ($con->inTransaction()) {
+				$con->rollBack();
+			}
+			error_log('KLOSET crear producto: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo crear el producto'];
+		}
 
 		self::guardarImagenes($id);
 
@@ -428,6 +444,60 @@ class Productos
 			'categoria' => $categoria,
 			'estado' => $estado,
 		];
+	}
+
+	private static function readInventarioInicial(): array
+	{
+		$tallas = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+		$cortes = ['Slim', 'Regular', 'Oversize'];
+		$talla = (string) ($_POST['talla'] ?? 'M');
+		$corte = (string) ($_POST['corte'] ?? 'Regular');
+		$stockRaw = $_POST['stock'] ?? null;
+
+		if ($stockRaw === null || $stockRaw === '' || filter_var($stockRaw, FILTER_VALIDATE_INT) === false) {
+			return ['status' => 'error', 'message' => 'Ingresa el stock como un número entero'];
+		}
+		$stock = (int) $stockRaw;
+		if ($stock < 0 || $stock > 2147483647) {
+			return ['status' => 'error', 'message' => 'El stock no puede ser negativo'];
+		}
+		if (!in_array($talla, $tallas, true)) {
+			return ['status' => 'error', 'message' => 'Talla no válida'];
+		}
+		if (!in_array($corte, $cortes, true)) {
+			return ['status' => 'error', 'message' => 'Corte no válido'];
+		}
+
+		return ['talla' => $talla, 'corte' => $corte, 'stock' => $stock];
+	}
+
+	private static function crearVarianteInicial(PDO $con, int $idProducto, string $url, array $inventario): void
+	{
+		$sku = strtoupper(substr($url, 0, 40) . '-' . $inventario['talla'] . '-' . substr($inventario['corte'], 0, 3));
+		$sku = substr(preg_replace('/[^A-Z0-9\-]/', '', $sku) ?: 'SKU', 0, 44);
+		$base = $sku;
+		$n = 1;
+		$ocupado = $con->prepare('SELECT COUNT(*) FROM productos_variantes WHERE sku_variante = ?');
+		do {
+			$ocupado->execute([$sku]);
+			if ((int) $ocupado->fetchColumn() === 0) {
+				break;
+			}
+			$n++;
+			$sku = substr($base, 0, 44) . '-' . $n;
+		} while ($n < 50);
+
+		$sth = $con->prepare(
+			'INSERT INTO productos_variantes (id_producto, talla_variante, corte_variante, sku_variante, stock_variante)
+			 VALUES (:producto, :talla, :corte, :sku, :stock)'
+		);
+		$sth->execute([
+			':producto' => $idProducto,
+			':talla' => $inventario['talla'],
+			':corte' => $inventario['corte'],
+			':sku' => $sku,
+			':stock' => $inventario['stock'],
+		]);
 	}
 
 	private static function urlEnUso(string $url, int $id): bool
