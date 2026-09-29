@@ -66,7 +66,7 @@ try {
     successPanel('Categorias','getById',['id'=>$ids['cat']]);
     [, $r]=adminCall('Categorias','store',$cat); checkPanel($r['status']==='error','categoría duplicada rechazada');
     successPanel('Categorias','updateCategoria',$cat+['id'=>$ids['cat']]);
-    $prod=['nombre'=>'QA Producto ' . $suffix,'url'=>'qa-prod-' . $suffix,'id_categoria'=>$ids['cat'],'descripcion'=>'Prueba local','precio'=>'90.50','estado'=>'activo'];
+    $prod=['nombre'=>'QA Producto ' . $suffix,'url'=>'qa-prod-' . $suffix,'id_categoria'=>$ids['cat'],'descripcion'=>'Prueba local','precio'=>'90.50','estado'=>'activo','talla'=>'S','corte'=>'Slim','stock'=>'7'];
     $r=successPanel('Productos','store',$prod); $ids['prod']=$r['id'];
     successPanel('Productos','updateProducto',$prod+['id'=>$ids['prod']]);
     [, $r]=adminCall('Productos','store',array_merge($prod,['url'=>'otro-'.$suffix,'id_categoria'=>99999999])); checkPanel($r['status']==='error','categoría inexistente rechazada');

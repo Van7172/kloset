@@ -19,9 +19,20 @@ al catálogo. Si las ocho prendas demo aún no existen, carga antes
 `database/seeds/2026-09-21_catalogo_demo.sql`. Copia también
 `app/public_root/imgs/productos/` al servidor.
 
-Para los flujos de cuenta aplica, en este orden, las migraciones
-`database/migrations/2026-09-27_cuenta_y_favoritos.sql` y
-`database/migrations/2026-09-27_seguimiento_y_guardados.sql` una sola vez.
+Para preparar una base existente usa el consolidado reejecutable:
+
+```powershell
+& 'C:\xampp\php\php.exe' database/preparar_entrega.php
+```
+
+Incluye los flujos de cuenta, direcciones con cobertura de Lima y Callao,
+seguimiento, pagos y contactos. `database/migrations/2026-09-28_detalles_direccion.sql`
+queda disponible como migración independiente registrada en la bitácora.
+
+Si la base demo fue cargada antes de esta revisión, ejecuta una vez
+`database/seeds/2026-09-28_restock_catalogo_demo.sql`: repone a 25 unidades
+las seis variantes iniciales de `Short Split 5"` y deja todo el catálogo demo
+comprable.
 
 Credenciales admin por defecto: `admin@kloset.local` / `password`
 
@@ -104,7 +115,8 @@ patrones de contenido: panel general con KPIs, tabla con panel de detalle
   contadores reales. El correo de la cuenta no se edita; no se solicita DNI.
 - `/producto/:url`: guardar/quitar favorito autenticado.
 - `/bolsa`: cantidades con comprobación de stock, quitar y guardar para después.
-- `/pago`: seleccionar una dirección guardada o añadir otra y simular el pago.
+- `/pago`: seleccionar una dirección guardada o añadir otra, con distrito validado
+  dentro de Lima Metropolitana o Callao, y simular el pago.
 - `/pedidos?nuevo=1`: confirmación del pedido persistido; `/pedidos/:id`:
   detalle privado, imágenes, resumen y estados registrados.
 - El panel permite registrar preparación, envío, reparto, entrega, transportista,

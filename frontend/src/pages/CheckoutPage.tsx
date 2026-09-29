@@ -5,6 +5,7 @@ import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 import { api, type ApiDireccion } from '../services/api';
 import { AddressForm } from '../components/AddressForm';
+import { nombreCortoDepartamento, ZONAS_ENTREGA } from '../lib/locations';
 
 type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'error' | 'done';
 
@@ -127,6 +128,8 @@ export function CheckoutPage() {
     { label: 'Pago', activo: estado !== 'declined' && estado !== 'error' },
     { label: 'Confirmación', activo: false },
   ];
+  const direccionSeleccionada = direcciones.find((d) => d.id === direccionId);
+  const distritosCobertura = ZONAS_ENTREGA.flatMap((zona) => zona.distritos);
 
   const campos = [
     { k: 'holder' as const, label: 'Titular', ph: 'Como aparece en la tarjeta', ls: 'normal', mode: 'text' },
@@ -170,7 +173,7 @@ export function CheckoutPage() {
               <h2 className="mb-3 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
                 Dirección de envío
               </h2>
-              {!usarManual && direccionId && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direcciones.find((d) => d.id === direccionId)?.nombre}</div><p className="mt-1 text-sm text-body">{direcciones.find((d) => d.id === direccionId)?.direccion}<br />{direcciones.find((d) => d.id === direccionId)?.ciudad}, Lima</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
+              {!usarManual && direccionSeleccionada && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direccionSeleccionada.nombre}</div><p className="mt-1 text-sm text-body">{direccionSeleccionada.direccion}<br />{direccionSeleccionada.ciudad}, {nombreCortoDepartamento(direccionSeleccionada.departamento)}{direccionSeleccionada.telefono ? ` · ${direccionSeleccionada.telefono}` : ''}</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
               {(!direccionId || usarManual) && <div className="mb-6 border-t border-ink">
                 <div className="border-b border-rule py-[14px]">
                   <label htmlFor="envio-direccion" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
@@ -191,16 +194,18 @@ export function CheckoutPage() {
                   <label htmlFor="envio-ciudad" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
                     Distrito
                   </label>
-                  <input
+                  <select
                     id="envio-ciudad"
                     value={envio.ciudad}
                     onChange={(e) => {
                       setEnvio((s) => ({ ...s, ciudad: e.target.value }));
                       setError('');
                     }}
-                    placeholder="Miraflores"
                     className="min-h-10 w-full border-none bg-transparent py-2 text-[17px] text-ink outline-none"
-                  />
+                  >
+                    <option value="">Selecciona un distrito</option>
+                    {distritosCobertura.map((distrito) => <option key={distrito} value={distrito}>{distrito}</option>)}
+                  </select>
                 </div>
                 <div className="border-b border-rule py-[14px]">
                   <label htmlFor="envio-referencia" className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">

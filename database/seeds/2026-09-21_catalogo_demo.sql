@@ -40,7 +40,6 @@ WHERE p.url_producto IN (
   'short-split-5', 'top-anchor-medium', 'pantalon-cadence-jog', 'camiseta-shell-oversize'
 );
 
--- Talla agotada de ejemplo, para probar el mensaje de "sin stock" del carrito.
-UPDATE productos_variantes SET stock_variante = 0
-WHERE id_producto = (SELECT id_producto FROM productos WHERE url_producto = 'short-split-5')
-  AND talla_variante IN ('XS', 'S');
+-- Todas las combinaciones quedan disponibles para la primera entrega local.
+-- La validación de agotado se cubre en pruebas QA sin dejar tallas no comprables
+-- en el catálogo visible.
