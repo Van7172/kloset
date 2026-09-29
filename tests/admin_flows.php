@@ -68,7 +68,8 @@ try {
     successPanel('Categorias','updateCategoria',$cat+['id'=>$ids['cat']]);
     $prod=['nombre'=>'QA Producto ' . $suffix,'url'=>'qa-prod-' . $suffix,'id_categoria'=>$ids['cat'],'descripcion'=>'Prueba local','precio'=>'90.50','estado'=>'activo','talla'=>'S','corte'=>'Slim','stock'=>'7'];
     $r=successPanel('Productos','store',$prod); $ids['prod']=$r['id'];
-    successPanel('Productos','updateProducto',$prod+['id'=>$ids['prod']]);
+    successPanel('Productos','updateProducto',$prod+['id'=>$ids['prod'],'stock_total'=>'16']);
+    checkPanel((int)$db->query('SELECT COALESCE(SUM(stock_variante),0) FROM productos_variantes WHERE id_producto='.$ids['prod'])->fetchColumn()===16,'stock total de producto persistido');
     [, $r]=adminCall('Productos','store',array_merge($prod,['url'=>'otro-'.$suffix,'id_categoria'=>99999999])); checkPanel($r['status']==='error','categoría inexistente rechazada');
     $image = dirname(__DIR__) . '/app/public_root/imgs/kloset-icon-acento.png';
     $r=successPanel('Productos','uploadImagenes',['id'=>$ids['prod'],'imagenes[0]'=>new CURLFile($image,'image/png','qa.png')]);

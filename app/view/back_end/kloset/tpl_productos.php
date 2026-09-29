@@ -138,6 +138,12 @@
                     <p class="kl-hint" style="margin:6px 0 0;">El stock queda en la primera variante. Otras tallas y cortes se agregan en Variantes.</p>
                 </div>
 
+                <div id="prod-stock-total" hidden>
+                    <label class="kl-label" for="prod-stock-total-input">stock_total *</label>
+                    <input class="kl-field" type="number" id="prod-stock-total-input" name="stock_total" min="0" step="1" disabled>
+                    <p class="kl-hint" style="margin:6px 0 0;">Se distribuye de forma uniforme entre las variantes. Para ajustar una talla o corte puntual, usa Inventario.</p>
+                </div>
+
                 <label class="kl-label" for="prod-descripcion">descripcion_producto</label>
                 <textarea class="kl-field kl-textarea" id="prod-descripcion" name="descripcion" rows="3"></textarea>
 
