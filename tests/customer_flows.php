@@ -25,6 +25,8 @@ function expect(bool $condition, string $label, ?array $response = null): void {
 }
 $userId = null; $otherUserId = null; $orderId = null; $variantId = null; $stockBefore = null; $cancelado = false; $email = null;
 try {
+    [, $short] = callApi('producto?url=short-split-5');
+    expect(count($short['variantes']) === 15 && count(array_filter($short['variantes'], fn($x) => (int)$x['stock_variante'] <= 0)) === 0, 'catálogo demo con todas las variantes comprables', $short);
     [, $detail] = callApi('producto?url=malla-vector-long');
     $p = $detail['producto']; $v = array_values(array_filter($detail['variantes'], fn($x) => (int)$x['stock_variante'] > 5))[0];
     $variantId = (int)$v['id_variante']; $stockBefore = (int)$v['stock_variante'];
@@ -66,11 +68,13 @@ try {
     $otherToken = $other['token'];
     [, $r] = callApi('cuenta/datos', ['nombre' => 'Prueba Actualizada', 'telefono' => '999000111', 'avisos_pedidos' => true, 'avisos_novedades' => false], $token);
     expect($r['status'] === 'success' && $r['datos']['telefono'] === '999000111', 'datos cuenta', $r);
-    [, $r] = callApi('direcciones', ['nombre' => 'Casa', 'direccion' => 'Av. Prueba 123', 'ciudad' => 'Miraflores', 'principal' => true], $token);
-    expect($r['status'] === 'success' && count($r['direcciones']) === 1, 'primera dirección', $r); $addr1 = (int)$r['id'];
+    [, $r] = callApi('direcciones', ['nombre' => 'Casa', 'tipo' => 'Casa', 'direccion' => 'Av. Prueba 123', 'ciudad' => 'Miraflores', 'departamento' => 'Lima Metropolitana', 'principal' => true], $token);
+    expect($r['status'] === 'success' && count($r['direcciones']) === 1 && $r['direcciones'][0]['tipo'] === 'Casa' && $r['direcciones'][0]['departamento'] === 'Lima Metropolitana', 'primera dirección y cobertura', $r); $addr1 = (int)$r['id'];
+    [$code, $r] = callApi('direcciones', ['nombre' => 'Fuera de cobertura', 'tipo' => 'Casa', 'direccion' => 'Av. Prueba 999', 'ciudad' => 'Arequipa', 'departamento' => 'Lima Metropolitana'], $token);
+    expect($code === 422, 'distrito fuera de cobertura rechazado', $r);
     [$code, $r] = callApi('direcciones', ['id' => $addr1, 'nombre' => 'Intento ajeno', 'direccion' => 'Av. Prueba 999', 'ciudad' => 'Lince'], $otherToken);
     expect($code === 404, 'dirección ajena protegida', $r);
-    [, $r] = callApi('direcciones', ['nombre' => 'Oficina', 'direccion' => 'Jr. Integración 456', 'ciudad' => 'Lince', 'principal' => false], $token);
+    [, $r] = callApi('direcciones', ['nombre' => 'Oficina', 'tipo' => 'Trabajo', 'direccion' => 'Jr. Integración 456', 'ciudad' => 'Lince', 'departamento' => 'Lima Metropolitana', 'principal' => false], $token);
     expect($r['status'] === 'success' && count($r['direcciones']) === 2, 'segunda dirección', $r); $addr2 = (int)$r['id'];
     [, $r] = callApi('direcciones/principal', ['id' => $addr2], $token);
     expect($r['status'] === 'success' && (int)$r['direcciones'][0]['id'] === $addr2, 'dirección principal', $r);
@@ -97,8 +101,8 @@ try {
     expect($code === 404, 'pedido ajeno protegido', $r);
     [, $r] = callApi('pedido?id=' . $orderId, null, $token);
     expect($r['status'] === 'success' && $r['pedido']['direccion_envio_cliente'] === 'Jr. Integración 456' && count($r['pedido']['historial']) === 1, 'detalle e historial', $r);
-    [, $r] = callApi('direcciones', ['id' => $addr2, 'nombre' => 'Oficina actualizada', 'direccion' => 'Jr. Nueva 789', 'ciudad' => 'Lince', 'principal' => true], $token);
-    expect($r['status'] === 'success' && (int)$r['id'] !== $addr2, 'editar preserva dirección histórica', $r);
+    [, $r] = callApi('direcciones', ['id' => $addr2, 'nombre' => 'Oficina actualizada', 'tipo' => 'Trabajo', 'direccion' => 'Jr. Nueva 789', 'ciudad' => 'Lince', 'departamento' => 'Lima Metropolitana', 'principal' => true], $token);
+    expect($r['status'] === 'success' && (int)$r['id'] !== $addr2 && $r['direcciones'][0]['tipo'] === 'Trabajo', 'editar preserva dirección histórica', $r);
     [, $r] = callApi('pedido?id=' . $orderId, null, $token);
     expect($r['pedido']['direccion_envio_cliente'] === 'Jr. Integración 456', 'snapshot de entrega', $r);
     [, $r] = callApi('direcciones/eliminar', ['id' => $addr1], $token);

@@ -47,6 +47,22 @@
 
   /* --------------------------------------------------------------- Panel */
 
+  function stockInicial(visible) {
+    const bloque = document.getElementById('prod-stock-inicial');
+    if (!bloque) return;
+    bloque.hidden = !visible;
+    bloque.querySelectorAll('input, select').forEach((campo) => {
+      campo.disabled = !visible;
+    });
+  }
+
+  function stockTotal(visible) {
+    const bloque = document.getElementById('prod-stock-total');
+    if (!bloque) return;
+    bloque.hidden = !visible;
+    bloque.querySelector('input').disabled = !visible;
+  }
+
   function modoNuevo() {
     form.reset();
     form.elements.id.value = '';
@@ -54,6 +70,8 @@
     kicker.textContent = 'productos · nueva fila';
     titulo.textContent = 'Nuevo producto';
     resumen.hidden = true;
+    stockInicial(true);
+    stockTotal(false);
     pintarGaleria([]);
     cambios = false;
     Kloset.marcarFila(null);
@@ -77,10 +95,13 @@
     form.elements.precio.value = p.precio_producto || '';
     form.elements.descripcion.value = p.descripcion_producto || '';
     form.elements.estado.value = p.estado_producto || 'activo';
+    stockInicial(false);
+    stockTotal(true);
+    form.elements.stock_total.value = p.stock_total || '0';
 
     kicker.textContent = 'productos · id_producto ' + p.id_producto;
     titulo.textContent = p.nombre_producto;
-    const stock = fila ? fila.querySelectorAll('.kl-cell--num b')[2].textContent : '0';
+    const stock = p.stock_total || (fila ? fila.querySelectorAll('.kl-cell--num b')[2].textContent : '0');
     document.getElementById('prod-kv-variantes').textContent = stock + ' uds en stock';
     document.getElementById('prod-kv-imagenes').textContent = res.imagenes.length + ' imágenes';
     resumen.hidden = false;

@@ -5,14 +5,17 @@ Fecha: 27 de septiembre de 2026. Entorno: XAMPP, PHP 8.2, base
 
 ## SQL ejecutado y conservado
 
-Archivo: `database/migrations/2026-09-27_entrega_local_consolidada.sql`.
-Se ejecutó dos veces correctamente para comprobar su repetición.
+Archivo principal: `database/migrations/2026-09-27_entrega_local_consolidada.sql`.
+La revisión 2 incorpora tipo de dirección, departamento y cobertura de Lima/Callao.
+`database/migrations/2026-09-28_detalles_direccion.sql` conserva esa ampliación como
+archivo independiente y reejecutable para la bitácora. El consolidado se ejecuta
+en entornos existentes con `database/preparar_entrega.php`.
 
 SHA-256:
-`9b744f2dcc351bf96e0d5186289dd79b80a7673702af048a28e1bca9be9d31b8`.
+Se registra de nuevo al ejecutar el preparador, junto con la revisión 2.
 
 Reúne las migraciones anteriores de esta entrega: campos de pagos, contactos,
-teléfono/preferencias, direcciones activas, favoritos, prendas guardadas y
+teléfono/preferencias, direcciones activas con cobertura, favoritos, prendas guardadas y
 seguimiento de pedidos. Consulta `information_schema` antes de añadir columnas
 y la relación de contacto. Conserva los datos existentes. Añade
 `sistema_migraciones` para registrar archivo, revisión, huella y fechas de ejecución.
@@ -99,7 +102,23 @@ Evidencia de las ejecuciones finales:
 Los scripts crean y retiran únicamente sus registros QA. Se conservaron los
 clientes, pedidos, catálogo y permisos originales de la instalación.
 
+Actualización del 28 de septiembre de 2026: la revisión 2 se aplicó dos veces
+en `kloset_bd` sin cambios adicionales. `tests/customer_flows.php` comprobó la
+dirección válida, el rechazo de un distrito fuera de cobertura y el checkout;
+`tests/admin_flows.php` completó sus pruebas de panel. La compilación local y
+la portada en navegador no registraron errores de consola.
+
+En la misma revisión se retiró la demostración de seis variantes agotadas de
+`Short Split 5"`. El archivo `database/seeds/2026-09-28_restock_catalogo_demo.sql`
+restaura esas variantes a 25 unidades y deja las 15 combinaciones de cada
+prenda demo disponibles para compra.
+
 ## Alcance
+
+La comparación con `origin/devs` se integró de forma selectiva: se adoptaron
+los detalles de dirección y la cobertura explícita. Se mantuvo el inventario
+inicial de variantes y se pospusieron los flujos SMTP de registro y recuperación
+porque todavía no hay un servicio de correo configurado en local.
 
 No quedaron fallos abiertos en los flujos locales comprobados. El pago continúa
 como simulador; correo/SMS y courier no están integrados. Los documentos legales

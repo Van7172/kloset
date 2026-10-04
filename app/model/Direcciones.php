@@ -8,6 +8,30 @@ use Throwable;
 
 class Direcciones
 {
+    private const TIPOS = ['Casa', 'Trabajo', 'Departamento', 'Otro'];
+    private const DISTRITOS = [
+        'Provincia Constitucional del Callao' => ['Bellavista', 'Callao', 'Carmen de la Legua-Reynoso', 'La Perla', 'La Punta', 'Ventanilla'],
+        'Lima Metropolitana' => ['Ancón', 'Ate', 'Barranco', 'Breña', 'Carabayllo', 'Chaclacayo', 'Chorrillos', 'Chosica', 'Cieneguilla', 'Comas', 'El Agustino', 'Independencia', 'Jesús María', 'La Molina', 'La Victoria', 'Lima - Cercado', 'Lince', 'Los Olivos', 'Lurigancho-Chosica', 'Lurigancho-Zárate', 'Lurín', 'Magdalena del Mar', 'Miraflores', 'Pachacámac', 'Pucusana', 'Pueblo Libre', 'Puente Piedra', 'Punta Hermosa', 'Punta Negra', 'Rímac', 'San Bartolo', 'San Borja', 'San Isidro', 'San Juan de Lurigancho', 'San Juan de Miraflores', 'San Luis', 'San Martín de Porres', 'San Miguel', 'Santa Anita', 'Santa María del Mar', 'Santa Rosa', 'Santiago de Surco', 'Surquillo', 'Villa El Salvador', 'Villa María del Triunfo'],
+    ];
+
+    /** Devuelve el departamento de cobertura correspondiente al distrito. */
+    public static function departamentoParaDistrito(string $distrito): ?string
+    {
+        foreach (self::DISTRITOS as $departamento => $distritos) {
+            if (in_array($distrito, $distritos, true)) {
+                return $departamento;
+            }
+        }
+
+        return null;
+    }
+
+    /** Confirma que un distrito puede recibir pedidos de KLOSET. */
+    public static function distritoEnCobertura(string $distrito): bool
+    {
+        return self::departamentoParaDistrito($distrito) !== null;
+    }
+
     private static function usuario(): ?int
     {
         $id = JwtHelper::bearerUserId();
@@ -45,15 +69,15 @@ class Direcciones
         $tipo = trim((string) ($_POST['tipo'] ?? 'Casa'));
         $direccion = trim((string) ($_POST['direccion'] ?? ''));
         $ciudad = trim((string) ($_POST['ciudad'] ?? ''));
-        $departamento = trim((string) ($_POST['departamento'] ?? ''));
+        $departamento = trim((string) ($_POST['departamento'] ?? 'Lima Metropolitana'));
         $referencia = trim((string) ($_POST['referencia'] ?? ''));
         $telefono = trim((string) ($_POST['telefono'] ?? ''));
         $principal = !empty($_POST['principal']);
         if (mb_strlen($nombre) < 2 || mb_strlen($nombre) > 80
-            || !in_array($tipo, ['Casa', 'Trabajo', 'Departamento', 'Otro'], true)
+            || !in_array($tipo, self::TIPOS, true)
             || mb_strlen($direccion) < 5 || mb_strlen($direccion) > 255
             || mb_strlen($ciudad) < 2 || mb_strlen($ciudad) > 100
-            || !in_array($departamento, ['Lima Metropolitana', 'Provincia Constitucional del Callao'], true)
+            || !isset(self::DISTRITOS[$departamento]) || !in_array($ciudad, self::DISTRITOS[$departamento], true)
             || mb_strlen($referencia) > 255 || mb_strlen($telefono) > 30) {
             http_response_code(422);
             return ['status' => 'error', 'message' => 'Revisa el nombre, la dirección y el distrito.'];
