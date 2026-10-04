@@ -118,7 +118,7 @@ class AuthApi
 					':nombre' => $nombre,
 					':contrasena' => $datos[':contrasena'],
 					':codigo' => $datos[':codigo'],
-					':id' => (int) $pendiente['id_registro_pendiente'],
+					':id' => (int) $pendiente['id_codigo_verificacion'],
 				]);
 				$idPendiente = (int) $pendiente['id_codigo_verificacion'];
 			} else {
@@ -183,7 +183,7 @@ class AuthApi
 				 WHERE id_codigo_verificacion = :id'
 			)->execute([
 				':codigo' => password_hash($codigo, PASSWORD_DEFAULT),
-				':id' => (int) $pendiente['id_registro_pendiente'],
+				':id' => (int) $pendiente['id_codigo_verificacion'],
 			]);
 			$idPendiente = (int) $pendiente['id_codigo_verificacion'];
 			$con->commit();
