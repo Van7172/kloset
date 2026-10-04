@@ -98,6 +98,7 @@ export type ApiDireccion = {
   id: number;
   nombre: string;
   tipo: string;
+  departamento: string;
   direccion: string;
   ciudad: string;
   departamento: string;
