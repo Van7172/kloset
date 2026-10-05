@@ -118,7 +118,7 @@ class AuthApi
 					':nombre' => $nombre,
 					':contrasena' => $datos[':contrasena'],
 					':codigo' => $datos[':codigo'],
-					':id' => (int) $pendiente['id_registro_pendiente'],
+					':id' => (int) $pendiente['id_codigo_verificacion'],
 				]);
 				$idPendiente = (int) $pendiente['id_codigo_verificacion'];
 			} else {
@@ -183,7 +183,7 @@ class AuthApi
 				 WHERE id_codigo_verificacion = :id'
 			)->execute([
 				':codigo' => password_hash($codigo, PASSWORD_DEFAULT),
-				':id' => (int) $pendiente['id_registro_pendiente'],
+				':id' => (int) $pendiente['id_codigo_verificacion'],
 			]);
 			$idPendiente = (int) $pendiente['id_codigo_verificacion'];
 			$con->commit();
@@ -497,11 +497,25 @@ class AuthApi
 			$mailer->isHTML(true);
 			$esRegistro = $tipo === 'registro';
 			$mailer->Subject = $esRegistro ? 'Verifica tu correo electrónico en Kloset' : 'Tu código para restablecer la contraseña';
-			$instruccion = $esRegistro ? 'Tu código de verificación de Kloset es:' : 'Tu código para restablecer la contraseña es:';
-			$mailer->Body = '<p>' . $instruccion . '</p><p style="font-size:28px;font-weight:bold;letter-spacing:8px">'
-				. htmlspecialchars($codigo, ENT_QUOTES, 'UTF-8')
-				. '</p><p>Vence en 10 minutos. Si no solicitaste esta acción, ignora este mensaje.</p>';
-			$mailer->AltBody = "$instruccion $codigo. Vence en 10 minutos. Si no solicitaste esta acción, ignora este mensaje.";
+			$titulo = $esRegistro ? 'Tu código para verificar tu cuenta' : 'Tu código para restablecer la contraseña';
+			$instruccion = $esRegistro
+				? 'Utiliza el siguiente código para verificar tu correo y continuar con la creación de tu cuenta.'
+				: 'Utiliza el siguiente código para continuar con el restablecimiento de tu contraseña.';
+			$codigoSeguro = htmlspecialchars($codigo, ENT_QUOTES, 'UTF-8');
+			$casillas = '';
+			foreach (str_split($codigoSeguro) as $digito) {
+				$casillas .= '<td style="width:58px;height:76px;border:2px solid #ef1d25;border-radius:6px;background:#fff8f8;color:#080808;font-family:Arial,sans-serif;font-size:48px;font-weight:700;line-height:76px;text-align:center;">' . $digito . '</td><td style="width:7px;font-size:1px;">&nbsp;</td>';
+			}
+			$mailer->Body = '<!doctype html><html lang="es"><body style="margin:0;background:#f7f7f6;color:#111;font-family:Arial,sans-serif;">'
+				. '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f7f7f6;padding:18px 0;"><tr><td align="center">'
+				. '<table role="presentation" width="760" cellpadding="0" cellspacing="0" style="width:100%;max-width:760px;background:#fff;border:1px solid #dededb;padding:28px 42px 34px;">'
+				. '<tr><td align="center" style="padding:0 0 20px;border-bottom:1px solid #cfcfcb;"><div style="font-family:Georgia,serif;font-size:32px;font-weight:700;letter-spacing:7px;line-height:1;">KLOSET</div><div style="width:208px;border-bottom:3px solid #ef1d25;margin:7px auto 8px;"></div><div style="font-size:11px;letter-spacing:5px;color:#333;">TU ESTILO, TU MOVIMIENTO</div></td></tr>'
+				. '<tr><td align="center" style="padding:62px 0 0;"><h1 style="margin:0;color:#080808;font-family:Georgia,serif;font-size:46px;line-height:1.08;font-weight:700;">' . $titulo . '</h1><p style="max-width:540px;margin:24px auto 0;color:#60636a;font-size:21px;line-height:1.45;">' . $instruccion . '</p></td></tr>'
+				. '<tr><td align="center" style="padding:48px 0 0;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>' . $casillas . '</tr></table></td></tr>'
+				. '<tr><td align="center" style="padding:44px 0 0;color:#60636a;font-size:18px;line-height:1.5;">Este código vence en <strong style="color:#111;">10 minutos.</strong><br><span style="font-size:16px;">Si no solicitaste esta acción, ignora este mensaje.</span></td></tr>'
+				. '<tr><td align="center" style="padding:54px 0 0;border-top:1px solid #cfcfcb;margin-top:54px;"><div style="font-family:Georgia,serif;font-size:28px;font-weight:700;letter-spacing:7px;">KLOSET</div><div style="width:145px;border-bottom:3px solid #ef1d25;margin:6px auto 7px;"></div><div style="font-size:8px;letter-spacing:4px;color:#333;">TU ESTILO, TU MOVIMIENTO</div></td></tr>'
+				. '</table></td></tr></table></body></html>';
+			$mailer->AltBody = "$titulo. $instruccion Código: $codigo. Vence en 10 minutos. Si no solicitaste esta acción, ignora este mensaje.";
 			return $mailer->send();
 		} catch (Throwable $e) {
 			error_log('Kloset · envío de código de verificación: ' . $e->getMessage());

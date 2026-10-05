@@ -20,8 +20,6 @@ export const ZONAS_ENTREGA = [
   },
 ] as const;
 
-export const TIPOS_DIRECCION = ['Casa', 'Trabajo', 'Departamento', 'Otro'] as const;
-
 export function nombreCortoDepartamento(nombre: string): string {
   return nombre === 'Lima Metropolitana' ? 'Lima' : nombre === 'Provincia Constitucional del Callao' ? 'Callao' : nombre;
 }

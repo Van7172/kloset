@@ -30,6 +30,12 @@ class Pedidos
 			return ['status' => 'error', 'message' => 'La dirección de envío es obligatoria'];
 		}
 
+		$departamentoManual = $idDireccionSolicitada <= 0 ? Direcciones::departamentoParaDistrito($ciudad) : null;
+		if ($idDireccionSolicitada <= 0 && !$departamentoManual) {
+			http_response_code(422);
+			return ['status' => 'error', 'message' => 'Selecciona un distrito dentro de la cobertura de Lima y Callao'];
+		}
+
 		$con = Conexion::getInstance();
 		try {
 			$con->beginTransaction();
@@ -83,14 +89,15 @@ class Pedidos
 				if (!$idDireccion) throw new \RuntimeException('Dirección de envío no disponible');
 			} else {
 				$sth = $con->prepare(
-					'INSERT INTO direcciones_envio_clientes (id_usuario_sistema, nombre_direccion_cliente, direccion_envio_cliente, ciudad_envio_cliente, referencia_envio_cliente)
-					 VALUES (:id, :nombre, :direccion, :ciudad, :referencia)'
+					'INSERT INTO direcciones_envio_clientes (id_usuario_sistema, nombre_direccion_cliente, direccion_envio_cliente, ciudad_envio_cliente, departamento_envio_cliente, referencia_envio_cliente)
+						 VALUES (:id, :nombre, :direccion, :ciudad, :departamento, :referencia)'
 				);
 				$sth->execute([
 					':id' => $userId,
 					':nombre' => 'Entrega',
 					':direccion' => $direccion,
 					':ciudad' => $ciudad,
+					':departamento' => $departamentoManual,
 					':referencia' => $referencia !== '' ? $referencia : null,
 				]);
 				$idDireccion = (int) $con->lastInsertId();
