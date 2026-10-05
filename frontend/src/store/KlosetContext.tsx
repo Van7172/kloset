@@ -122,7 +122,7 @@ function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
     fit: it.corte_variante as Corte,
     price: Number(it.precio_producto),
     imagen: it.url_imagen,
-    cantidad: it.cantidad_carrito_item,
+    cantidad: Number(it.cantidad_carrito_item),
   };
 }
 

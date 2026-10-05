@@ -97,11 +97,9 @@ export type ApiPedido = {
 export type ApiDireccion = {
   id: number;
   nombre: string;
-  tipo: string;
   departamento: string;
   direccion: string;
   ciudad: string;
-  departamento: string;
   referencia: string | null;
   telefono: string | null;
   principal: number;
@@ -254,7 +252,7 @@ export const api = {
 
   direcciones: {
     listar: () => request<{ status: string; direcciones: ApiDireccion[] }>('/direcciones'),
-    guardar: (datos: { id?: number; nombre: string; tipo: string; direccion: string; ciudad: string; departamento: string; referencia?: string; telefono?: string; principal?: boolean }) =>
+    guardar: (datos: { id?: number; nombre: string; direccion: string; ciudad: string; departamento: string; referencia?: string; telefono?: string; principal?: boolean }) =>
       request<{ status: string; message?: string; id?: number; direcciones?: ApiDireccion[] }>('/direcciones', { method: 'POST', body: JSON.stringify(datos) }),
     eliminar: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/eliminar', { method: 'POST', body: JSON.stringify({ id }) }),
     principal: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/principal', { method: 'POST', body: JSON.stringify({ id }) }),

@@ -89,13 +89,12 @@ class Pedidos
 				if (!$idDireccion) throw new \RuntimeException('Dirección de envío no disponible');
 			} else {
 				$sth = $con->prepare(
-					'INSERT INTO direcciones_envio_clientes (id_usuario_sistema, nombre_direccion_cliente, tipo_direccion_cliente, direccion_envio_cliente, ciudad_envio_cliente, departamento_envio_cliente, referencia_envio_cliente)
-					 VALUES (:id, :nombre, :tipo, :direccion, :ciudad, :departamento, :referencia)'
+					'INSERT INTO direcciones_envio_clientes (id_usuario_sistema, nombre_direccion_cliente, direccion_envio_cliente, ciudad_envio_cliente, departamento_envio_cliente, referencia_envio_cliente)
+						 VALUES (:id, :nombre, :direccion, :ciudad, :departamento, :referencia)'
 				);
 				$sth->execute([
 					':id' => $userId,
 					':nombre' => 'Entrega',
-					':tipo' => 'Casa',
 					':direccion' => $direccion,
 					':ciudad' => $ciudad,
 					':departamento' => $departamentoManual,

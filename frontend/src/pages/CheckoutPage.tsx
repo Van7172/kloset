@@ -37,6 +37,7 @@ export function CheckoutPage() {
   const [elegirDireccion, setElegirDireccion] = useState(false);
   const [editarDireccion, setEditarDireccion] = useState(false);
   const [usarManual, setUsarManual] = useState(false);
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -98,6 +99,7 @@ export function CheckoutPage() {
     if (!/^\d{2}\/\d{2}$/.test(pago.exp)) return setError('Caducidad en formato MM/AA');
     if (soloDigitos(pago.cvc).length < 3) return setError('CVC incompleto');
     if (!pago.holder.trim()) return setError('Falta el titular de la tarjeta');
+    if (!aceptaTerminos) return setError('Acepta los términos y condiciones para continuar');
 
     setEstado('processing');
     setProgreso('12%');
@@ -135,6 +137,7 @@ export function CheckoutPage() {
     { k: 'exp' as const, label: 'Caducidad', ph: 'MM/AA', ls: '0.08em', mode: 'numeric' },
     { k: 'cvc' as const, label: 'CVC', ph: '123', ls: '0.2em', mode: 'numeric' },
   ];
+  const entregaEstimada = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(Date.now() + 3 * 86400000));
 
   return (
     <div className="kl-rise mx-auto max-w-[1000px]">
@@ -168,9 +171,9 @@ export function CheckoutPage() {
         <div className="w-full min-w-0 lg:flex-[1.25]">
           {estado === 'idle' && (
             <div>
-              <h2 className="mb-3 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
-                Dirección de envío
-              </h2>
+              <h2 className="mb-1 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">Pago seguro</h2>
+              <p className="mb-5 text-sm text-body">Completa los datos para finalizar tu compra.</p>
+              <div className="mb-3 border-t border-rule pt-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">1. Dirección de entrega</div>
               {!usarManual && direccionId && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direcciones.find((d) => d.id === direccionId)?.nombre}</div><p className="mt-1 text-sm text-body">{direcciones.find((d) => d.id === direccionId)?.direccion}<br />{direcciones.find((d) => d.id === direccionId)?.ciudad}, {nombreCortoDepartamento(direcciones.find((d) => d.id === direccionId)?.departamento ?? 'Lima Metropolitana')}</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
               {(!direccionId || usarManual) && <div className="mb-6 border-t border-ink">
                 <div className="border-b border-rule py-[14px]">
@@ -217,14 +220,12 @@ export function CheckoutPage() {
                 </div>
               </div>}
               <div className="mb-6 flex flex-wrap gap-4 text-sm"><button type="button" onClick={() => setEditarDireccion(true)} className="cursor-pointer border-none bg-transparent p-0 text-ink underline">+ Guardar nueva dirección</button>{direccionId && <button type="button" onClick={() => setUsarManual(!usarManual)} className="cursor-pointer border-none bg-transparent p-0 text-soft underline">{usarManual ? 'Usar dirección guardada' : 'Usar otra dirección solo para este pedido'}</button>}</div>
-              <div className="mb-6 border-l-[3px] border-red bg-surface px-4 py-3 text-[13px] leading-[1.5] text-body">Envío gratuito en la zona de cobertura de Lima y Callao. Plazo referencial: 24 a 72 horas hábiles después de confirmar el pedido.</div>
+              <div className="mb-6 border-t border-rule pt-3"><div className="mb-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">2. Entrega</div><div className="flex gap-4 border-b border-rule pb-4"><span className="text-xl" aria-hidden="true">▣</span><div><strong className="block text-sm">Envío: Gratis</strong><span className="block text-sm text-body">Cobertura: Lima Metropolitana y Callao</span><span className="block text-sm text-body">Entrega estimada: {entregaEstimada}</span><span className="block text-sm text-body">Horario de entrega: 9:00 a 18:00</span></div></div><div className="mt-3 border border-rule bg-surface px-4 py-3 text-sm text-body"><span className="mr-2 font-semibold">●</span>Te avisaremos por correo y SMS cuando tu pedido esté en camino.</div></div>
 
-              <h2 className="mb-5 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">
-                Pago de demostración
-              </h2>
-              <div className="border-t border-ink">
+              <div className="mb-3 border-t border-rule pt-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">3. Datos de pago</div>
+              <div className="grid gap-3 border-t border-ink pt-3 sm:grid-cols-2">
                 {campos.map((f) => (
-                  <div key={f.k} className="border-b border-rule py-[14px]">
+                  <div key={f.k} className={`border-b border-rule py-[10px] ${f.k === 'holder' || f.k === 'num' ? 'sm:col-span-2' : ''}`}>
                     <div className="flex items-baseline justify-between gap-3">
                       <label htmlFor={`pago-${f.k}`} className="font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
                         {f.label}
@@ -248,6 +249,8 @@ export function CheckoutPage() {
                 ))}
               </div>
 
+              <label className="mt-4 flex items-start gap-2 text-[13px] text-body"><input type="checkbox" checked={aceptaTerminos} onChange={(e) => { setAceptaTerminos(e.target.checked); setError(''); }} className="mt-0.5 h-4 w-4 accent-[var(--ink)]" />Acepto los <a href="/terminos" className="underline">Términos y Condiciones</a> y la <a href="/privacidad" className="underline">Política de Privacidad</a> de KLOSET.</label>
+
               {error && (
                 <div className="mt-[14px] border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">
                   {error}
@@ -259,12 +262,9 @@ export function CheckoutPage() {
                 onClick={pagar}
                 className="mt-[22px] min-h-[58px] w-full cursor-pointer border-none bg-ink font-narrow text-base font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
               >
-                Simular pago {money(subtotal)}
+                Confirmar pago
               </button>
-              <div className="mt-4 font-narrow text-[11px] uppercase leading-[1.7] tracking-[0.1em] text-soft">
-                Usa solo tarjetas de prueba. 4242 4242 4242 4242 aprueba · 4000 0000 0000 0002 rechaza · 4000 0000 0000 3220 pide
-                verificación de prueba. No se procesa ningún cargo real.
-              </div>
+              <div className="mt-3 text-center text-xs text-soft">▣ Tu pago está protegido con encriptación SSL.</div>
             </div>
           )}
 
@@ -382,7 +382,7 @@ export function CheckoutPage() {
         </div>
 
         <div className="w-full border-t-[3px] border-red bg-surface p-[22px] lg:flex-1">
-          <div className="mb-[14px] font-narrow text-[11.5px] uppercase tracking-[0.14em] text-soft">Resumen</div>
+          <div className="mb-[14px] font-narrow text-[11.5px] font-semibold uppercase tracking-[0.14em] text-soft">Resumen del pedido</div>
           {bolsa.map((it) => (
             <div key={it.id_carrito_item ?? `${it.id_producto}-${it.size}-${it.fit}`} className="flex justify-between gap-3 border-b border-rule py-[11px]"><img src={it.imagen ?? ''} alt="" className="h-16 w-14 shrink-0 bg-paper object-cover" />
               <div className="min-w-0">
@@ -395,14 +395,16 @@ export function CheckoutPage() {
               <span className="whitespace-nowrap font-display text-base">{money(it.price * it.cantidad)}</span>
             </div>
           ))}
+          <div className="flex justify-between border-b border-rule py-3 text-sm text-body"><span>Subtotal</span><span>{money(subtotal)}</span></div>
+          <div className="flex justify-between border-b border-rule py-3 text-sm text-body"><span>Envío</span><span>Gratis</span></div>
           <div className="flex items-baseline justify-between pt-4">
             <span className="font-narrow text-xs uppercase tracking-[0.12em]">Total</span>
-            <span className="font-display text-[26px] tracking-[-0.02em]">{money(subtotal)}</span>
+            <span className="font-display text-[30px] tracking-[-0.02em]">{money(subtotal)}</span>
           </div>
-          <div className="mt-4 text-[13px] leading-[1.6] text-body">No se realiza ningún cargo real. El pedido de demostración quedará guardado en tu cuenta.</div>
+          <div className="mt-4 border border-red/20 bg-paper px-3 py-3 text-[13px] leading-[1.5] text-body"><strong className="block text-ink">Entrega estimada: {entregaEstimada}</strong>Lima Metropolitana y Callao.</div>
         </div>
       </div>
-      {elegirDireccion && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setElegirDireccion(false); }}><div role="dialog" aria-modal="true" aria-label="Cambiar dirección" className="w-full max-w-[540px] bg-paper p-6 shadow-2xl"><div className="mb-4 flex justify-between"><h2 className="font-display text-[30px]">Cambiar dirección</h2><button type="button" aria-label="Cerrar" onClick={() => setElegirDireccion(false)} className="min-h-10 min-w-10 border-none bg-transparent text-2xl">×</button></div><p className="mb-4 text-sm text-body">Selecciona una dirección guardada.</p>{direcciones.map((d) => <button key={d.id} type="button" onClick={() => { setDireccionId(d.id); setUsarManual(false); setElegirDireccion(false); }} className="mb-2 flex w-full items-start gap-3 border border-rule bg-transparent p-4 text-left"><span className="text-red">{direccionId === d.id ? '◉' : '○'}</span><span><strong>{d.nombre}</strong><span className="mt-1 block text-sm text-body">{d.direccion}<br />{d.ciudad}, {nombreCortoDepartamento(d.departamento)}</span></span></button>)}<button type="button" onClick={() => { setElegirDireccion(false); setEditarDireccion(true); }} className="mt-3 min-h-11 w-full cursor-pointer border border-ink bg-transparent font-narrow text-xs font-semibold uppercase">+ Añadir nueva dirección</button></div></div>}
+      {elegirDireccion && <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto p-4" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setElegirDireccion(false); }}><div role="dialog" aria-modal="true" aria-label="Cambiar dirección" className="my-auto max-h-[calc(100vh-2rem)] w-full max-w-[540px] overflow-y-auto border border-rule bg-paper p-6 shadow-2xl"><div className="mb-4 flex justify-between"><h2 className="font-display text-[30px]">Cambiar dirección</h2><button type="button" aria-label="Cerrar" onClick={() => setElegirDireccion(false)} className="min-h-10 min-w-10 border-none bg-transparent text-2xl">×</button></div><p className="mb-4 text-sm text-body">Selecciona una dirección guardada.</p>{direcciones.map((d) => <button key={d.id} type="button" onClick={() => { setDireccionId(d.id); setUsarManual(false); setElegirDireccion(false); }} className="mb-2 flex w-full items-start gap-3 border border-rule bg-transparent p-4 text-left"><span className="text-red">{direccionId === d.id ? '◉' : '○'}</span><span><strong>{d.nombre}</strong><span className="mt-1 block text-sm text-body">{d.direccion}<br />{d.ciudad}, {nombreCortoDepartamento(d.departamento)}</span></span></button>)}<button type="button" onClick={() => { setElegirDireccion(false); setEditarDireccion(true); }} className="mt-3 min-h-11 w-full cursor-pointer border border-ink bg-transparent font-narrow text-xs font-semibold uppercase">+ Añadir nueva dirección</button></div></div>}
       {editarDireccion && <AddressForm onClose={() => setEditarDireccion(false)} onSaved={(lista, id) => { setDirecciones(lista); setDireccionId(id); setUsarManual(false); setEditarDireccion(false); }} />}
     </div>
   );
