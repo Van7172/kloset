@@ -15,13 +15,13 @@ const tabs = [
   { id: 'datos', texto: 'Datos' },
 ] as const;
 type Tab = (typeof tabs)[number]['id'];
-const nombresEstado: Record<string, string> = { pendiente_pago: 'Pendiente', pagado: 'Registrado', en_preparacion: 'En preparación', enviado: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado' };
+const nombresEstado: Record<string, string> = { pendiente_pago: 'Pendiente', pagado: 'Registrado', en_preparacion: 'En preparación', enviado: 'En camino', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' };
 
 export function AccountPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { usuario, cargandoSesion, bolsa, pedidos, medidas, tienePerfil, corte, borrarPerfil, actualizarNombre, salir } = useKloset();
-  const active: Tab = tabs.find((t) => t.id === params.get('tab'))?.id ?? 'resumen';
+  const active: Tab = tabs.find((t) => t.id === params.get('tab'))?.id ?? 'pedidos';
   const [favoritos, setFavoritos] = useState<ApiFavorito[]>([]);
   const [direcciones, setDirecciones] = useState<ApiDireccion[]>([]);
   const [datos, setDatos] = useState<ApiDatosCuenta | null>(null);
@@ -57,6 +57,7 @@ export function AccountPage() {
   const totalBolsa = bolsa.reduce((sum, item) => sum + item.price * item.cantidad, 0);
   const totalPrendas = bolsa.reduce((sum, item) => sum + item.cantidad, 0);
   const actual = pedidos[0];
+  const etapaPedido = actual ? ({ pendiente_pago: 'Pagado', pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
 
   const guardarDatos = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setMensaje(''); setOcupado(true);
@@ -117,16 +118,118 @@ export function AccountPage() {
     {error && <p role="alert" className="mb-5 border-l-[3px] border-red bg-surface px-4 py-3 text-sm text-red">{error}</p>}
     {mensaje && <p role="status" className="mb-5 border-l-[3px] border-red bg-surface px-4 py-3 text-sm text-body">{mensaje}</p>}
 
-    {active === 'resumen' && <div>
+    {active === 'resumen' && <div className="space-y-7">
       <div className="mb-7 grid border border-rule sm:grid-cols-3">{[{ k: 'En la bolsa', v: totalPrendas, d: `${money(totalBolsa)} guardados` }, { k: 'Favoritos', v: favoritos.length, d: 'Prendas que te gustan' }, { k: 'Pedidos', v: pedidos.length, d: 'En tu historial' }].map((s) => <div key={s.k} className="border-b border-rule p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><div className="font-narrow text-xs uppercase tracking-[0.1em] text-soft">{s.k}</div><div className="font-display text-[34px]">{s.v}</div><div className="text-xs text-soft">{s.d}</div></div>)}</div>
-      <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]"><div><div className="border-b border-ink pb-3 font-narrow text-xs uppercase tracking-[0.1em] text-soft">Tu actividad</div>{actual ? <div className="border-b border-rule py-5"><div className="flex items-center justify-between gap-3"><Link to={`/pedidos/${actual.id}`} className="font-display text-[26px]">{actual.ref}</Link><span className="font-narrow text-xs uppercase text-red">{nombresEstado[actual.estado] ?? actual.estado}</span></div><p className="mt-2 text-sm text-body">{actual.items.reduce((n, i) => n + i.cantidad, 0)} prendas · {money(actual.total)}</p><Link to={`/pedidos/${actual.id}`} className="mt-3 inline-block border-b border-ink font-narrow text-xs uppercase tracking-[0.08em]">Ver pedido →</Link></div> : <p className="py-6 text-sm text-soft">Aún no tienes pedidos. <Link to="/" className="underline">Explora el catálogo</Link>.</p>}<div className="mt-6 border-b border-ink pb-3 font-narrow text-xs uppercase tracking-[0.1em] text-soft">Avisos</div>{avisos.length ? avisos.slice(0, 4).map((aviso) => <div key={aviso.id_notificacion} className="border-b border-rule py-3 text-sm text-body">{aviso.id_pedido ? <Link to={`/pedidos/${aviso.id_pedido}`} className="underline">{aviso.mensaje_notificacion}</Link> : aviso.mensaje_notificacion}<small className="mt-1 block text-soft">{aviso.fecha_creacion}</small></div>) : <p className="py-5 text-sm text-soft">Sin avisos por ahora.</p>}</div><div className="border-t-[3px] border-red bg-surface p-6"><p className="font-narrow text-xs uppercase tracking-[0.1em] text-soft">Tu perfil de ajuste</p>{tienePerfil ? <><div className="mt-4 grid grid-cols-2 gap-y-3 text-sm text-body"><span>Estatura</span><strong className="text-right">{medidas.h} cm</strong><span>Pecho</span><strong className="text-right">{medidas.chest} cm</strong><span>Cintura</span><strong className="text-right">{medidas.waist} cm</strong><span>Cadera</span><strong className="text-right">{medidas.hip} cm</strong></div><p className="mt-5 border-t border-rule pt-4 text-sm">Talla recomendada · <strong>{tallaRecomendada(medidas, corte)}</strong></p></> : <p className="mt-4 text-sm text-body">Añade tus medidas para recibir una recomendación de talla.</p>}</div></div>
+
+      <div className="grid gap-8 lg:grid-cols-[1.35fr_0.95fr]">
+        <section>
+          <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Tu pedido en curso</p></div>
+
+          {actual ? <div className="border-b border-rule pb-5">
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <Link to={`/pedidos/${actual.id}`} className="font-display text-[30px] leading-none tracking-[-0.04em] text-ink">{actual.ref}</Link>
+              <span className="font-narrow text-[10px] font-semibold uppercase tracking-[0.12em] text-red">{etapaPedido}</span>
+            </div>
+
+            <div className="mt-6 grid grid-cols-4 gap-2 border-b border-rule pb-3">
+              {['Pagado', 'Preparación', 'En camino', 'Entregado'].map((label, index) => {
+                const estadoActual = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'entregado'];
+                const etapaActual = estadoActual.indexOf(actual.estado ?? 'pagado');
+                const ok = index <= etapaActual || (actual.estado === 'pendiente_pago' && index === 0);
+                const isCurrent = index === etapaActual || (actual.estado === 'pagado' && index === 1);
+                return <div key={label} className="text-center">
+                  <div className="mb-2 h-[2px] w-full bg-rule" style={{ background: ok ? 'var(--red)' : 'var(--rule)' }} />
+                  <span className="block font-narrow text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isCurrent ? 'var(--red)' : 'var(--soft)' }}>{label}</span>
+                </div>;
+              })}
+            </div>
+
+            <p className="mt-4 text-sm text-body">Sale del almacén de Ate. Entrega estimada el jueves 3 de septiembre entre las 9:00 y las 18:00.</p>
+
+          </div> : <p className="py-6 text-sm text-soft">Aún no tienes pedidos. <Link to="/" className="underline">Explora el catálogo</Link>.</p>}
+
+          <div className="mt-6">
+            <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Avisos</p></div>
+            {avisos.length ? avisos.slice(0, 4).map((aviso) => <div key={aviso.id_notificacion} className="border-b border-rule py-3 text-sm text-body"><div className="flex items-start gap-3"><span className="mt-1 h-2 w-2 shrink-0 bg-red" />{aviso.id_pedido ? <Link to={`/pedidos/${aviso.id_pedido}`} className="underline">{aviso.mensaje_notificacion}</Link> : <span>{aviso.mensaje_notificacion}</span>}</div><small className="mt-2 ml-5 block text-soft">{aviso.fecha_creacion}</small></div>) : <p className="py-5 text-sm text-soft">Sin avisos por ahora.</p>}
+          </div>
+        </section>
+
+        <aside className="border-t-[3px] border-red bg-surface p-5">
+          <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Tu perfil de ajuste</p></div>
+
+          {tienePerfil ? <>
+            <div className="mt-5 flex items-center justify-center border border-rule bg-paper p-3">
+              <div className="h-24 w-20 bg-[repeating-linear-gradient(135deg,var(--paper)_0,var(--paper)_4px,var(--rule)_4px,var(--rule)_8px)]" />
+            </div>
+            <div className="mt-5 space-y-3 text-sm text-body">
+              {[['Estatura', medidas.h], ['Pecho', medidas.chest], ['Cintura', medidas.waist], ['Cadera', medidas.hip]].map(([label, value]) => (
+                <div key={label as string} className="flex items-center justify-between gap-3 border-b border-rule pb-2 last:border-b-0 last:pb-0">
+                  <span className="font-narrow text-[10px] font-semibold uppercase tracking-[0.12em] text-soft">{label as string}</span>
+                  <strong className="font-display text-[20px] leading-none">{value as number} cm</strong>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex items-start gap-3 border border-rule bg-paper px-3 py-3 text-[12px] text-soft">
+              <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full border border-red text-[10px] font-bold text-red">i</span>
+              <span>Las medidas se utilizan para recomendar la talla más adecuada en nuestros productos.</span>
+            </div>
+          </> : <p className="mt-4 text-sm text-soft">Todavía no tienes un perfil de medidas. <Link to="/medidas" className="underline">Crear perfil</Link>.</p>}
+        </aside>
+      </div>
     </div>}
 
     {active === 'favoritos' && <section><div className="mb-4 flex justify-between gap-3"><div><h2 className="font-display text-[30px]">Mis favoritos</h2><p className="text-sm text-soft">Prendas que te encantan. Revisa la talla antes de añadirlas a la bolsa.</p></div><span className="text-sm text-soft">{favoritos.length} {favoritos.length === 1 ? 'prenda' : 'prendas'}</span></div>{favoritos.length ? favoritos.map((p) => <div key={p.id_producto} className="flex flex-wrap items-center gap-4 border-b border-rule py-4"><Link to={`/producto/${p.url_producto}`} className="h-24 w-24 shrink-0 bg-surface"><img src={p.url_imagen ?? ''} alt="" className="h-full w-full object-cover" /></Link><div className="min-w-0 flex-1"><Link to={`/producto/${p.url_producto}`} className="font-display text-xl">{p.nombre_producto}</Link><p className="text-sm text-soft">{p.nombre_categoria}{Number(p.stock) <= 0 ? ' · Sin stock' : ''}</p></div><span className="font-display text-xl">{money(Number(p.precio_producto))}</span><Link to={`/producto/${p.url_producto}`} className="inline-flex min-h-11 items-center bg-ink px-4 font-narrow text-xs font-semibold uppercase text-paper">Ver producto</Link><button type="button" onClick={() => void quitarFavorito(p.id_producto)} aria-label={`Quitar ${p.nombre_producto} de favoritos`} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-xl text-red">♥</button></div>) : <p className="border-t border-rule py-10 text-center text-sm text-soft">Aún no tienes favoritos. <Link to="/" className="underline">Explora el catálogo</Link>.</p>}</section>}
 
     {active === 'bolsa' && <CartPage compact />}
 
-    {active === 'pedidos' && <section><h2 className="mb-1 font-display text-[30px]">Mis pedidos</h2><p className="mb-5 text-sm text-soft">Consulta los estados registrados de tus pedidos.</p>{pedidos.length ? pedidos.map((p) => <div key={p.id} className="flex flex-wrap items-center gap-5 border-t border-rule py-5"><div className="flex shrink-0">{p.items.slice(0, 3).map((it, i) => <div key={i} className="h-20 w-16 border-r border-paper bg-surface"><img src={it.imagen ?? ''} alt="" className="h-full w-full object-cover" /></div>)}</div><div className="min-w-0 flex-1"><Link to={`/pedidos/${p.id}`} className="font-display text-2xl">{p.ref}</Link><p className="text-sm text-soft">{p.fecha} · {p.items.reduce((n, it) => n + it.cantidad, 0)} prendas</p></div><div><div className="font-narrow text-xs font-semibold uppercase tracking-[0.1em] text-red">{nombresEstado[p.estado] ?? p.estado}</div><div className="mt-2 font-display text-xl">{money(p.total)}</div></div><Link to={`/pedidos/${p.id}`} className="inline-flex min-h-11 items-center border border-ink px-4 font-narrow text-xs font-semibold uppercase">Ver detalle</Link></div>) : <p className="border-t border-rule py-10 text-center text-sm text-soft">Todavía no hay pedidos.</p>}</section>}
+    {active === 'pedidos' && <section>
+      <h2 className="mb-1 font-display text-[30px]">Mis pedidos</h2>
+      <p className="mb-5 text-sm text-soft">Aquí puedes consultar el estado de tus pedidos.</p>
+
+      {pedidos.length ? pedidos.map((p) => {
+        const totalUnidades = p.items.reduce((n, it) => n + it.cantidad, 0);
+        const estadoLabel = (nombresEstado[p.estado] ?? p.estado).toUpperCase();
+        const estadoColor = p.estado === 'entregado' ? 'text-green-700' : 'text-red';
+        const estadoAction = ['pagado', 'enviado', 'en_reparto'].includes(p.estado) ? 'SEGUIR ENVÍO' : 'VER DETALLE';
+        const entregaTexto = p.estado === 'entregado'
+          ? `Entregado el ${p.fecha}`
+          : 'Entrega estimada el jueves 3 de septiembre';
+
+        return <div key={p.id} className="flex flex-wrap items-center gap-5 border-t border-rule py-5">
+          <div className="flex shrink-0 gap-2">
+            {p.items.slice(0, 2).map((it, i) => (
+              <div key={`${p.id}-${i}`} className="h-20 w-16 overflow-hidden border border-rule bg-surface">
+                <img src={it.imagen ?? ''} alt="" className="h-full w-full object-cover" />
+              </div>
+            ))}
+            {p.items.length > 2 && <div className="flex h-20 w-16 items-center justify-center border border-rule bg-surface font-display text-2xl text-ink">+{p.items.length - 2}</div>}
+          </div>
+
+          <div className="min-w-0 flex-1 text-left">
+            <Link to={`/pedidos/${p.id}`} className="font-display text-[30px] leading-none tracking-[-0.04em] text-ink">{p.ref}</Link>
+            <div className="mt-2 flex items-center gap-4 text-sm text-soft">
+              <span>{p.fecha}</span>
+              <span>·</span>
+              <span>{totalUnidades} {totalUnidades === 1 ? 'prenda' : 'prendas'}</span>
+            </div>
+            <p className="mt-3 text-sm text-soft">{entregaTexto}</p>
+          </div>
+
+          <div className="min-w-[115px] text-right">
+            <div className={`border-b-2 pb-2 font-narrow text-[10px] font-semibold uppercase tracking-[0.12em] ${estadoColor}`}>
+              {estadoLabel}
+            </div>
+          </div>
+
+          <div className="min-w-[92px] text-right font-display text-[24px] leading-none text-ink">
+            {money(p.total)}
+          </div>
+
+          <Link to={`/pedidos/${p.id}`} className="inline-flex min-h-11 min-w-[120px] items-center justify-center border border-ink bg-transparent px-4 font-narrow text-[10px] font-semibold uppercase tracking-[0.1em] text-ink">{estadoAction}</Link>
+        </div>;
+      }) : <p className="border-t border-rule py-10 text-center text-sm text-soft">Todavía no hay pedidos.</p>}
+    </section>}
+
 
 
     {active === 'datos' && <section className="max-w-[850px]">
@@ -160,7 +263,6 @@ export function AccountPage() {
               <span aria-hidden="true" className="text-xl">⌂</span>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{direccion.nombre} {Boolean(direccion.principal) && <span className="ml-2 bg-red/10 px-2 py-1 font-narrow text-[10px] font-normal uppercase text-red">Principal</span>}</p>
-                <p className="text-xs text-soft">{direccion.tipo}</p>
                 <p className="mt-1 text-sm text-body">{direccion.direccion}</p>
                 <p className="text-sm text-body">{direccion.ciudad}, {nombreCortoDepartamento(direccion.departamento)}, Perú</p>
                 {direccion.referencia && <p className="text-xs text-soft">{direccion.referencia}</p>}

@@ -34,7 +34,14 @@ class Productos
 
 		$id = (int) ($_POST['id'] ?? 0);
 		$con = Conexion::getInstance();
-		$sth = $con->prepare('SELECT * FROM productos WHERE id_producto = :id');
+		$sth = $con->prepare(
+			'SELECT p.*, COALESCE(SUM(v.stock_variante), 0) AS stock_total,
+			        COUNT(v.id_variante) AS total_variantes
+			 FROM productos p
+			 LEFT JOIN productos_variantes v ON v.id_producto = p.id_producto
+			 WHERE p.id_producto = :id
+			 GROUP BY p.id_producto'
+		);
 		$sth->bindParam(':id', $id, PDO::PARAM_INT);
 		$sth->execute();
 		$producto = $sth->fetch();
@@ -109,26 +116,46 @@ class Productos
 		if (self::urlEnUso($datos['url'], $id)) {
 			return ['status' => 'error', 'message' => 'La URL ya está en uso'];
 		}
+		$ajusteStock = self::readAjusteStockTotal();
+		if (isset($ajusteStock['status'])) {
+			return $ajusteStock;
+		}
 
 		$con = Conexion::getInstance();
-		$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = ?');
-		$existe->execute([$id]);
-		if (!$existe->fetchColumn()) return ['status' => 'error', 'message' => 'Producto no encontrado'];
-		$sth = $con->prepare(
-			'UPDATE productos SET id_categoria = :categoria, nombre_producto = :nombre,
-			 url_producto = :url, descripcion_producto = :descripcion,
-			 precio_producto = :precio, estado_producto = :estado
-			 WHERE id_producto = :id'
-		);
-		$sth->execute([
-			':categoria' => $datos['categoria'],
-			':nombre' => $datos['nombre'],
-			':url' => $datos['url'],
-			':descripcion' => $datos['descripcion'],
-			':precio' => $datos['precio'],
-			':estado' => $datos['estado'],
-			':id' => $id,
-		]);
+		$con->beginTransaction();
+		try {
+			$existe = $con->prepare('SELECT 1 FROM productos WHERE id_producto = ? FOR UPDATE');
+			$existe->execute([$id]);
+			if (!$existe->fetchColumn()) {
+				$con->rollBack();
+				return ['status' => 'error', 'message' => 'Producto no encontrado'];
+			}
+			$sth = $con->prepare(
+				'UPDATE productos SET id_categoria = :categoria, nombre_producto = :nombre,
+				 url_producto = :url, descripcion_producto = :descripcion,
+				 precio_producto = :precio, estado_producto = :estado
+				 WHERE id_producto = :id'
+			);
+			$sth->execute([
+				':categoria' => $datos['categoria'],
+				':nombre' => $datos['nombre'],
+				':url' => $datos['url'],
+				':descripcion' => $datos['descripcion'],
+				':precio' => $datos['precio'],
+				':estado' => $datos['estado'],
+				':id' => $id,
+			]);
+			if ($ajusteStock['aplicar']) {
+				self::ajustarStockTotal($con, $id, $ajusteStock['stock']);
+			}
+			$con->commit();
+		} catch (\Throwable $e) {
+			if ($con->inTransaction()) {
+				$con->rollBack();
+			}
+			error_log('KLOSET actualizar producto: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo actualizar el producto'];
+		}
 
 		self::guardarImagenes($id);
 
@@ -428,6 +455,100 @@ class Productos
 			'categoria' => $categoria,
 			'estado' => $estado,
 		];
+	}
+
+	private static function readInventarioInicial(): array
+	{
+		$tallas = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+		$cortes = ['Slim', 'Regular', 'Oversize'];
+		$talla = (string) ($_POST['talla'] ?? 'M');
+		$corte = (string) ($_POST['corte'] ?? 'Regular');
+		$stockRaw = $_POST['stock'] ?? null;
+
+		if ($stockRaw === null || $stockRaw === '' || filter_var($stockRaw, FILTER_VALIDATE_INT) === false) {
+			return ['status' => 'error', 'message' => 'Ingresa el stock como un número entero'];
+		}
+		$stock = (int) $stockRaw;
+		if ($stock < 0 || $stock > 2147483647) {
+			return ['status' => 'error', 'message' => 'El stock no puede ser negativo'];
+		}
+		if (!in_array($talla, $tallas, true)) {
+			return ['status' => 'error', 'message' => 'Talla no válida'];
+		}
+		if (!in_array($corte, $cortes, true)) {
+			return ['status' => 'error', 'message' => 'Corte no válido'];
+		}
+
+		return ['talla' => $talla, 'corte' => $corte, 'stock' => $stock];
+	}
+
+	private static function readAjusteStockTotal(): array
+	{
+		if (!array_key_exists('stock_total', $_POST)) {
+			return ['aplicar' => false];
+		}
+
+		$stockRaw = $_POST['stock_total'];
+		if ($stockRaw === '' || filter_var($stockRaw, FILTER_VALIDATE_INT) === false) {
+			return ['status' => 'error', 'message' => 'Ingresa el stock total como un número entero'];
+		}
+		$stock = (int) $stockRaw;
+		if ($stock < 0 || $stock > 2147483647) {
+			return ['status' => 'error', 'message' => 'El stock total no puede ser negativo'];
+		}
+
+		return ['aplicar' => true, 'stock' => $stock];
+	}
+
+	/** Distribuye el total solicitado entre las variantes existentes del producto. */
+	private static function ajustarStockTotal(PDO $con, int $idProducto, int $stockTotal): void
+	{
+		$sth = $con->prepare(
+			'SELECT id_variante FROM productos_variantes
+			 WHERE id_producto = ? ORDER BY id_variante FOR UPDATE'
+		);
+		$sth->execute([$idProducto]);
+		$variantes = $sth->fetchAll();
+		$cantidad = count($variantes);
+		if ($cantidad === 0) {
+			throw new \RuntimeException('El producto no tiene variantes para actualizar el stock');
+		}
+
+		$base = intdiv($stockTotal, $cantidad);
+		$resto = $stockTotal % $cantidad;
+		$actualizar = $con->prepare('UPDATE productos_variantes SET stock_variante = ? WHERE id_variante = ?');
+		foreach ($variantes as $indice => $variante) {
+			$actualizar->execute([$base + ($indice < $resto ? 1 : 0), $variante['id_variante']]);
+		}
+	}
+
+	private static function crearVarianteInicial(PDO $con, int $idProducto, string $url, array $inventario): void
+	{
+		$sku = strtoupper(substr($url, 0, 40) . '-' . $inventario['talla'] . '-' . substr($inventario['corte'], 0, 3));
+		$sku = substr(preg_replace('/[^A-Z0-9\-]/', '', $sku) ?: 'SKU', 0, 44);
+		$base = $sku;
+		$n = 1;
+		$ocupado = $con->prepare('SELECT COUNT(*) FROM productos_variantes WHERE sku_variante = ?');
+		do {
+			$ocupado->execute([$sku]);
+			if ((int) $ocupado->fetchColumn() === 0) {
+				break;
+			}
+			$n++;
+			$sku = substr($base, 0, 44) . '-' . $n;
+		} while ($n < 50);
+
+		$sth = $con->prepare(
+			'INSERT INTO productos_variantes (id_producto, talla_variante, corte_variante, sku_variante, stock_variante)
+			 VALUES (:producto, :talla, :corte, :sku, :stock)'
+		);
+		$sth->execute([
+			':producto' => $idProducto,
+			':talla' => $inventario['talla'],
+			':corte' => $inventario['corte'],
+			':sku' => $sku,
+			':stock' => $inventario['stock'],
+		]);
 	}
 
 	private static function urlEnUso(string $url, int $id): bool

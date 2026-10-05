@@ -1,4 +1,4 @@
--- KLOSET: preparación de primera entrega local, revisión 1.
+-- KLOSET: preparación de primera entrega local, revisión 2.
 -- Ejecutar con la base existente seleccionada (kloset_bd local).
 -- Reejecutable en MariaDB/MySQL: comprueba columnas y constraints existentes.
 -- No borra registros. DDL hace commit implícito: guardar respaldo antes de producción.
@@ -85,6 +85,16 @@ PREPARE kloset_stmt FROM @kloset_ddl;
 EXECUTE kloset_stmt;
 DEALLOCATE PREPARE kloset_stmt;
 
+SET @kloset_ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'direcciones_envio_clientes' AND COLUMN_NAME = 'tipo_direccion_cliente') = 0, 'ALTER TABLE `direcciones_envio_clientes` ADD COLUMN `tipo_direccion_cliente` VARCHAR(30) NOT NULL DEFAULT ''Casa'' AFTER `nombre_direccion_cliente`', 'DO 0');
+PREPARE kloset_stmt FROM @kloset_ddl;
+EXECUTE kloset_stmt;
+DEALLOCATE PREPARE kloset_stmt;
+
+SET @kloset_ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'direcciones_envio_clientes' AND COLUMN_NAME = 'departamento_envio_cliente') = 0, 'ALTER TABLE `direcciones_envio_clientes` ADD COLUMN `departamento_envio_cliente` VARCHAR(80) NOT NULL DEFAULT ''Lima Metropolitana'' AFTER `ciudad_envio_cliente`', 'DO 0');
+PREPARE kloset_stmt FROM @kloset_ddl;
+EXECUTE kloset_stmt;
+DEALLOCATE PREPARE kloset_stmt;
+
 SET @kloset_ddl = IF((SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pedidos' AND COLUMN_NAME = 'transportista_pedido') = 0, 'ALTER TABLE `pedidos` ADD COLUMN `transportista_pedido` VARCHAR(120) NULL', 'DO 0');
 PREPARE kloset_stmt FROM @kloset_ddl;
 EXECUTE kloset_stmt;
@@ -116,4 +126,4 @@ CREATE TABLE IF NOT EXISTS sistema_migraciones (
  descripcion_migracion VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO sistema_migraciones (archivo_migracion, descripcion_migracion) VALUES ('2026-09-27_entrega_local_consolidada.sql','Preparación de pagos, contacto, cuenta, direcciones, favoritos, guardados y seguimiento') ON DUPLICATE KEY UPDATE ultima_ejecucion = CURRENT_TIMESTAMP;
+INSERT INTO sistema_migraciones (archivo_migracion, revision_migracion, descripcion_migracion) VALUES ('2026-09-27_entrega_local_consolidada.sql', 2, 'Preparación local: pagos, contacto, cuenta, cobertura y seguimiento') ON DUPLICATE KEY UPDATE revision_migracion = VALUES(revision_migracion), descripcion_migracion = VALUES(descripcion_migracion), ultima_ejecucion = CURRENT_TIMESTAMP;

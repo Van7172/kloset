@@ -41,7 +41,7 @@ export function CartPage({ compact = false }: { compact?: boolean }) {
           <p className="mb-5 text-sm text-soft">Elige una prenda y revisa su talla antes de decidir.</p>
           <button
             type="button"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/catalogo')}
             className="min-h-[50px] cursor-pointer border-none bg-ink px-6 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
           >
             Ir al catálogo

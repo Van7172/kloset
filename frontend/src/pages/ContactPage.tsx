@@ -23,6 +23,7 @@ export function ContactPage() {
   const [mensaje, setMensaje] = useState('');
   const [enviado, setEnviado] = useState('');
   const [error, setError] = useState('');
+  const [errores, setErrores] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
 
   const campos = [
@@ -31,22 +32,47 @@ export function ContactPage() {
     { k: 'tel', label: 'Teléfono (opcional)', ph: '9XX XXX XXX', value: telefono, set: setTelefono },
   ];
 
+  const limpiarError = (campo: string) => {
+    setErrores((actuales) => {
+      if (!actuales[campo]) return actuales;
+      const siguientes = { ...actuales };
+      delete siguientes[campo];
+      return siguientes;
+    });
+  };
+
   const enviar = async () => {
     setError('');
     setEnviado('');
-    if (nombre.trim().length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim()) || mensaje.trim().length < 10) {
-      setError('Completa tu nombre, un correo válido y un mensaje de al menos 10 caracteres.');
+    const nuevosErrores: Record<string, string> = {};
+    const nombreLimpio = nombre.trim();
+    const correoLimpio = correo.trim();
+    const telefonoLimpio = telefono.trim();
+    const mensajeLimpio = mensaje.trim();
+
+    if (!nombreLimpio) nuevosErrores.nombre = 'El nombre es obligatorio.';
+    else if (nombreLimpio.length < 2) nuevosErrores.nombre = 'El nombre debe tener al menos 2 caracteres.';
+    if (!correoLimpio) nuevosErrores.correo = 'El correo es obligatorio.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoLimpio)) nuevosErrores.correo = 'Ingresa un correo válido.';
+    if (telefonoLimpio && !/^9\d{8}$/.test(telefonoLimpio.replace(/\s/g, ''))) nuevosErrores.tel = 'Ingresa un teléfono válido de 9 dígitos.';
+    if (!mensajeLimpio) nuevosErrores.mensaje = 'El mensaje es obligatorio.';
+    else if (mensajeLimpio.length < 10) nuevosErrores.mensaje = 'El mensaje debe tener al menos 10 caracteres.';
+
+    setErrores(nuevosErrores);
+    if (Object.keys(nuevosErrores).length > 0) {
+      setError('Revisa los campos marcados antes de enviar tu consulta.');
       return;
     }
     setEnviando(true);
     try {
-      const res = await api.contacto({ tema, nombre: nombre.trim(), correo: correo.trim(), telefono: telefono.trim(), mensaje: mensaje.trim(), sitio: '' });
+      const res = await api.contacto({ tema, nombre: nombreLimpio, correo: correoLimpio, telefono: telefonoLimpio, mensaje: mensajeLimpio, sitio: '' });
       if (res.status !== 'success') {
         setError(res.message || 'No pudimos guardar tu consulta. Inténtalo de nuevo.');
         return;
       }
       setEnviado('Consulta recibida. Te responderemos al correo que indicaste.');
       setMensaje('');
+      setErrores({});
     } catch {
       setError('No pudimos guardar tu consulta. Comprueba tu conexión e inténtalo de nuevo.');
     } finally {
@@ -98,7 +124,7 @@ export function ContactPage() {
             {campos.map((f) => (
               <div key={f.k} className="border-b border-rule py-[14px]">
                 <label className="mb-[6px] block font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
-                  {f.label}
+                  {f.label}{f.k !== 'tel' && <span className="text-red"> *</span>}
                 </label>
                 <input
                   type={f.k === 'correo' ? 'email' : f.k === 'tel' ? 'tel' : 'text'}
@@ -106,28 +132,38 @@ export function ContactPage() {
                   onChange={(e) => {
                     f.set(e.target.value);
                     setEnviado('');
+                    limpiarError(f.k);
                   }}
                   placeholder={f.ph}
+                  required={f.k !== 'tel'}
                   maxLength={f.k === 'tel' ? 30 : f.k === 'correo' ? 150 : 120}
-                  className="min-h-10 w-full border-none bg-transparent py-2 text-base text-ink outline-none"
+                  aria-invalid={Boolean(errores[f.k])}
+                  aria-describedby={errores[f.k] ? `${f.k}-error` : undefined}
+                  className={`min-h-10 w-full border-none bg-transparent py-2 text-base text-ink outline-none ${errores[f.k] ? 'text-red' : ''}`}
                 />
+                {errores[f.k] && <p id={`${f.k}-error`} className="mt-1 text-xs text-red">{errores[f.k]}</p>}
               </div>
             ))}
             <div className="border-b border-rule py-[14px]">
               <label className="mb-[6px] block font-narrow text-[11.5px] uppercase tracking-[0.12em] text-soft">
-                Mensaje
+                Mensaje <span className="text-red">*</span>
               </label>
               <textarea
                 value={mensaje}
                 onChange={(e) => {
                   setMensaje(e.target.value);
                   setEnviado('');
+                  limpiarError('mensaje');
                 }}
                 rows={5}
+                required
                 maxLength={3000}
+                aria-invalid={Boolean(errores.mensaje)}
+                aria-describedby={errores.mensaje ? 'mensaje-error' : undefined}
                 placeholder="Cuéntanos qué necesitas"
-                className="w-full resize-y border-none bg-transparent py-2 text-base leading-[1.55] text-ink outline-none"
+                className={`w-full resize-y border-none bg-transparent py-2 text-base leading-[1.55] text-ink outline-none ${errores.mensaje ? 'text-red' : ''}`}
               />
+              {errores.mensaje && <p id="mensaje-error" className="mt-1 text-xs text-red">{errores.mensaje}</p>}
             </div>
           </div>
 
