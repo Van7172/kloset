@@ -60,11 +60,12 @@ try {
     $newPass = 'Cc3%' . bin2hex(random_bytes(9));
 
     $otherEmail = 'otra-' . $email;
+	$legacyPass = 'legacy123';
     $db->prepare('INSERT INTO sistema_usuarios (id_rol, nombre_usuario_sistema, correo_usuario_sistema, contrasena_usuario_sistema) VALUES (2, ?, ?, ?)')
-        ->execute(['Prueba aislamiento', $otherEmail, password_hash($oldPass, PASSWORD_DEFAULT)]);
+        ->execute(['Prueba aislamiento', $otherEmail, password_hash($legacyPass, PASSWORD_DEFAULT)]);
     $otherUserId = (int)$db->lastInsertId();
-    [, $other] = callApi('auth/login', ['correo' => $otherEmail, 'password' => $oldPass]);
-    expect($other['status'] === 'success', 'segunda sesión QA', $other);
+    [, $other] = callApi('auth/login', ['correo' => $otherEmail, 'password' => $legacyPass]);
+    expect($other['status'] === 'success', 'sesión con contraseña anterior a la política actual', $other);
     $otherToken = $other['token'];
     [, $r] = callApi('cuenta/datos', ['nombre' => 'Prueba Actualizada', 'telefono' => '999000111', 'avisos_pedidos' => true, 'avisos_novedades' => false], $token);
     expect($r['status'] === 'success' && $r['datos']['telefono'] === '999000111', 'datos cuenta', $r);

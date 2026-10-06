@@ -47,7 +47,7 @@ export function ProductPage() {
         <p className="mb-6 text-red">{error}</p>
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/catalogo')}
           className="min-h-[50px] cursor-pointer border-none bg-ink px-6 font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
         >
           Ir al catálogo
@@ -124,7 +124,7 @@ export function ProductPage() {
       />
       <button
         type="button"
-        onClick={() => navigate('/')}
+        onClick={() => navigate('/catalogo')}
         className="min-h-[44px] cursor-pointer border-none bg-transparent py-[10px] font-narrow text-[13px] uppercase tracking-[0.08em] text-soft"
       >
         ← Catálogo

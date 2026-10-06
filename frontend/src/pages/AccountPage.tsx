@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seo } from '../components/Seo';
 import { AddressForm } from '../components/AddressForm';
 import { api, type ApiDatosCuenta, type ApiDireccion, type ApiFavorito } from '../services/api';
-import { useKloset } from '../store/KlosetContext';
+import { useKloset, type Pedido } from '../store/KlosetContext';
 import { money, tallaRecomendada } from '../lib/fit';
 import { cumplePoliticaContrasena, passwordRequirements } from '../lib/password';
 import { nombreCortoDepartamento } from '../lib/locations';
@@ -17,11 +17,21 @@ const tabs = [
 type Tab = (typeof tabs)[number]['id'];
 const nombresEstado: Record<string, string> = { pendiente_pago: 'Pendiente', pagado: 'Registrado', en_preparacion: 'En preparación', enviado: 'En camino', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' };
 
+function fechaEntrega(pedido: Pedido): string {
+  const base = new Date((pedido.fechaRaw || '').replace(' ', 'T'));
+  const estimada = pedido.entregaEstimada
+    ? new Date(`${pedido.entregaEstimada}T12:00:00`)
+    : new Date(base.getTime() + 3 * 86400000);
+  return Number.isNaN(estimada.getTime())
+    ? 'fecha por confirmar'
+    : estimada.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 export function AccountPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { usuario, cargandoSesion, bolsa, pedidos, medidas, tienePerfil, corte, borrarPerfil, actualizarNombre, salir } = useKloset();
-  const active: Tab = tabs.find((t) => t.id === params.get('tab'))?.id ?? 'pedidos';
+  const active: Tab = tabs.find((t) => t.id === params.get('tab'))?.id ?? 'resumen';
   const [favoritos, setFavoritos] = useState<ApiFavorito[]>([]);
   const [direcciones, setDirecciones] = useState<ApiDireccion[]>([]);
   const [datos, setDatos] = useState<ApiDatosCuenta | null>(null);
@@ -57,7 +67,7 @@ export function AccountPage() {
   const totalBolsa = bolsa.reduce((sum, item) => sum + item.price * item.cantidad, 0);
   const totalPrendas = bolsa.reduce((sum, item) => sum + item.cantidad, 0);
   const actual = pedidos[0];
-  const etapaPedido = actual ? ({ pendiente_pago: 'Pagado', pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'En camino', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
+  const etapaPedido = actual ? ({ pendiente_pago: 'Pendiente de pago', pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'En camino', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
 
   const guardarDatos = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setMensaje(''); setOcupado(true);
@@ -133,10 +143,9 @@ export function AccountPage() {
 
             <div className="mt-6 grid grid-cols-4 gap-2 border-b border-rule pb-3">
               {['Pagado', 'Preparación', 'En camino', 'Entregado'].map((label, index) => {
-                const estadoActual = ['pendiente_pago', 'pagado', 'en_preparacion', 'enviado', 'entregado'];
-                const etapaActual = estadoActual.indexOf(actual.estado ?? 'pagado');
-                const ok = index <= etapaActual || (actual.estado === 'pendiente_pago' && index === 0);
-                const isCurrent = index === etapaActual || (actual.estado === 'pagado' && index === 1);
+                const etapaActual = ({ pendiente_pago: -1, pagado: 0, en_preparacion: 1, enviado: 2, en_reparto: 2, entregado: 3, cancelado: -1 } as Record<string, number>)[actual.estado] ?? -1;
+                const ok = index <= etapaActual;
+                const isCurrent = index === etapaActual;
                 return <div key={label} className="text-center">
                   <div className="mb-2 h-[2px] w-full bg-rule" style={{ background: ok ? 'var(--red)' : 'var(--rule)' }} />
                   <span className="block font-narrow text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isCurrent ? 'var(--red)' : 'var(--soft)' }}>{label}</span>
@@ -144,9 +153,9 @@ export function AccountPage() {
               })}
             </div>
 
-            <p className="mt-4 text-sm text-body">Sale del almacén de Ate. Entrega estimada el jueves 3 de septiembre entre las 9:00 y las 18:00.</p>
+            <p className="mt-4 text-sm text-body">Entrega estimada el {fechaEntrega(actual)} entre las 9:00 y las 18:00.</p>
 
-          </div> : <p className="py-6 text-sm text-soft">Aún no tienes pedidos. <Link to="/" className="underline">Explora el catálogo</Link>.</p>}
+          </div> : <p className="py-6 text-sm text-soft">Aún no tienes pedidos. <Link to="/catalogo" className="underline">Explora el catálogo</Link>.</p>}
 
           <div className="mt-6">
             <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Avisos</p></div>
@@ -178,7 +187,7 @@ export function AccountPage() {
       </div>
     </div>}
 
-    {active === 'favoritos' && <section><div className="mb-4 flex justify-between gap-3"><div><h2 className="font-display text-[30px]">Mis favoritos</h2><p className="text-sm text-soft">Prendas que te encantan. Revisa la talla antes de añadirlas a la bolsa.</p></div><span className="text-sm text-soft">{favoritos.length} {favoritos.length === 1 ? 'prenda' : 'prendas'}</span></div>{favoritos.length ? favoritos.map((p) => <div key={p.id_producto} className="flex flex-wrap items-center gap-4 border-b border-rule py-4"><Link to={`/producto/${p.url_producto}`} className="h-24 w-24 shrink-0 bg-surface"><img src={p.url_imagen ?? ''} alt="" className="h-full w-full object-cover" /></Link><div className="min-w-0 flex-1"><Link to={`/producto/${p.url_producto}`} className="font-display text-xl">{p.nombre_producto}</Link><p className="text-sm text-soft">{p.nombre_categoria}{Number(p.stock) <= 0 ? ' · Sin stock' : ''}</p></div><span className="font-display text-xl">{money(Number(p.precio_producto))}</span><Link to={`/producto/${p.url_producto}`} className="inline-flex min-h-11 items-center bg-ink px-4 font-narrow text-xs font-semibold uppercase text-paper">Ver producto</Link><button type="button" onClick={() => void quitarFavorito(p.id_producto)} aria-label={`Quitar ${p.nombre_producto} de favoritos`} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-xl text-red">♥</button></div>) : <p className="border-t border-rule py-10 text-center text-sm text-soft">Aún no tienes favoritos. <Link to="/" className="underline">Explora el catálogo</Link>.</p>}</section>}
+    {active === 'favoritos' && <section><div className="mb-4 flex justify-between gap-3"><div><h2 className="font-display text-[30px]">Mis favoritos</h2><p className="text-sm text-soft">Prendas que te encantan. Revisa la talla antes de añadirlas a la bolsa.</p></div><span className="text-sm text-soft">{favoritos.length} {favoritos.length === 1 ? 'prenda' : 'prendas'}</span></div>{favoritos.length ? favoritos.map((p) => <div key={p.id_producto} className="flex flex-wrap items-center gap-4 border-b border-rule py-4"><Link to={`/producto/${p.url_producto}`} className="h-24 w-24 shrink-0 bg-surface"><img src={p.url_imagen ?? ''} alt="" className="h-full w-full object-cover" /></Link><div className="min-w-0 flex-1"><Link to={`/producto/${p.url_producto}`} className="font-display text-xl">{p.nombre_producto}</Link><p className="text-sm text-soft">{p.nombre_categoria}{Number(p.stock) <= 0 ? ' · Sin stock' : ''}</p></div><span className="font-display text-xl">{money(Number(p.precio_producto))}</span><Link to={`/producto/${p.url_producto}`} className="inline-flex min-h-11 items-center bg-ink px-4 font-narrow text-xs font-semibold uppercase text-paper">Ver producto</Link><button type="button" onClick={() => void quitarFavorito(p.id_producto)} aria-label={`Quitar ${p.nombre_producto} de favoritos`} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-xl text-red">♥</button></div>) : <p className="border-t border-rule py-10 text-center text-sm text-soft">Aún no tienes favoritos. <Link to="/catalogo" className="underline">Explora el catálogo</Link>.</p>}</section>}
 
     {active === 'bolsa' && <CartPage compact />}
 
@@ -192,8 +201,8 @@ export function AccountPage() {
         const estadoColor = p.estado === 'entregado' ? 'text-green-700' : 'text-red';
         const estadoAction = ['pagado', 'enviado', 'en_reparto'].includes(p.estado) ? 'SEGUIR ENVÍO' : 'VER DETALLE';
         const entregaTexto = p.estado === 'entregado'
-          ? `Entregado el ${p.fecha}`
-          : 'Entrega estimada el jueves 3 de septiembre';
+          ? 'Pedido entregado'
+          : `Entrega estimada el ${fechaEntrega(p)}`;
 
         return <div key={p.id} className="flex flex-wrap items-center gap-5 border-t border-rule py-5">
           <div className="flex shrink-0 gap-2">

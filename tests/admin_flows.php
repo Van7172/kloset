@@ -66,8 +66,11 @@ try {
     successPanel('Categorias','getById',['id'=>$ids['cat']]);
     [, $r]=adminCall('Categorias','store',$cat); checkPanel($r['status']==='error','categoría duplicada rechazada');
     successPanel('Categorias','updateCategoria',$cat+['id'=>$ids['cat']]);
-    $prod=['nombre'=>'QA Producto ' . $suffix,'url'=>'qa-prod-' . $suffix,'id_categoria'=>$ids['cat'],'descripcion'=>'Prueba local','precio'=>'90.50','estado'=>'activo','talla'=>'S','corte'=>'Slim','stock'=>'7'];
+    $prod=['nombre'=>'QA Producto ' . $suffix,'url'=>'qa-prod-' . $suffix,'id_categoria'=>$ids['cat'],'descripcion'=>'Prueba local','precio'=>'90.50','estado'=>'activo','talla'=>'S','corte'=>'Slim','stock'=>'7','sku'=>'QAP1'.$suffix];
+    [, $r]=adminCall('Productos','store',array_merge($prod,['sku'=>'SINCODIGO'])); checkPanel($r['status']==='error','primera variante exige letras y números');
     $r=successPanel('Productos','store',$prod); $ids['prod']=$r['id'];
+    $firstSku=$db->query('SELECT sku_variante FROM productos_variantes WHERE id_producto='.$ids['prod'].' LIMIT 1')->fetchColumn();
+    checkPanel($firstSku===strtoupper($prod['sku']),'código personalizado de primera variante persistido');
     successPanel('Productos','updateProducto',$prod+['id'=>$ids['prod'],'stock_total'=>'16']);
     checkPanel((int)$db->query('SELECT COALESCE(SUM(stock_variante),0) FROM productos_variantes WHERE id_producto='.$ids['prod'])->fetchColumn()===16,'stock total de producto persistido');
     [, $r]=adminCall('Productos','store',array_merge($prod,['url'=>'otro-'.$suffix,'id_categoria'=>99999999])); checkPanel($r['status']==='error','categoría inexistente rechazada');
@@ -78,8 +81,11 @@ try {
     checkPanel(is_file($imagePath),'archivo de imagen existente');
     [$code,$r]=adminCall('Productos','uploadImagenes',['id'=>$ids['prod'],'imagenes[0]'=>new CURLFile(__FILE__,'image/png','falso.png')]);
     checkPanel($code===422,'imagen falsa rechazada');
-    $var=['id_producto'=>$ids['prod'],'talla'=>'M','corte'=>'Regular','sku'=>'QA-'.$suffix,'stock'=>'10'];
+    $var=['id_producto'=>$ids['prod'],'talla'=>'M','corte'=>'Regular','sku'=>'QAV1'.$suffix,'stock'=>'10'];
     $r=successPanel('Variantes','store',$var); $ids['var']=$r['id'];
+    [, $r]=adminCall('Variantes','store',array_merge($var,['sku'=>'SOLOLETRAS'])); checkPanel($r['status']==='error','código sin números rechazado');
+    [, $r]=adminCall('Variantes','store',array_merge($var,['sku'=>'123456'])); checkPanel($r['status']==='error','código sin letras rechazado');
+    [, $r]=adminCall('Variantes','store',array_merge($var,['sku'=>'QA-123'])); checkPanel($r['status']==='error','código con separadores rechazado');
     successPanel('Variantes','getById',['id'=>$ids['var']]);
     successPanel('Variantes','updateVariante',$var+['id'=>$ids['var']]);
     [, $r]=adminCall('Variantes','store',$var); checkPanel($r['status']==='error','SKU duplicado rechazado');

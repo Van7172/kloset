@@ -71,21 +71,37 @@ class Productos
 			return ['status' => 'error', 'message' => 'La URL ya está en uso'];
 		}
 
+		$inventario = self::readInventarioInicial();
+		if (isset($inventario['status'])) {
+			return $inventario;
+		}
+
 		$con = Conexion::getInstance();
-		$sth = $con->prepare(
-			'INSERT INTO productos (id_categoria, nombre_producto, url_producto, descripcion_producto,
-			                        precio_producto, estado_producto)
-			 VALUES (:categoria, :nombre, :url, :descripcion, :precio, :estado)'
-		);
-		$sth->execute([
-			':categoria' => $datos['categoria'],
-			':nombre' => $datos['nombre'],
-			':url' => $datos['url'],
-			':descripcion' => $datos['descripcion'],
-			':precio' => $datos['precio'],
-			':estado' => $datos['estado'],
-		]);
-		$id = (int) $con->lastInsertId();
+		$con->beginTransaction();
+		try {
+			$sth = $con->prepare(
+				'INSERT INTO productos (id_categoria, nombre_producto, url_producto, descripcion_producto,
+				                        precio_producto, estado_producto)
+				 VALUES (:categoria, :nombre, :url, :descripcion, :precio, :estado)'
+			);
+			$sth->execute([
+				':categoria' => $datos['categoria'],
+				':nombre' => $datos['nombre'],
+				':url' => $datos['url'],
+				':descripcion' => $datos['descripcion'],
+				':precio' => $datos['precio'],
+				':estado' => $datos['estado'],
+			]);
+			$id = (int) $con->lastInsertId();
+			self::crearVarianteInicial($con, $id, $inventario);
+			$con->commit();
+		} catch (\Throwable $e) {
+			if ($con->inTransaction()) {
+				$con->rollBack();
+			}
+			error_log('KLOSET crear producto: ' . $e->getMessage());
+			return ['status' => 'error', 'message' => 'No se pudo crear el producto'];
+		}
 
 		self::guardarImagenes($id);
 
@@ -463,7 +479,16 @@ class Productos
 		$cortes = ['Slim', 'Regular', 'Oversize'];
 		$talla = (string) ($_POST['talla'] ?? 'M');
 		$corte = (string) ($_POST['corte'] ?? 'Regular');
+		$sku = strtoupper(trim((string) ($_POST['sku'] ?? '')));
 		$stockRaw = $_POST['stock'] ?? null;
+		if (!Variantes::codigoValido($sku)) {
+			return ['status' => 'error', 'message' => 'Ingresa un código único de 3 a 50 caracteres con letras y números'];
+		}
+		$ocupado = Conexion::getInstance()->prepare('SELECT 1 FROM productos_variantes WHERE sku_variante = ?');
+		$ocupado->execute([$sku]);
+		if ($ocupado->fetchColumn()) {
+			return ['status' => 'error', 'message' => 'El código de variante ya está en uso'];
+		}
 
 		if ($stockRaw === null || $stockRaw === '' || filter_var($stockRaw, FILTER_VALIDATE_INT) === false) {
 			return ['status' => 'error', 'message' => 'Ingresa el stock como un número entero'];
@@ -479,7 +504,7 @@ class Productos
 			return ['status' => 'error', 'message' => 'Corte no válido'];
 		}
 
-		return ['talla' => $talla, 'corte' => $corte, 'stock' => $stock];
+		return ['talla' => $talla, 'corte' => $corte, 'sku' => $sku, 'stock' => $stock];
 	}
 
 	private static function readAjusteStockTotal(): array
@@ -522,22 +547,8 @@ class Productos
 		}
 	}
 
-	private static function crearVarianteInicial(PDO $con, int $idProducto, string $url, array $inventario): void
+	private static function crearVarianteInicial(PDO $con, int $idProducto, array $inventario): void
 	{
-		$sku = strtoupper(substr($url, 0, 40) . '-' . $inventario['talla'] . '-' . substr($inventario['corte'], 0, 3));
-		$sku = substr(preg_replace('/[^A-Z0-9\-]/', '', $sku) ?: 'SKU', 0, 44);
-		$base = $sku;
-		$n = 1;
-		$ocupado = $con->prepare('SELECT COUNT(*) FROM productos_variantes WHERE sku_variante = ?');
-		do {
-			$ocupado->execute([$sku]);
-			if ((int) $ocupado->fetchColumn() === 0) {
-				break;
-			}
-			$n++;
-			$sku = substr($base, 0, 44) . '-' . $n;
-		} while ($n < 50);
-
 		$sth = $con->prepare(
 			'INSERT INTO productos_variantes (id_producto, talla_variante, corte_variante, sku_variante, stock_variante)
 			 VALUES (:producto, :talla, :corte, :sku, :stock)'
@@ -546,7 +557,7 @@ class Productos
 			':producto' => $idProducto,
 			':talla' => $inventario['talla'],
 			':corte' => $inventario['corte'],
-			':sku' => $sku,
+			':sku' => $inventario['sku'],
 			':stock' => $inventario['stock'],
 		]);
 	}
