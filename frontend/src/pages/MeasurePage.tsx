@@ -61,7 +61,7 @@ export function MeasurePage() {
       setError(fallo);
       return;
     }
-    navigate('/cuenta');
+    navigate('/resultado');
   };
 
   return (
@@ -115,7 +115,7 @@ export function MeasurePage() {
           disabled={guardando}
           className="min-h-[54px] w-full max-w-[346px] cursor-pointer border-none bg-ink px-6 font-narrow text-sm font-semibold uppercase tracking-[0.06em] text-paper hover:bg-red disabled:opacity-50"
         >
-          {guardando ? 'Guardando…' : 'Guardar medidas'}
+          {guardando ? 'Guardando…' : 'Guardar y ver mi talla'}
         </button>
       </div>
     </div>

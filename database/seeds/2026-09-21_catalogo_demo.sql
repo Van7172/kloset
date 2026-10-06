@@ -30,7 +30,8 @@ INSERT INTO productos (id_categoria, nombre_producto, url_producto, descripcion_
 -- activo del visitante.
 INSERT INTO productos_variantes (id_producto, talla_variante, corte_variante, sku_variante, stock_variante)
 SELECT p.id_producto, t.talla, c.corte,
-       CONCAT('KL-', p.id_producto, '-', t.talla, '-', LEFT(c.corte, 3)),
+       CONCAT('KL', LPAD(p.id_producto, 3, '0'), t.talla, UPPER(LEFT(c.corte, 3)),
+              UPPER(LEFT(MD5(CONCAT(p.id_producto, ':', t.talla, ':', c.corte)), 6))),
        25
 FROM productos p
 CROSS JOIN (SELECT 'XS' talla UNION SELECT 'S' UNION SELECT 'M' UNION SELECT 'L' UNION SELECT 'XL') t

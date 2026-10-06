@@ -18,7 +18,7 @@ function CampoContrasena({ id, etiqueta, valor, onChange, visible, alternar, aut
   return <div className="border-b border-rule py-3">
     <label htmlFor={id} className="block font-narrow text-xs uppercase tracking-[0.12em] text-soft">{etiqueta}</label>
     <div className="flex items-center">
-      <input id={id} type={visible ? 'text' : 'password'} value={valor} onChange={(event) => onChange(event.target.value)} autoComplete={autocomplete} minLength={8} maxLength={128} className="min-h-10 w-full border-none bg-transparent text-base text-ink outline-none" placeholder={placeholder} />
+      <input id={id} type={visible ? 'text' : 'password'} value={valor} onChange={(event) => onChange(event.target.value)} autoComplete={autocomplete} minLength={autocomplete === 'new-password' ? 8 : undefined} maxLength={autocomplete === 'new-password' ? 128 : undefined} className="min-h-10 w-full border-none bg-transparent text-base text-ink outline-none" placeholder={placeholder} />
       <button type="button" onClick={alternar} aria-label={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={visible} title={visible ? 'Ocultar contraseña' : 'Mostrar contraseña'} className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center border-none bg-transparent text-soft hover:text-ink">
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {visible ? <><path d="M3 3l18 18" /><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" /><path d="M9.9 5.2A11 11 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-4 4.8" /><path d="M6.6 6.6C3.6 8.3 2 12 2 12s3.5 7 10 7a10 10 0 0 0 3-.5" /></> : <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>}
@@ -73,7 +73,7 @@ export function AuthPage() {
     if (modo === 'signup' && nombre.trim().length < 2) return setError('Escribe tu nombre.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.trim())) return setError('Escribe un correo válido.');
     if (!password) return setError('Escribe tu contraseña.');
-    if (!cumplePoliticaContrasena(password)) return setError(`La contraseña debe tener ${passwordRequirements}`);
+    if (modo === 'signup' && !cumplePoliticaContrasena(password)) return setError(`La contraseña debe tener ${passwordRequirements}`);
     if (modo === 'signup' && password !== confirmarPassword) return setError('Las contraseñas no coinciden.');
 
     if (modo === 'signup') {

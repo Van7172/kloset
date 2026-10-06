@@ -163,7 +163,7 @@ class Variantes
 		$idProducto = (int) ($_POST['id_producto'] ?? 0);
 		$talla = (string) ($_POST['talla'] ?? '');
 		$corte = (string) ($_POST['corte'] ?? '');
-		$sku = trim((string) ($_POST['sku'] ?? ''));
+		$sku = strtoupper(trim((string) ($_POST['sku'] ?? '')));
 		$stock = (int) ($_POST['stock'] ?? 0);
 		if (filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT) === false || $stock > 2147483647 || mb_strlen($sku) > 50) return ['status'=>'error', 'message'=>'Revisa el stock entero y el SKU (máximo 50 caracteres)'];
 
@@ -182,11 +182,19 @@ class Variantes
 		if ($sku === '') {
 			return ['status' => 'error', 'message' => 'El SKU es obligatorio'];
 		}
+		if (!self::codigoValido($sku)) {
+			return ['status' => 'error', 'message' => 'El código debe tener entre 3 y 50 caracteres, solo letras y números, e incluir ambos'];
+		}
 		if ($stock < 0) {
 			return ['status' => 'error', 'message' => 'El stock no puede ser negativo'];
 		}
 
 		return ['id_producto' => $idProducto, 'talla' => $talla, 'corte' => $corte, 'sku' => $sku, 'stock' => $stock];
+	}
+
+	public static function codigoValido(string $codigo): bool
+	{
+		return (bool) preg_match('/\A(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*[0-9])[A-Z0-9]{3,50}\z/D', $codigo);
 	}
 
 	private static function skuEnUso(string $sku, int $id): bool

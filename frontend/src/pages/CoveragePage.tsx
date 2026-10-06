@@ -83,12 +83,12 @@ export function CoveragePage() {
 
       <div className="flex flex-col items-start gap-[18px] border-t-2 border-ink pt-5 md:flex-row">
         <p className="m-0 max-w-[56ch] flex-1 text-sm leading-[1.6] text-body">
-          ¿No ves tu distrito? Enviamos al resto del Perú por agencia con cargo aparte, y el cambio de talla sigue
-          siendo gratuito.
+          Por ahora entregamos solo en los distritos listados de Lima Metropolitana y Callao. Si tu zona no aparece,
+          escríbenos para consultar futuras opciones.
         </p>
         <button
           type="button"
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/catalogo')}
           className="min-h-[52px] cursor-pointer whitespace-nowrap border-none bg-ink px-[22px] font-narrow text-sm font-semibold uppercase tracking-[0.08em] text-paper hover:bg-red hover:text-[#F2F2F0]"
         >
           Ver catálogo

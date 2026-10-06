@@ -67,7 +67,7 @@ export function ResultPage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate(producto ? `/producto/${producto}` : '/')}
+          onClick={() => navigate(producto ? `/producto/${producto}` : '/catalogo')}
           className="min-h-[56px] flex-1 cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover"
         >
           {producto ? `Ver la prenda en ${talla}` : 'Ir al catálogo'}

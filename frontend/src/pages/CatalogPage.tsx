@@ -111,7 +111,7 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
 
   if (irAlCatalogo) {
     return <div className="kl-rise home">
-      <Seo title="Catálogo deportivo | Kloset" description="Explora el catálogo de ropa deportiva Kloset y encuentra prendas para tu estilo y tu talla." path="/catalogo" />
+      <Seo title="Catálogo deportivo" description="Explora el catálogo de ropa deportiva Kloset y encuentra prendas para tu estilo y tu talla." path="/catalogo" />
       {listadoCatalogo}
     </div>;
   }

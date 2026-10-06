@@ -165,7 +165,7 @@ export function AvatarPage() {
       <div className="mb-6 flex items-center gap-[14px] border-b border-ink pb-[14px] pt-[2px]">
         <button
           type="button"
-          onClick={() => navigate(url ? `/producto/${url}` : '/')}
+          onClick={() => navigate(url ? `/producto/${url}` : '/catalogo')}
           className="min-h-[44px] cursor-pointer border-none bg-transparent p-0 font-narrow text-[13px] uppercase tracking-[0.08em] text-soft"
         >
           ← {producto ? producto.nombre_producto : 'Catálogo'}

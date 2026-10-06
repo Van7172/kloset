@@ -23,9 +23,9 @@
                     <div class="kl-grid-row" role="button" tabindex="0"
                          data-id="<?= (int) $r['id_rol'] ?>"
                          data-estado="<?= htmlspecialchars($r['estado_rol']) ?>"
-                         data-buscar="<?= htmlspecialchars(mb_strtolower($r['nombre_rol'] . ' ' . $r['descripcion_rol'])) ?>">
+                         data-buscar="<?= htmlspecialchars(mb_strtolower($r['nombre_rol'] . ' ' . ($r['descripcion_rol'] ?? ''))) ?>">
                         <div class="kl-cell"><b class="kl-mono"><?= htmlspecialchars($r['nombre_rol']) ?></b></div>
-                        <div class="kl-cell kl-cell--wrap"><b class="kl-fg-soft" style="font-weight:400;"><?= htmlspecialchars($r['descripcion_rol']) ?></b></div>
+                         <div class="kl-cell kl-cell--wrap"><b class="kl-fg-soft" style="font-weight:400;"><?= htmlspecialchars($r['descripcion_rol'] ?? '') ?></b></div>
                         <div class="kl-cell kl-cell--right kl-cell--num"><b><?= (int) $r['total_usuarios'] ?></b></div>
                         <div class="kl-cell kl-cell--right kl-cell--tag">
                             <b class="<?= $r['estado_rol'] === 'activo' ? 'kl-fg-ok' : 'kl-fg-soft' ?>"><?= htmlspecialchars($r['estado_rol']) ?></b>

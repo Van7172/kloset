@@ -135,6 +135,8 @@
 
                     <label class="kl-label" for="prod-stock">stock_variante *</label>
                     <input class="kl-field" type="number" id="prod-stock" name="stock" min="0" step="1" value="0" required>
+                    <label class="kl-label" for="prod-sku">Código personalizado de la primera variante *</label>
+                    <input class="kl-field" type="text" id="prod-sku" name="sku" minlength="3" maxlength="50" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{3,50}" title="Usa entre 3 y 50 letras y números; incluye al menos una letra y un número" autocomplete="off" required>
                     <p class="kl-hint" style="margin:6px 0 0;">El stock queda en la primera variante. Otras tallas y cortes se agregan en Variantes.</p>
                 </div>
 

@@ -20,6 +20,27 @@ class Usuario
 	private $_secciones;
 	private $_logeado = false;
 
+	public function __serialize(): array
+	{
+		// El panel vuelve a consultar permisos y estado en cada petición.
+		return ['id' => (int) ($this->_id ?? 0)];
+	}
+
+	public function __unserialize(array $data): void
+	{
+		// Acepta sesiones antiguas sin recrear sus propiedades dinámicas.
+		$this->_id = 0;
+		foreach ($data as $key => $value) {
+			$separator = strrpos($key, "\0");
+			$field = $separator === false ? $key : substr($key, $separator + 1);
+			if (in_array($field, ['id', '_id'], true) && is_numeric($value) && (int) $value > 0) {
+				$this->_id = (int) $value;
+				break;
+			}
+		}
+		$this->_logeado = false;
+	}
+
 	public function __construct($id = 0)
 	{
 		$this->_id = $id;

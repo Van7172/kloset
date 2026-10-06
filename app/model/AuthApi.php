@@ -16,10 +16,6 @@ class AuthApi
 		if ($correo === '' || $password === '') {
 			return ['status' => 'error', 'message' => 'Correo y contraseña requeridos'];
 		}
-		if (!self::cumplePoliticaContrasena($password)) {
-			http_response_code(422);
-			return ['status' => 'error', 'message' => self::mensajePoliticaContrasena()];
-		}
 
 		$con = Conexion::getInstance();
 		$sth = $con->prepare(

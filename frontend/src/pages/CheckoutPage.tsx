@@ -1,7 +1,7 @@
 import { Seo } from '../components/Seo';
 import { nombreCortoDepartamento } from '../lib/locations';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 import { api, type ApiDireccion } from '../services/api';
@@ -220,7 +220,7 @@ export function CheckoutPage() {
                 </div>
               </div>}
               <div className="mb-6 flex flex-wrap gap-4 text-sm"><button type="button" onClick={() => setEditarDireccion(true)} className="cursor-pointer border-none bg-transparent p-0 text-ink underline">+ Guardar nueva dirección</button>{direccionId && <button type="button" onClick={() => setUsarManual(!usarManual)} className="cursor-pointer border-none bg-transparent p-0 text-soft underline">{usarManual ? 'Usar dirección guardada' : 'Usar otra dirección solo para este pedido'}</button>}</div>
-              <div className="mb-6 border-t border-rule pt-3"><div className="mb-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">2. Entrega</div><div className="flex gap-4 border-b border-rule pb-4"><span className="text-xl" aria-hidden="true">▣</span><div><strong className="block text-sm">Envío: Gratis</strong><span className="block text-sm text-body">Cobertura: Lima Metropolitana y Callao</span><span className="block text-sm text-body">Entrega estimada: {entregaEstimada}</span><span className="block text-sm text-body">Horario de entrega: 9:00 a 18:00</span></div></div><div className="mt-3 border border-rule bg-surface px-4 py-3 text-sm text-body"><span className="mr-2 font-semibold">●</span>Te avisaremos por correo y SMS cuando tu pedido esté en camino.</div></div>
+              <div className="mb-6 border-t border-rule pt-3"><div className="mb-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">2. Entrega</div><div className="flex gap-4 border-b border-rule pb-4"><span className="text-xl" aria-hidden="true">▣</span><div><strong className="block text-sm">Envío: Gratis</strong><span className="block text-sm text-body">Cobertura: Lima Metropolitana y Callao</span><span className="block text-sm text-body">Entrega estimada: {entregaEstimada}</span><span className="block text-sm text-body">Horario de entrega: 9:00 a 18:00</span></div></div><div className="mt-3 border border-rule bg-surface px-4 py-3 text-sm text-body"><span className="mr-2 font-semibold">●</span>Podrás consultar el estado de tu pedido desde tu cuenta.</div></div>
 
               <div className="mb-3 border-t border-rule pt-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">3. Datos de pago</div>
               <div className="grid gap-3 border-t border-ink pt-3 sm:grid-cols-2">
@@ -249,7 +249,7 @@ export function CheckoutPage() {
                 ))}
               </div>
 
-              <label className="mt-4 flex items-start gap-2 text-[13px] text-body"><input type="checkbox" checked={aceptaTerminos} onChange={(e) => { setAceptaTerminos(e.target.checked); setError(''); }} className="mt-0.5 h-4 w-4 accent-[var(--ink)]" />Acepto los <a href="/terminos" className="underline">Términos y Condiciones</a> y la <a href="/privacidad" className="underline">Política de Privacidad</a> de KLOSET.</label>
+              <label className="mt-4 flex items-start gap-2 text-[13px] text-body"><input type="checkbox" checked={aceptaTerminos} onChange={(e) => { setAceptaTerminos(e.target.checked); setError(''); }} className="mt-0.5 h-4 w-4 accent-[var(--ink)]" />Acepto los <Link to="/legal/terminos" className="underline">Términos y Condiciones</Link> y la <Link to="/legal/privacidad" className="underline">Política de Privacidad</Link> de KLOSET.</label>
 
               {error && (
                 <div className="mt-[14px] border-l-[3px] border-red py-[6px] pl-[10px] font-narrow text-[12.5px] uppercase tracking-[0.06em] text-red">

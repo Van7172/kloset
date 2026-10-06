@@ -37,6 +37,7 @@ export type Pedido = {
   ref: string;
   fecha: string;
   fechaRaw: string;
+  entregaEstimada: string | null;
   total: number;
   subtotal: number;
   items: ItemBolsa[];
@@ -149,6 +150,7 @@ function mapPedido(p: ApiPedido): Pedido {
     ref: p.ref,
     fecha,
     fechaRaw: fechaIso,
+    entregaEstimada: p.entrega_estimada_pedido ?? null,
     total: Number(p.total ?? p.total_pedido ?? 0),
     subtotal: Number(p.subtotal_pedido ?? p.total ?? p.total_pedido ?? 0),
     items: p.items.map(mapPedidoItem),
@@ -276,13 +278,17 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guardarPerfil = useCallback(async (m: Medidas) => {
-    setMedidasState(m);
-    setTienePerfil(true);
-    if (!usuario) return null; // invitado: se queda solo en este dispositivo
+    if (!usuario) {
+      setMedidasState(m);
+      setTienePerfil(true);
+      return null; // invitado: se queda solo en este dispositivo
+    }
 
     try {
       const res = await api.medidas.guardar({ estatura: m.h, pecho: m.chest, cintura: m.waist, cadera: m.hip, corte });
       if (res.status !== 'success') return res.message || 'No pudimos guardar tus medidas';
+      setMedidasState(m);
+      setTienePerfil(true);
       return null;
     } catch {
       return 'No hay conexión con la API';

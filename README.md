@@ -33,6 +33,14 @@ Si la base demo fue cargada antes de esta revisión, ejecuta una vez
 `database/seeds/2026-09-28_restock_catalogo_demo.sql`: repone a 25 unidades
 las seis variantes iniciales de `Short Split 5"` y deja todo el catálogo demo
 comprable.
+Los códigos de variantes nuevos son únicos y combinan letras y números. Para
+convertir los SKU del catálogo demo anterior, aplica
+`database/migrations/2026-10-05_codigos_alfanumericos_variantes.sql` antes de
+editarlos en el panel. La migración conserva los IDs y los pedidos existentes.
+En una base local vacía, carga `database/seeds/2026-10-05_base_demo_local.sql`,
+el seed de catálogo y el de imágenes en ese orden. Luego ejecuta por CLI
+`database/seeds/2026-10-05_datos_demo_local.php` indicando una ruta nueva para
+las credenciales fuera del directorio público; genera contraseñas aleatorias.
 Si ya se aplicó `database/migrations/2026-09-28_dni_cliente.sql`, ejecuta
 `database/migrations/2026-09-28_eliminar_dni_cliente.sql` para quitar la columna.
 Para habilitar la recuperación de contraseña y la verificación del registro, aplica también

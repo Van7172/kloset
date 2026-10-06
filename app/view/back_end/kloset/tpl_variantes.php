@@ -104,8 +104,8 @@
                     </div>
                 </div>
 
-                <label class="kl-label" for="var-sku">sku_variante * <span class="kl-hint">— único en todo el catálogo</span></label>
-                <input class="kl-field" type="text" id="var-sku" name="sku" maxlength="50" required>
+                <label class="kl-label" for="var-sku">Código personalizado * <span class="kl-hint">— único, con letras y números</span></label>
+                <input class="kl-field" type="text" id="var-sku" name="sku" minlength="3" maxlength="50" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{3,50}" title="Usa entre 3 y 50 letras y números; incluye al menos una letra y un número" autocomplete="off" required>
 
                 <label class="kl-label" for="var-stock">stock_variante *</label>
                 <input class="kl-field" type="number" id="var-stock" name="stock" min="0" step="1" required>
