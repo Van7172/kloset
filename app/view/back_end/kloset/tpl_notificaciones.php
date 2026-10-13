@@ -1,3 +1,10 @@
+<section class="kl-panel kl-rise" style="margin-bottom:18px;"><div class="kl-panel-head"><div class="kl-kicker">Alertas del negocio</div></div><div class="kl-panel-body">
+  <?php foreach ($alertas['stock'] as $a): ?><div class="kl-listrow"><div><b><?= (int)$a['stock_variante']===0 ? 'Sin stock' : 'Stock crítico' ?> · <?= htmlspecialchars($a['nombre_producto']) ?></b><small><?= htmlspecialchars($a['nombre_color'].' · '.$a['sku_variante']) ?></small></div><a href="<?= DW_PANEL ?>variantes">Inventario</a></div><?php endforeach; ?>
+  <?php foreach ($alertas['seguimiento'] as $a): ?><div class="kl-listrow"><div><b>Pedido #<?= (int)$a['id_pedido'] ?> sin número de seguimiento</b><small><?= htmlspecialchars(str_replace('_',' ',$a['estado_pedido'])) ?></small></div><a href="<?= DW_PANEL ?>pedidos">Pedidos</a></div><?php endforeach; ?>
+  <?php foreach ($alertas['cancelaciones'] as $a): ?><div class="kl-listrow"><div><b>Cancelación de pedido #<?= (int)$a['id_pedido'] ?></b><small><?= htmlspecialchars($a['fecha_creacion']) ?></small></div><a href="<?= DW_PANEL ?>pedidos">Pedidos</a></div><?php endforeach; ?>
+  <?php if (!$alertas['stock'] && !$alertas['seguimiento'] && !$alertas['cancelaciones']): ?><p class="kl-fg-soft">Sin alertas pendientes.</p><?php endif; ?>
+</div></section>
+<h2 class="kl-kicker" style="margin:0 0 12px;">Notificaciones de clientes</h2>
 <div class="kl-work kl-rise">
     <div class="kl-work-main">
         <div class="kl-table-bar">

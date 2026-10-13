@@ -1,6 +1,6 @@
 /* Lógica de talla y ajuste — portada de "Kloset.dc.html" */
 
-export const TALLAS = ['XS', 'S', 'M', 'L', 'XL'] as const;
+export const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'] as const;
 export const CORTES = ['Slim', 'Regular', 'Oversize'] as const;
 
 export type Talla = (typeof TALLAS)[number];
@@ -14,6 +14,8 @@ export type Medidas = {
 };
 
 export const MEDIDAS_INICIALES: Medidas = { h: 174, chest: 98, waist: 84, hip: 99 };
+let toleranciaCm = 2.5;
+export function configurarTolerancia(valor: number) { if (Number.isFinite(valor) && valor >= 0 && valor <= 10) toleranciaCm = valor; }
 
 export const RANGOS_MEDIDAS = [
   { key: 'h' as const, label: 'Estatura', hint: 'Sin zapatos, contra la pared', min: 140, max: 210 },
@@ -24,7 +26,7 @@ export const RANGOS_MEDIDAS = [
 
 export function indiceTalla(medidas: Medidas, corte: Corte): number {
   const c = medidas.chest;
-  let i = c < 88 ? 0 : c < 96 ? 1 : c < 104 ? 2 : c < 112 ? 3 : 4;
+  let i = c < 88 + toleranciaCm ? 0 : c < 96 + toleranciaCm ? 1 : c < 104 + toleranciaCm ? 2 : c < 112 + toleranciaCm ? 3 : 4;
   if (corte === 'Slim' && c % 8 > 5) i = Math.min(4, i + 1);
   if (corte === 'Oversize' && c % 8 < 2) i = Math.max(0, i - 1);
   return i;

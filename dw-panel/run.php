@@ -5,13 +5,12 @@ use Develoweb\App\Model\Clientes;
 use Develoweb\App\Model\Configuracion as ConfiguracionModel;
 use Develoweb\App\Model\Dashboard;
 use Develoweb\App\Model\MenuAdmin;
+use Develoweb\App\Model\MiCuentaAdmin;
 use Develoweb\App\Model\Notificaciones;
 use Develoweb\App\Model\Pagos;
 use Develoweb\App\Model\PedidosAdmin;
 use Develoweb\App\Model\Productos as ProductosModel;
-use Develoweb\App\Model\Roles;
 use Develoweb\App\Model\Sesion;
-use Develoweb\App\Model\Usuarios;
 use Develoweb\App\Model\Variantes;
 
 /** @var Sesion $sesion */
@@ -31,7 +30,8 @@ $primary_disabled = false;
 
 $param1 = isset($_GET['param1']) ? trim((string) $_GET['param1']) : '';
 $usuario = $sesion->getUsuario();
-$logeado = $usuario->getLogeado() && $usuario->getId() > 0;
+$logeado = $usuario->getLogeado() && $usuario->getId() > 0
+	&& in_array((string) $usuario->getRol(), ['Administrador', 'Asesor'], true);
 
 if ($logeado && $param1 === 'sign-in') {
 	header('Location: ' . DW_PANEL . 'dashboard');
@@ -47,13 +47,19 @@ if ($logeado) {
 		$sesion->logout();
 	}
 
-	$seccionesPermitidas = $usuario->findSeccionByCurrentUrl($ruta);
-	if ($ruta !== 'dashboard' && empty($seccionesPermitidas)) {
+		$seccionesPermitidas = \Develoweb\App\Model\Acl::allows($ruta);
+		if (!$seccionesPermitidas) {
 		$tpl = 'tpl_404.php';
 		$title = 'No encontrado';
 	} else {
 		switch ($ruta) {
 			case 'dashboard':
+				if ((string) $usuario->getRol() === 'Asesor') {
+					$tpl = 'tpl_dashboard_asesor.php';
+					$title = 'Panel de asesor';
+					$crumb = 'Resumen';
+					break;
+				}
 				$kpis = Dashboard::kpis();
 				$estado_stats = Dashboard::estadoStats();
 				$stock_critico = Dashboard::stockCritico();
@@ -113,6 +119,7 @@ if ($logeado) {
 				break;
 			case 'notificaciones':
 				$notificaciones = Notificaciones::get();
+				$alertas = Notificaciones::alertas();
 				$tpl = 'tpl_notificaciones.php';
 				$view_js = 'notificaciones.js';
 				$title = 'Notificaciones';
@@ -128,35 +135,34 @@ if ($logeado) {
 				$crumb = 'Clientes';
 				$search_ph = 'nombre o correo';
 				break;
+			case 'usuarios':
+				$users = \Develoweb\App\Model\Usuarios::get();
+				$roles = \Develoweb\App\Model\Usuarios::rolesDeAlta();
+				$secciones_asesor = \Develoweb\App\Model\Usuarios::seccionesAsesor();
+				$tpl = 'tpl_usuarios.php';
+				$view_js = 'usuarios.js';
+				$title = 'Usuarios';
+				$crumb = 'Sistema';
+				$search_ph = 'nombre, correo o rol';
+				$primary_label = 'Nuevo usuario';
+				break;
 			case 'reportes':
 				$tpl = 'tpl_reportes.php';
 				$title = 'Reportes';
 				$crumb = 'Ventas';
-				break;
-			case 'usuarios':
-				$users = Usuarios::get();
-				$roles = Roles::getAll();
-				$tpl = 'tpl_usuarios.php';
-				$view_js = 'usuarios.js';
-				$title = 'Usuarios';
-				$crumb = 'Sistema · ACL';
-				$search_ph = 'nombre o correo';
-				$primary_label = 'Nuevo usuario';
-				break;
-			case 'roles':
-				$roles = Roles::get();
-				$tpl = 'tpl_roles.php';
-				$view_js = 'roles.js';
-				$title = 'Roles';
-				$crumb = 'Sistema · ACL';
-				$search_ph = 'nombre_rol';
-				$primary_label = 'Nuevo rol';
 				break;
 			case 'configuracion':
 				$configurations = ConfiguracionModel::getConfiguration();
 				$tpl = 'tpl_configuracion.php';
 				$view_js = 'configuracion.js';
 				$title = 'Configuración';
+				$crumb = 'Sistema';
+				break;
+			case 'mi-cuenta':
+				$miCuenta = MiCuentaAdmin::datos();
+				$tpl = 'tpl_mi_cuenta.php';
+				$view_js = 'mi-cuenta.js';
+				$title = 'Mi cuenta';
 				$crumb = 'Sistema';
 				break;
 			default:

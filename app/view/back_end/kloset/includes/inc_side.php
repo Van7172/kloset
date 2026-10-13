@@ -11,7 +11,7 @@ $ruta_actual = $_GET['param1'] ?? 'dashboard';
     <div class="kl-brand">
         <img src="<?= IMGS ?>kloset-logo-transparente.png" alt="Kloset">
         <div class="kl-brand-dark" role="img" aria-label="Kloset"></div>
-        <span class="kl-badge">Admin</span>
+        <span class="kl-badge"><?= htmlspecialchars($rol_admin === 'Asesor' ? 'Asesor' : 'Admin') ?></span>
     </div>
 
     <nav class="kl-nav">
@@ -35,7 +35,7 @@ $ruta_actual = $_GET['param1'] ?? 'dashboard';
         <div class="kl-avatar"><?= htmlspecialchars(mb_strtoupper(mb_substr($nombre_admin, 0, 1))) ?></div>
         <div class="kl-aside-user">
             <b><?= htmlspecialchars($nombre_admin) ?></b>
-            <span><?= htmlspecialchars($rol_admin) ?> · <a href="<?= DW_PANEL ?>sign-out">Salir</a></span>
+            <span><?= htmlspecialchars($rol_admin) ?> · <a href="<?= DW_PANEL ?>mi-cuenta">Mi cuenta</a> · <a href="<?= DW_PANEL ?>sign-out">Salir</a></span>
         </div>
         <button class="kl-theme" type="button" id="btn-theme" title="Cambiar tema" aria-label="Cambiar tema">
             <span class="kl-theme-knob"></span>

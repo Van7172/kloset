@@ -14,12 +14,18 @@ export type ApiProducto = {
 
 export type ApiImagen = {
   id_imagen: number;
+  id_color: number;
   url_imagen: string;
   orden_imagen: number;
+  principal_imagen: number;
 };
+
+export type ApiColor = { id_color: number; id_producto: number; nombre_color: string };
 
 export type ApiVariante = {
   id_variante: number;
+  id_color: number;
+  nombre_color: string;
   talla_variante: string;
   corte_variante: string;
   sku_variante: string;
@@ -47,6 +53,8 @@ export type ApiCarritoItem = {
   cantidad_carrito_item: number;
   talla_variante: string;
   corte_variante: string;
+  nombre_color: string;
+  sku_variante: string;
   stock_variante: number;
   id_producto: number;
   nombre_producto: string;
@@ -56,6 +64,9 @@ export type ApiCarritoItem = {
 };
 
 export type ApiPedidoItem = {
+  id_variante?: number;
+  nombre_color?: string;
+  sku_variante?: string;
   cantidad_pedido_item?: number;
   cantidad?: number;
   precio_unitario_pedido_item?: string;
@@ -122,6 +133,7 @@ export type ApiDetalle = {
   producto: ApiProducto & { estado_producto: string };
   imagenes: ApiImagen[];
   variantes: ApiVariante[];
+  colores: ApiColor[];
 };
 
 const TOKEN_KEY = 'kloset_token';
@@ -157,6 +169,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   health: () => request<{ status: string }>('/health'),
+  configuracion: () => request<{ status: string; tolerancia_cm: number }>('/config'),
 
   contacto: (datos: { tema: string; nombre: string; correo: string; telefono: string; mensaje: string; sitio: string }) =>
     request<{ status: string; message?: string }>('/contacto', {
@@ -223,7 +236,7 @@ export const api = {
     guardar: (id_carrito_item: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/guardar', { method: 'POST', body: JSON.stringify({ id_carrito_item }) }),
     restaurar: (id_variante: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/restaurar', { method: 'POST', body: JSON.stringify({ id_variante }) }),
     obtener: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito'),
-    agregar: (datos: { id_producto: number; talla: string; corte: string; cantidad?: number }) =>
+    agregar: (datos: { id_variante: number; cantidad?: number }) =>
       request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/agregar', {
         method: 'POST',
         body: JSON.stringify(datos),
@@ -240,10 +253,11 @@ export const api = {
   },
 
   pedidos: {
+    codigo: (id: number) => request<{ status: string; codigo?: string | null }>(`/pedido/codigo?id=${id}`),
     cancelar: (id: number) => request<{ status: string; message?: string }>('/pedidos/cancelar', { method: 'POST', body: JSON.stringify({ id }) }),
     listar: () => request<{ status: string; pedidos: ApiPedido[] }>('/pedidos'),
     detalle: (id: number) => request<{ status: string; message?: string; pedido?: ApiPedido }>(`/pedido?id=${id}`),
-    crear: (datos: { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string }) =>
+    crear: (datos: { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string; numero_simulado: string; otp_simulado?: string }) =>
       request<{ status: string; message?: string; pedido?: ApiPedido }>('/pedidos', {
         method: 'POST',
         body: JSON.stringify(datos),

@@ -7,18 +7,22 @@ class MenuAdmin
 	public static function forUsuario(Usuario $usuario): array
 	{
 		$sections = $usuario->getSecciones();
-		if (empty($sections)) {
+		if (empty($sections) && (string) $usuario->getRol() !== 'Administrador') {
 			return [];
 		}
 
 		$counts = self::counts();
 
 		$grouped = [];
+		$permitidas = ['dashboard','categorias','productos','variantes','pedidos','pagos','notificaciones','clientes','configuracion'];
 		foreach ($sections as $item) {
 			$sec = $item['seccion'] ?? null;
 			if (!$sec || !is_object($sec) || $sec->getEstado() !== 'activo') {
 				continue;
 			}
+			$url = $sec->getUrl();
+			if (!in_array($url, $permitidas, true)) continue;
+			if ((string) $usuario->getRol() === 'Asesor' && !Acl::allows($url)) continue;
 			$mod = $sec->getModulo();
 			$modId = $mod->getId();
 			if (!isset($grouped[$modId])) {
@@ -27,7 +31,6 @@ class MenuAdmin
 					'secciones' => [],
 				];
 			}
-			$url = $sec->getUrl();
 			$grouped[$modId]['secciones'][] = [
 				'nombre_seccion' => $sec->getNombre(),
 				'url_seccion' => $url,
@@ -35,6 +38,11 @@ class MenuAdmin
 			];
 		}
 
+		if ((string) $usuario->getRol() === 'Administrador') {
+			$grouped['cuentas'] = ['nombre_modulo' => 'Sistema', 'secciones' => [[
+				'nombre_seccion' => 'Usuarios', 'url_seccion' => 'usuarios', 'count' => null,
+			]]];
+		}
 		return array_values($grouped);
 	}
 
@@ -51,7 +59,7 @@ class MenuAdmin
 			'variantes' => (int) $con->query('SELECT COUNT(*) FROM productos_variantes')->fetchColumn(),
 			'pedidos' => (int) $con->query(
 				"SELECT COUNT(*) FROM pedidos
-				 WHERE estado_pedido IN ('pendiente_pago', 'pagado', 'en_preparacion')"
+				 WHERE estado_pedido IN ('pagado', 'en_preparacion', 'enviado', 'en_reparto')"
 			)->fetchColumn(),
 			'pagos' => (int) $con->query('SELECT COUNT(*) FROM pagos')->fetchColumn(),
 			'notificaciones' => (int) $con->query(
@@ -62,8 +70,6 @@ class MenuAdmin
 				 INNER JOIN sistema_roles r ON r.id_rol = u.id_rol
 				 WHERE r.nombre_rol = 'Cliente'"
 			)->fetchColumn(),
-			'usuarios' => (int) $con->query('SELECT COUNT(*) FROM sistema_usuarios')->fetchColumn(),
-			'roles' => (int) $con->query('SELECT COUNT(*) FROM sistema_roles')->fetchColumn(),
 		];
 	}
 }

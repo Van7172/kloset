@@ -19,6 +19,10 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
 RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 
+# Enlaces antiguos del administrador: llevarlos a la ruta real del panel.
+RewriteCond %{REQUEST_URI} ^(.*/)dw-admin/?$ [NC]
+RewriteRule ^dw-admin/?$ %1dw-panel/ [R=302,L]
+
 # --- Backend PHP ---
 RewriteRule ^api/v1/(.*)$ api/index.php [L,QSA]
 RewriteRule ^(api|dw-panel|app)/ - [L]

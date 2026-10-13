@@ -17,16 +17,19 @@ import {
   type ApiPedidoItem,
   type ApiUsuario,
 } from '../services/api';
-import { MEDIDAS_INICIALES, type Corte, type Medidas, type Talla } from '../lib/fit';
+import { MEDIDAS_INICIALES, configurarTolerancia, type Corte, type Medidas, type Talla } from '../lib/fit';
 
 export type ItemBolsa = {
   /** Ausente en el ítem "optimista" que se guarda como intención antes de iniciar sesión. */
   id_carrito_item?: number;
+  id_variante: number;
+  color: string;
+  sku: string;
   id_producto: number;
   url_producto: string;
   name: string;
   size: Talla;
-  fit: Corte;
+  fit: string;
   price: number;
   imagen: string | null;
   cantidad: number;
@@ -75,7 +78,7 @@ type Acciones = {
   cambiarCantidad: (idCarritoItem: number, cantidad: number) => Promise<string | null>;
   guardarParaDespues: (idCarritoItem: number) => Promise<string | null>;
   recuperarGuardado: (idVariante: number) => Promise<string | null>;
-  crearPedido: (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => Promise<string | null>;
+  crearPedido: (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string; numero: string; otp?: string }) => Promise<string | null>;
   borrarPerfil: () => Promise<string | null>;
   actualizarNombre: (nombre: string) => void;
   recargarPedidos: () => Promise<void>;
@@ -116,6 +119,9 @@ function temaInicial(): 'light' | 'dark' {
 function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
   return {
     id_carrito_item: it.id_carrito_item,
+    id_variante: it.id_variante,
+    color: it.nombre_color,
+    sku: it.sku_variante,
     id_producto: it.id_producto,
     url_producto: it.url_producto,
     name: it.nombre_producto,
@@ -129,6 +135,9 @@ function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
 
 function mapPedidoItem(it: ApiPedidoItem): ItemBolsa {
   return {
+    id_variante: it.id_variante ?? 0,
+    color: it.nombre_color ?? '',
+    sku: it.sku_variante ?? '',
     id_producto: it.id_producto ?? 0,
     url_producto: it.url_producto ?? '',
     name: it.nombre_producto ?? '',
@@ -163,6 +172,8 @@ function mapPedido(p: ApiPedido): Pedido {
 }
 
 export function KlosetProvider({ children }: { children: ReactNode }) {
+  const [toleranciaVersion, setToleranciaVersion] = useState(0);
+  useEffect(() => { void api.configuracion().then((r) => { if (r.status === 'success') { configurarTolerancia(Number(r.tolerancia_cm)); setToleranciaVersion((v) => v + 1); } }).catch(() => undefined); }, []);
   const [usuario, setUsuario] = useState<ApiUsuario | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [cargandoBolsa, setCargandoBolsa] = useState(Boolean(getToken()));
@@ -301,9 +312,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     if (!getToken()) return 'Inicia sesión para guardar tu bolsa';
     try {
       const res = await api.carrito.agregar({
-        id_producto: item.id_producto,
-        talla: item.size,
-        corte: item.fit,
+        id_variante: item.id_variante,
         cantidad: item.cantidad,
       });
       if (res.status !== 'success' || !res.items) return res.message || 'No se pudo añadir a la bolsa';
@@ -368,7 +377,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   }, [usuario]);
 
   const crearPedido = useCallback(
-    async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => {
+    async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string; numero: string; otp?: string }) => {
       try {
         const res = await api.pedidos.crear({
           id_direccion: direccion.id_direccion,
@@ -377,6 +386,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
           referencia: direccion.referencia,
           marca_tarjeta: tarjeta.marca,
           ultimos_digitos: tarjeta.ultimos,
+          numero_simulado: tarjeta.numero,
+          otp_simulado: tarjeta.otp,
         });
         if (res.status !== 'success' || !res.pedido) return res.message || 'No se pudo registrar el pedido';
         pedidosRevision.current++;
@@ -429,6 +440,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     [
       usuario,
       tema,
+      toleranciaVersion,
       medidas,
       tienePerfil,
       corte,

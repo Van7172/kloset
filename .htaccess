@@ -2,6 +2,9 @@
 # Kloset — Front controller + API + assets estáticos
 RewriteEngine On
 
+RewriteCond %{REQUEST_URI} ^(.*/)dw-admin/?$ [NC]
+RewriteRule ^dw-admin/?$ %1dw-panel/ [R=302,L]
+
 RewriteCond %{REQUEST_FILENAME} -s [OR]
 RewriteCond %{REQUEST_FILENAME} -l [OR]
 RewriteCond %{REQUEST_FILENAME} -d

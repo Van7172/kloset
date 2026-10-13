@@ -21,23 +21,23 @@
 
   function pintar(datos) {
     const c = datos.cliente;
-    kicker.textContent = 'sistema_usuarios · id ' + c.id_usuario_sistema;
+    kicker.textContent = 'Cliente #' + c.id_usuario_sistema;
     titulo.textContent = c.nombre_usuario_sistema;
 
     let html =
-      kv('correo', c.correo_usuario_sistema) +
-      kv('estado', c.estado_usuario_sistema, c.estado_usuario_sistema === 'activo' ? 'kl-fg-ok' : 'kl-fg-soft') +
-      kv('alta', c.fecha_creacion);
+      kv('Correo', c.correo_usuario_sistema) + kv('Teléfono', c.telefono_usuario_sistema || '—') +
+      kv('Registrado', c.fecha_creacion) + kv('Total comprado', money(datos.total_comprado));
 
     if (datos.perfil) {
       const p = datos.perfil;
       html +=
         kv('estatura · pecho · cintura · cadera', p.estatura_perfil_corporal + ' · ' + p.pecho_perfil_corporal + ' · ' + p.cintura_perfil_corporal + ' · ' + p.cadera_perfil_corporal) +
-        kv('talla_recomendada', p.talla_recomendada_perfil_corporal || '—');
+        kv('Perfil', datos.perfil_completo ? 'Completo' : 'Incompleto') +
+        kv('Talla recomendada', p.talla_recomendada_perfil_corporal || '—');
     } else {
       html += kv('perfil_corporal', 'Sin registrar', 'kl-fg-soft');
     }
-    html += kv('url_modelo_base_avatar_3d', datos.avatar || '—', datos.avatar ? '' : 'kl-fg-soft');
+    html += kv('Avatar asociado', datos.avatar || 'No registrado', datos.avatar ? '' : 'kl-fg-soft');
 
     resumen.innerHTML = html;
 

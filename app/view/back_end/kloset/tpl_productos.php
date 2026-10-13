@@ -28,13 +28,12 @@
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:2.2fr 1fr .8fr .8fr .7fr .9fr 84px; --min-w:840px;">
+            <div class="kl-grid" style="--cols:2.2fr 1fr .8fr .7fr .9fr 84px; --min-w:760px;">
                 <div class="kl-grid-head">
                     <div>producto</div>
                     <div>categoría</div>
                     <div class="kl-cell--right">precio</div>
-                    <div class="kl-cell--right">imágenes</div>
-                    <div class="kl-cell--right">stock</div>
+                    <div class="kl-cell--right">stock total</div>
                     <div class="kl-cell--right">estado</div>
                     <div class="kl-cell--right" style="position:sticky; right:0; background:var(--panel);">acciones</div>
                 </div>
@@ -54,7 +53,6 @@
                             </div>
                             <div class="kl-cell"><b><?= htmlspecialchars($prod['nombre_categoria'] ?? '—') ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--num"><b>S/ <?= number_format((float) $prod['precio_producto'], 2) ?></b></div>
-                            <div class="kl-cell kl-cell--right kl-cell--num"><b><?= (int) $prod['total_imagenes'] ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--num">
                                 <b class="<?= (int) $prod['stock_total'] < 15 ? 'kl-fg-red' : '' ?>"><?= (int) $prod['stock_total'] ?></b>
                             </div>
@@ -93,21 +91,18 @@
         <form id="form-producto">
             <input type="hidden" name="id" value="">
 
-            <div class="kl-detail-body" id="prod-resumen" hidden>
-                <dl class="kl-kv" style="margin:0;"><dt>productos_variantes</dt><dd id="prod-kv-variantes">0 SKU</dd></dl>
-                <dl class="kl-kv" style="margin:0;"><dt>productos_imagenes</dt><dd id="prod-kv-imagenes">0 imágenes</dd></dl>
-            </div>
+            <div class="kl-detail-body" id="prod-resumen" hidden><dl class="kl-kv" style="margin:0;"><dt>Stock total calculado</dt><dd id="prod-kv-variantes">0</dd></dl></div>
 
             <div class="kl-detail-section">
                 <div class="kl-form-error" id="form-producto-error" hidden></div>
 
-                <label class="kl-label" for="prod-nombre">nombre_producto *</label>
+                <label class="kl-label" for="prod-nombre">Nombre *</label>
                 <input class="kl-field" type="text" id="prod-nombre" name="nombre" maxlength="150" required>
 
-                <label class="kl-label" for="prod-url">url_producto <span class="kl-hint">— se genera del nombre</span></label>
+                <label class="kl-label" for="prod-url">URL <span class="kl-hint">— se genera del nombre</span></label>
                 <input class="kl-field" type="text" id="prod-url" name="url" maxlength="180">
 
-                <label class="kl-label" for="prod-categoria">id_categoria *</label>
+                <label class="kl-label" for="prod-categoria">Categoría *</label>
                 <select class="kl-field" id="prod-categoria" name="id_categoria" required>
                     <option value="">Selecciona…</option>
                     <?php foreach ($categorias as $cat): ?>
@@ -115,49 +110,19 @@
                     <?php endforeach; ?>
                 </select>
 
-                <label class="kl-label" for="prod-precio">precio_producto (S/) *</label>
+                <label class="kl-label" for="prod-precio">Precio (S/) *</label>
                 <input class="kl-field" type="number" id="prod-precio" name="precio" min="0.01" step="0.01" required>
 
-                <div id="prod-stock-inicial">
-                    <label class="kl-label" for="prod-talla">talla_variante *</label>
-                    <select class="kl-field" id="prod-talla" name="talla">
-                        <?php foreach (['XS', 'S', 'M', 'L', 'XL', 'XXL'] as $talla): ?>
-                            <option value="<?= $talla ?>"<?= $talla === 'M' ? ' selected' : '' ?>><?= $talla ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label class="kl-label" for="prod-corte">corte_variante *</label>
-                    <select class="kl-field" id="prod-corte" name="corte">
-                        <?php foreach (['Slim', 'Regular', 'Oversize'] as $corte): ?>
-                            <option value="<?= $corte ?>"<?= $corte === 'Regular' ? ' selected' : '' ?>><?= $corte ?></option>
-                        <?php endforeach; ?>
-                    </select>
-
-                    <label class="kl-label" for="prod-stock">stock_variante *</label>
-                    <input class="kl-field" type="number" id="prod-stock" name="stock" min="0" step="1" value="0" required>
-                    <label class="kl-label" for="prod-sku">Código personalizado de la primera variante *</label>
-                    <input class="kl-field" type="text" id="prod-sku" name="sku" minlength="3" maxlength="50" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{3,50}" title="Usa entre 3 y 50 letras y números; incluye al menos una letra y un número" autocomplete="off" required>
-                    <p class="kl-hint" style="margin:6px 0 0;">El stock queda en la primera variante. Otras tallas y cortes se agregan en Variantes.</p>
-                </div>
-
-                <div id="prod-stock-total" hidden>
-                    <label class="kl-label" for="prod-stock-total-input">stock_total *</label>
-                    <input class="kl-field" type="number" id="prod-stock-total-input" name="stock_total" min="0" step="1" disabled>
-                    <p class="kl-hint" style="margin:6px 0 0;">Se distribuye de forma uniforme entre las variantes. Para ajustar una talla o corte puntual, usa Inventario.</p>
-                </div>
-
-                <label class="kl-label" for="prod-descripcion">descripcion_producto</label>
+                <label class="kl-label" for="prod-descripcion">Descripción</label>
                 <textarea class="kl-field kl-textarea" id="prod-descripcion" name="descripcion" rows="3"></textarea>
 
-                <label class="kl-label" for="prod-estado">estado_producto</label>
+                <label class="kl-label" for="prod-estado">Estado</label>
                 <select class="kl-field" id="prod-estado" name="estado">
                     <option value="activo">activo</option>
                     <option value="inactivo">inactivo</option>
                 </select>
 
-                <label class="kl-label" for="prod-imagenes">productos_imagenes <span class="kl-hint">— JPG, PNG, GIF o WebP</span></label>
-                <input class="kl-field" type="file" id="prod-imagenes" name="imagenes[]" accept="image/*" multiple>
-                <div class="kl-imgs" id="prod-galeria"></div>
+                <p class="kl-hint">Después de guardar el producto, configura colores, imágenes y variantes en Inventario.</p>
             </div>
 
             <div class="kl-detail-actions">

@@ -151,14 +151,14 @@ class Categorias
 	private static function readInput(): array
 	{
 		$nombre = trim((string) ($_POST['nombre'] ?? ''));
-		$url = trim((string) ($_POST['url'] ?? ''));
+		$url = '';
 		$descripcion = trim((string) ($_POST['descripcion'] ?? ''));
 		$estado = ($_POST['estado'] ?? 'activo') === 'inactivo' ? 'inactivo' : 'activo';
 
 		if ($nombre === '') {
 			return ['status' => 'error', 'message' => 'El nombre es obligatorio'];
 		}
-		$url = \url_friend($url !== '' ? $url : $nombre);
+		$url = \url_friend($nombre);
 		if (mb_strlen($nombre) > 100 || mb_strlen($url) > 150) return ['status'=>'error', 'message'=>'Nombre o URL demasiado largos'];
 		if ($url === '') {
 			return ['status' => 'error', 'message' => 'La URL no es válida'];

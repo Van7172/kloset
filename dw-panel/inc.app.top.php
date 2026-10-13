@@ -39,7 +39,10 @@ if (isset($_SESSION['sesion'])) {
 	if (isset($_SESSION['usuario']) && $_SESSION['usuario']->getId() > 0) {
 		// Los permisos y el estado se vuelven a consultar en cada petición.
 		$_SESSION['usuario'] = new \Develoweb\App\Model\Usuario($_SESSION['usuario']->getId());
-		$_SESSION['usuario']->setLogeado($_SESSION['usuario']->getEstado() === 'activo' && count($_SESSION['usuario']->getSecciones()) > 0);
+		$rol = (string) $_SESSION['usuario']->getRol();
+		$_SESSION['usuario']->setLogeado($_SESSION['usuario']->getEstado() === 'activo'
+			&& (in_array($rol, ['Administrador', 'Asesor'], true))
+			&& ($rol === 'Administrador' || count($_SESSION['usuario']->getSecciones()) > 0));
 		$sesion->setUsuario($_SESSION['usuario']);
 	}
 } else {

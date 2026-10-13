@@ -20,6 +20,7 @@ const GUIA_TALLAS: Record<Talla, { pecho: string; cintura: string; cadera: strin
   M: { pecho: '94–99 cm', cintura: '80–85 cm', cadera: '96–101 cm' },
   L: { pecho: '100–105 cm', cintura: '86–91 cm', cadera: '102–107 cm' },
   XL: { pecho: '106–112 cm', cintura: '92–98 cm', cadera: '108–114 cm' },
+  XXL: { pecho: 'Consultar guía de la prenda', cintura: 'Consultar guía de la prenda', cadera: 'Consultar guía de la prenda' },
 };
 
 /**

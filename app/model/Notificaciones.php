@@ -6,6 +6,18 @@ class Notificaciones
 {
 	private const SECCION = 'notificaciones';
 
+	public static function alertas(): array
+	{
+		$con = Conexion::getInstance();
+		$umbral = Dashboard::umbralStock();
+		$sth = $con->prepare('SELECT v.id_variante,v.stock_variante,v.sku_variante,p.nombre_producto,c.nombre_color FROM productos_variantes v JOIN productos p ON p.id_producto=v.id_producto JOIN productos_colores c ON c.id_color=v.id_color WHERE v.stock_variante<? ORDER BY v.stock_variante,v.id_variante LIMIT 30');
+		$sth->execute([$umbral]);
+		$stock = $sth->fetchAll();
+		$seguimiento = $con->query("SELECT id_pedido,estado_pedido FROM pedidos WHERE estado_pedido IN ('enviado','en_reparto') AND (seguimiento_pedido IS NULL OR seguimiento_pedido='') ORDER BY fecha_creacion DESC LIMIT 20")->fetchAll();
+		$cancelaciones = $con->query("SELECT id_pedido,fecha_creacion FROM historial_estados_pedidos WHERE estado_historial_estado_pedido='cancelado' ORDER BY fecha_creacion DESC LIMIT 10")->fetchAll();
+		return ['stock'=>$stock,'seguimiento'=>$seguimiento,'cancelaciones'=>$cancelaciones];
+	}
+
 	public static function get(): array
 	{
 		$con = Conexion::getInstance();
