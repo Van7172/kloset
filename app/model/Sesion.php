@@ -46,7 +46,8 @@ class Sesion
 		}
 
 		$user_obj = new Usuario((int) $user['id_usuario_sistema']);
-		if (empty($user_obj->getSecciones())) return ['errors' => 'Esta cuenta no tiene acceso al panel'];
+		if (!in_array((string) $user_obj->getRol(), ['Administrador', 'Asesor'], true)
+			|| ((string) $user_obj->getRol() === 'Asesor' && empty($user_obj->getSecciones()))) return ['errors' => 'Esta cuenta no tiene acceso al panel'];
 		session_regenerate_id(true);
 		$_SESSION['csrf_panel'] = bin2hex(random_bytes(32));
 		$user_obj->setLogeado(true);
@@ -58,9 +59,20 @@ class Sesion
 
 	public function logout()
 	{
-		unset($_SESSION['usuario'], $_SESSION['sesion']);
-		header('Location: ' . DW_PANEL);
+		$_SESSION = [];
+		if (ini_get('session.use_cookies')) {
+			$params = session_get_cookie_params();
+			setcookie(session_name(), '', [
+				'expires' => time() - 42000,
+				'path' => $params['path'],
+				'domain' => $params['domain'],
+				'secure' => $params['secure'],
+				'httponly' => $params['httponly'],
+				'samesite' => $params['samesite'] ?? 'Lax',
+			]);
+		}
 		session_destroy();
+		header('Location: ' . DW_PANEL);
 		exit;
 	}
 

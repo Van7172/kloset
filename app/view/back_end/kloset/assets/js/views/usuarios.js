@@ -10,6 +10,12 @@
   const alta = document.getElementById('usr-alta');
   const permsWrap = document.getElementById('usr-perms-wrap');
   const btnGuardar = document.getElementById('usr-guardar');
+  const rol = document.getElementById('usr-rol');
+  const altaPerms = document.getElementById('usr-alta-perms');
+  const actualizarPermsAlta = () => {
+    altaPerms.hidden = rol.selectedOptions[0]?.textContent !== 'Asesor';
+    altaPerms.querySelectorAll('input').forEach((input) => { input.disabled = altaPerms.hidden; });
+  };
 
   function kv(clave, valor, clase) {
     return (
@@ -25,8 +31,11 @@
     kicker.textContent = 'sistema_usuarios · nueva fila';
     titulo.textContent = 'Nuevo usuario';
     resumen.innerHTML = '';
+    perms.innerHTML = '';
     alta.hidden = false;
     permsWrap.hidden = true;
+    btnGuardar.hidden = false;
+    actualizarPermsAlta();
     btnGuardar.textContent = 'Crear usuario';
     Kloset.marcarFila(null);
     Kloset.abrirDetalle(PANEL);
@@ -35,9 +44,12 @@
 
   function pintar(datos) {
     alta.hidden = true;
+    altaPerms.querySelectorAll('input').forEach((input) => { input.disabled = true; });
     permsWrap.hidden = false;
     btnGuardar.textContent = 'Guardar acceso';
     const u = datos.usuario;
+    btnGuardar.hidden = u.nombre_rol === 'Cliente';
+    if (u.nombre_rol === 'Cliente') permsWrap.hidden = true;
     form.elements.id.value = u.id_usuario_sistema;
     kicker.textContent = 'sistema_usuarios · id_usuario_sistema ' + u.id_usuario_sistema;
     titulo.textContent = u.nombre_usuario_sistema;
@@ -76,6 +88,7 @@
   });
 
   document.getElementById('kl-primary')?.addEventListener('click', modoNuevo);
+  rol.addEventListener('change', actualizarPermsAlta);
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
     btn.addEventListener('click', () => Kloset.cerrarDetalle(PANEL));
   });

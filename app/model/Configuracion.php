@@ -63,6 +63,13 @@ class Configuracion
 		return $sth->fetchAll();
 	}
 
+	public static function publica(): array
+	{
+		$sth = Conexion::getInstance()->prepare("SELECT valor_configuracion FROM sistema_configuraciones WHERE llave_configuracion='tallas.tolerancia_cm'");
+		$sth->execute();
+		return ['status'=>'success','tolerancia_cm'=>(float)($sth->fetchColumn() ?: 2.5)];
+	}
+
 	/**
 	 * Guarda en bloque las llaves editadas desde el panel.
 	 */
@@ -79,9 +86,13 @@ class Configuracion
 
 		$con = Conexion::getInstance();
 		$llaves = array_column(self::getConfiguration(), 'llave_configuracion', 'id_configuracion');
+		$editables = ['NOMBRE_SITIO','CORREO_CONTACTO','TELEFONO_CONTACTO','inventario.alerta_stock','tallas.tolerancia_cm'];
 		foreach ($valores as $id => $valor) {
-			if (!isset($llaves[$id]) || !is_scalar($valor)) return ['status'=>'error', 'message'=>'Configuración no válida'];
+			if (!isset($llaves[$id]) || !in_array($llaves[$id],$editables,true) || !is_scalar($valor)) return ['status'=>'error', 'message'=>'Configuración no válida'];
 			if ($llaves[$id] === 'inventario.alerta_stock' && (filter_var($valor, FILTER_VALIDATE_INT) === false || (int)$valor < 1)) return ['status'=>'error', 'message'=>'El umbral de stock debe ser un entero mayor a cero'];
+			if ($llaves[$id] === 'tallas.tolerancia_cm' && (!is_numeric($valor) || (float)$valor < 0 || (float)$valor > 10)) return ['status'=>'error','message'=>'La tolerancia debe estar entre 0 y 10 cm'];
+			if ($llaves[$id] === 'CORREO_CONTACTO' && !filter_var($valor,FILTER_VALIDATE_EMAIL)) return ['status'=>'error','message'=>'Correo de contacto no válido'];
+			if (mb_strlen((string)$valor)>150) return ['status'=>'error','message'=>'Valor demasiado largo'];
 		}
 		$con->beginTransaction();
 		try {

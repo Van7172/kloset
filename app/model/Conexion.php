@@ -22,6 +22,7 @@ class Conexion
 				PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
 				PDO::ATTR_PERSISTENT => true
 			]);
+			$this->pdo->exec("SET time_zone = '-05:00'");
 		} catch (PDOException $e) {
 			// El detalle va al log; al cliente nunca, para no exponer credenciales
 			error_log('Kloset · fallo de conexión a la base de datos: ' . $e->getMessage());

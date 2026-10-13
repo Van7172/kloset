@@ -1,11 +1,11 @@
 <div class="kl-rise">
     <div class="kl-kpis">
         <?php foreach ($kpis as $kpi): ?>
-            <div class="kl-kpi">
+            <a class="kl-kpi" href="<?= DW_PANEL . htmlspecialchars($kpi['url']) ?>">
                 <div class="kl-kicker"><?= htmlspecialchars($kpi['label']) ?></div>
                 <div class="kl-kpi-value"><?= htmlspecialchars($kpi['value']) ?></div>
                 <div class="kl-kpi-delta <?= htmlspecialchars($kpi['clase']) ?>"><?= htmlspecialchars($kpi['delta']) ?></div>
-            </div>
+            </a>
         <?php endforeach; ?>
     </div>
 
@@ -13,7 +13,7 @@
         <div class="kl-dash-main kl-panel">
             <div class="kl-panel-head">
                 <div class="kl-kicker">Pedidos por estado</div>
-                <div class="kl-kicker">tabla · pedidos</div>
+                <a class="kl-kicker" href="<?= DW_PANEL ?>pedidos">Ver pedidos →</a>
             </div>
             <div class="kl-panel-body">
                 <?php foreach ($estado_stats as $e): ?>
@@ -33,7 +33,7 @@
         <div class="kl-dash-side">
             <div class="kl-panel">
                 <div class="kl-panel-head">
-                    <div class="kl-kicker">Stock crítico</div>
+                    <a class="kl-kicker" href="<?= DW_PANEL ?>variantes">Stock crítico → Inventario</a>
                 </div>
                 <div class="kl-panel-body">
                     <?php if (empty($stock_critico)): ?>
@@ -43,7 +43,7 @@
                             <div class="kl-listrow">
                                 <div>
                                     <b><?= htmlspecialchars($v['nombre_producto']) ?></b>
-                                    <small><?= htmlspecialchars($v['sku_variante']) ?> · <?= htmlspecialchars($v['talla_variante']) ?> · <?= htmlspecialchars($v['corte_variante']) ?></small>
+                                    <small><?= htmlspecialchars($v['nombre_color']) ?> · <?= htmlspecialchars($v['talla_variante']) ?> · <?= htmlspecialchars($v['corte_variante']) ?> · <?= htmlspecialchars($v['sku_variante']) ?></small>
                                 </div>
                                 <strong class="kl-fg-red"><?= (int) $v['stock_variante'] ?></strong>
                             </div>
@@ -54,7 +54,7 @@
 
             <div class="kl-panel">
                 <div class="kl-panel-head">
-                    <div class="kl-kicker">Actividad · historial_estados_pedidos</div>
+                    <div class="kl-kicker">Actividad reciente</div>
                 </div>
                 <div class="kl-panel-body">
                     <?php if (empty($actividad)): ?>

@@ -61,7 +61,7 @@ export function CartPage({ compact = false }: { compact?: boolean }) {
                 <div className="min-w-0 flex-1">
                   <div className="font-display text-[19px]">{it.name}</div>
                   <div className="mt-1 text-[12.5px] text-soft">
-                    Talla {it.size} · corte {it.fit}
+                    {it.color} · talla {it.size} · corte {it.fit} · SKU {it.sku}
                     {it.cantidad > 1 && ` · ×${it.cantidad}`}
                   </div>
                   {it.id_carrito_item && <div className="mt-3 flex items-center gap-3" aria-label={`Cantidad de ${it.name}`}><button type="button" disabled={it.cantidad <= 1} onClick={async () => { const fallo = await cambiarCantidad(it.id_carrito_item!, it.cantidad - 1); setError(fallo ?? ''); }} className="h-9 w-9 cursor-pointer border border-rule bg-transparent disabled:opacity-40" aria-label="Reducir cantidad">−</button><span className="min-w-4 text-center text-sm">{it.cantidad}</span><button type="button" onClick={async () => { const fallo = await cambiarCantidad(it.id_carrito_item!, it.cantidad + 1); setError(fallo ?? ''); }} className="h-9 w-9 cursor-pointer border border-rule bg-transparent" aria-label="Aumentar cantidad">+</button></div>}
@@ -105,7 +105,7 @@ export function CartPage({ compact = false }: { compact?: boolean }) {
         </>
       )}
       {error && <p role="alert" className="mt-4 border-l-[3px] border-red pl-3 text-sm text-red">{error}</p>}
-      {guardados.length > 0 && <section className="mt-8"><h3 className="border-b border-ink pb-3 font-narrow text-xs font-semibold uppercase tracking-[0.1em] text-soft">Guardado para después</h3>{guardados.map((it) => <div key={it.id_variante} className="flex items-center gap-4 border-b border-rule py-4"><img src={it.url_imagen ?? ''} alt="" className="h-16 w-14 shrink-0 bg-surface object-cover" /><div className="min-w-0 flex-1"><div className="font-display text-lg">{it.nombre_producto}</div><div className="text-xs text-soft">Talla {it.talla_variante} · {it.corte_variante} · ×{it.cantidad_carrito_item}</div></div><button type="button" onClick={async () => { const fallo = await recuperarGuardado(it.id_variante); setError(fallo ?? ''); }} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">A la bolsa</button></div>)}</section>}
+      {guardados.length > 0 && <section className="mt-8"><h3 className="border-b border-ink pb-3 font-narrow text-xs font-semibold uppercase tracking-[0.1em] text-soft">Guardado para después</h3>{guardados.map((it) => <div key={it.id_variante} className="flex items-center gap-4 border-b border-rule py-4"><img src={it.url_imagen ?? ''} alt="" className="h-16 w-14 shrink-0 bg-surface object-cover" /><div className="min-w-0 flex-1"><div className="font-display text-lg">{it.nombre_producto}</div><div className="text-xs text-soft">{it.nombre_color} · talla {it.talla_variante} · {it.corte_variante} · SKU {it.sku_variante} · ×{it.cantidad_carrito_item}</div></div><button type="button" onClick={async () => { const fallo = await recuperarGuardado(it.id_variante); setError(fallo ?? ''); }} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">A la bolsa</button></div>)}</section>}
     </div>
   );
 }

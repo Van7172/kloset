@@ -76,7 +76,7 @@ export function CheckoutPage() {
   const cerrarPedido = async () => {
     const fallo = await crearPedido(
       !usarManual && direccionId ? { id_direccion: direccionId } : { direccion: envio.direccion, ciudad: envio.ciudad, referencia: envio.referencia },
-      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4) },
+      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4), numero: soloDigitos(pago.num), otp },
     );
     if (fallo) {
       setErrorPedido(fallo);
@@ -107,7 +107,7 @@ export function CheckoutPage() {
     programar(() => setProgreso('58%'), 500);
     programar(() => setProgreso('92%'), 1100);
     programar(() => {
-      if (d === '4000000000000002') return setEstado('declined');
+      if (d !== '4242424242424242' && d !== '4000000000003220') return setEstado('declined');
       if (d === '4000000000003220') {
         setOtp('');
         return setEstado('3ds');
@@ -137,7 +137,7 @@ export function CheckoutPage() {
     { k: 'exp' as const, label: 'Caducidad', ph: 'MM/AA', ls: '0.08em', mode: 'numeric' },
     { k: 'cvc' as const, label: 'CVC', ph: '123', ls: '0.2em', mode: 'numeric' },
   ];
-  const entregaEstimada = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(Date.now() + 3 * 86400000));
+  const entregaEstimada = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(Date.now() + 5 * 86400000));
 
   return (
     <div className="kl-rise mx-auto max-w-[1000px]">
@@ -171,7 +171,7 @@ export function CheckoutPage() {
         <div className="w-full min-w-0 lg:flex-[1.25]">
           {estado === 'idle' && (
             <div>
-              <h2 className="mb-1 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">Pago seguro</h2>
+              <h2 className="mb-1 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">Pago de demostración</h2>
               <p className="mb-5 text-sm text-body">Completa los datos para finalizar tu compra.</p>
               <div className="mb-3 border-t border-rule pt-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">1. Dirección de entrega</div>
               {!usarManual && direccionId && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direcciones.find((d) => d.id === direccionId)?.nombre}</div><p className="mt-1 text-sm text-body">{direcciones.find((d) => d.id === direccionId)?.direccion}<br />{direcciones.find((d) => d.id === direccionId)?.ciudad}, {nombreCortoDepartamento(direcciones.find((d) => d.id === direccionId)?.departamento ?? 'Lima Metropolitana')}</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
@@ -264,7 +264,7 @@ export function CheckoutPage() {
               >
                 Confirmar pago
               </button>
-              <div className="mt-3 text-center text-xs text-soft">▣ Tu pago está protegido con encriptación SSL.</div>
+              <div className="mt-3 text-center text-xs text-soft">▣ No se realiza ningún cargo real.</div>
             </div>
           )}
 
@@ -388,7 +388,7 @@ export function CheckoutPage() {
               <div className="min-w-0">
                 <div className="font-display text-[17px]">{it.name}</div>
                 <div className="mt-[3px] text-xs text-soft">
-                  Talla {it.size} · {it.fit}
+                  {it.color} · talla {it.size} · {it.fit} · SKU {it.sku}
                   {it.cantidad > 1 && ` · ×${it.cantidad}`}
                 </div>
               </div>

@@ -48,7 +48,7 @@
     const nombre = fila.querySelector('.kl-cell b').textContent;
     Kloset.confirmarEliminar(CONFIRM, PANEL, {
       titulo: '¿Eliminar "' + nombre + '"?',
-      texto: 'ON DELETE SET NULL: los productos de esta categoría quedan sin categoría, no se borran.',
+      texto: 'Tiene ' + (fila.querySelector('.kl-cell--num b')?.textContent || '0') + ' productos asociados. Se conservarán sin esta categoría; también se conservarán los pedidos anteriores.',
       onConfirmar: async () => {
         const res = await Kloset.ajax('Categorias', 'deleteCategoria', { id: id });
         if (res.status !== 'success') {
@@ -81,11 +81,7 @@
     });
   });
 
-  form.elements.nombre.addEventListener('blur', () => {
-    if (form.elements.url.value.trim() === '') {
-      form.elements.url.value = Kloset.slug(form.elements.nombre.value);
-    }
-  });
+  form.elements.nombre.addEventListener('input', () => { form.elements.url.value = Kloset.slug(form.elements.nombre.value); });
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();

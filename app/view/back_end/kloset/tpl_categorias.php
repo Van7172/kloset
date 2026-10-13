@@ -82,7 +82,7 @@
                 <input class="kl-field" type="text" id="cat-nombre" name="nombre" maxlength="80" required>
 
                 <label class="kl-label" for="cat-url">url_categoria <span class="kl-hint">— se genera del nombre</span></label>
-                <input class="kl-field" type="text" id="cat-url" name="url" maxlength="120">
+                <input class="kl-field" type="text" id="cat-url" name="url" maxlength="120" readonly>
 
                 <label class="kl-label" for="cat-descripcion">descripcion_categoria</label>
                 <textarea class="kl-field kl-textarea" id="cat-descripcion" name="descripcion" rows="3"></textarea>

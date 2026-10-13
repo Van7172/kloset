@@ -7,12 +7,14 @@
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:1.6fr 1.2fr .8fr .8fr; --min-w:640px;">
+            <div class="kl-grid" style="--cols:1.2fr 1.5fr 1fr .7fr 1fr 1.2fr; --min-w:850px;">
                 <div class="kl-grid-head">
                     <div>cliente</div>
-                    <div>perfil_corporal</div>
+                    <div>correo</div>
+                    <div>perfil corporal</div>
                     <div class="kl-cell--right">pedidos</div>
-                    <div class="kl-cell--right">estado</div>
+                    <div class="kl-cell--right">total comprado</div>
+                    <div class="kl-cell--right">última compra</div>
                 </div>
 
                 <?php if (empty($clientes)): ?>
@@ -24,17 +26,16 @@
                              data-buscar="<?= htmlspecialchars(mb_strtolower($c['nombre_usuario_sistema'] . ' ' . $c['correo_usuario_sistema'])) ?>">
                             <div class="kl-cell">
                                 <b><?= htmlspecialchars($c['nombre_usuario_sistema']) ?></b>
-                                <small><?= htmlspecialchars($c['correo_usuario_sistema']) ?></small>
                             </div>
+                            <div class="kl-cell"><b><?= htmlspecialchars($c['correo_usuario_sistema']) ?></b></div>
                             <div class="kl-cell">
                                 <b class="<?= $c['tiene_perfil'] ? '' : 'kl-fg-soft' ?>">
-                                    <?= $c['tiene_perfil'] ? 'talla ' . htmlspecialchars($c['talla_recomendada_perfil_corporal']) : 'Sin perfil' ?>
+                                    <?= $c['tiene_perfil'] ? 'Completo' : 'Incompleto' ?>
                                 </b>
                             </div>
                             <div class="kl-cell kl-cell--right kl-cell--num"><b><?= (int) $c['total_pedidos'] ?></b></div>
-                            <div class="kl-cell kl-cell--right kl-cell--tag">
-                                <b class="<?= $c['estado_usuario_sistema'] === 'activo' ? 'kl-fg-ok' : 'kl-fg-soft' ?>"><?= htmlspecialchars($c['estado_usuario_sistema']) ?></b>
-                            </div>
+                            <div class="kl-cell kl-cell--right"><b>S/ <?= number_format((float)$c['total_comprado'],2) ?></b></div>
+                            <div class="kl-cell kl-cell--right"><b><?= htmlspecialchars($c['ultima_compra'] ?? '—') ?></b></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -57,7 +58,7 @@
         </div>
         <div class="kl-detail-body" id="cli-resumen"></div>
         <div class="kl-detail-section" id="cli-pedidos-wrap" hidden>
-            <div class="kl-kicker">últimos pedidos</div>
+            <div class="kl-kicker">Historial de pedidos</div>
             <div id="cli-pedidos"></div>
         </div>
         <div class="kl-detail-actions">

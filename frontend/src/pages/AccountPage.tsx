@@ -15,13 +15,11 @@ const tabs = [
   { id: 'datos', texto: 'Datos' },
 ] as const;
 type Tab = (typeof tabs)[number]['id'];
-const nombresEstado: Record<string, string> = { pendiente_pago: 'Pendiente', pagado: 'Registrado', en_preparacion: 'En preparación', enviado: 'En camino', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' };
+const nombresEstado: Record<string, string> = { pagado: 'Pagado', en_preparacion: 'En preparación', enviado: 'Enviado', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' };
 
 function fechaEntrega(pedido: Pedido): string {
-  const base = new Date((pedido.fechaRaw || '').replace(' ', 'T'));
-  const estimada = pedido.entregaEstimada
-    ? new Date(`${pedido.entregaEstimada}T12:00:00`)
-    : new Date(base.getTime() + 3 * 86400000);
+  if (!pedido.entregaEstimada) return 'fecha por confirmar';
+  const estimada = new Date(`${pedido.entregaEstimada}T12:00:00`);
   return Number.isNaN(estimada.getTime())
     ? 'fecha por confirmar'
     : estimada.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -67,7 +65,7 @@ export function AccountPage() {
   const totalBolsa = bolsa.reduce((sum, item) => sum + item.price * item.cantidad, 0);
   const totalPrendas = bolsa.reduce((sum, item) => sum + item.cantidad, 0);
   const actual = pedidos[0];
-  const etapaPedido = actual ? ({ pendiente_pago: 'Pendiente de pago', pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'En camino', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
+  const etapaPedido = actual ? ({ pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'Enviado', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
 
   const guardarDatos = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setMensaje(''); setOcupado(true);
@@ -143,7 +141,7 @@ export function AccountPage() {
 
             <div className="mt-6 grid grid-cols-4 gap-2 border-b border-rule pb-3">
               {['Pagado', 'Preparación', 'En camino', 'Entregado'].map((label, index) => {
-                const etapaActual = ({ pendiente_pago: -1, pagado: 0, en_preparacion: 1, enviado: 2, en_reparto: 2, entregado: 3, cancelado: -1 } as Record<string, number>)[actual.estado] ?? -1;
+                const etapaActual = ({ pagado: 0, en_preparacion: 1, enviado: 2, en_reparto: 2, entregado: 3, cancelado: -1 } as Record<string, number>)[actual.estado] ?? -1;
                 const ok = index <= etapaActual;
                 const isCurrent = index === etapaActual;
                 return <div key={label} className="text-center">

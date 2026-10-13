@@ -7,6 +7,48 @@ Sistema de venta de ropa deportiva con recomendación de tallas y vista de silue
 - XAMPP (Apache + MySQL + PHP 8+)
 - Node.js 18+
 
+## Migración de catálogo y panel (octubre de 2026)
+
+Antes de actualizar, guarda una copia de la base. Comprueba el ID del rol
+Administrador, cuántas cuentas de ese rol están activas y si hay pedidos en
+`pendiente_pago`. El esquema base usa `id_rol=1`; si el ID es otro, adapta la
+expresión de administrador único en la migración. Si hay varios administradores,
+revisa sus relaciones y desactiva las cuentas sobrantes individualmente. La
+migración no borra ni reasigna cuentas. Concilia cualquier pedido pendiente sin
+atribuirle un pago ficticio antes de retirar ese estado.
+
+Aplica en orden `database/migrations/2026-10-12_catalogo_pedidos_admin.sql`,
+`database/migrations/2026-10-12_estados_pedidos.sql` y
+`database/migrations/2026-10-12_inventario_eventos.sql` y
+`database/migrations/2026-10-12_historial_origen.sql`. La primera conserva los
+IDs existentes y asigna a cada producto un color provisional "Original" con sus
+imágenes. Reemplaza ese nombre desde Inventario cuando se conozca el color real.
+Aplica también `database/migrations/2026-10-12_rol_asesor.sql` para habilitar el
+alta de asesores desde Panel → Usuarios. Solo el administrador puede crear
+cuentas: asesores con acceso a las secciones que seleccione y clientes de la
+tienda. El formulario no permite crear otro administrador.
+Los snapshots históricos de artículos se copian del catálogo actual, única
+información disponible. La fecha de aprobación histórica se toma de
+`pagos.fecha_creacion` solo si el pago consta como aprobado; en otro caso queda
+vacía. La entrega estimada es cinco días calendario posteriores a esa fecha. El
+proyecto usa la zona horaria America/Lima para nuevas operaciones.
+
+Los pagos son simulados y el servidor valida la tarjeta de prueba antes de
+registrar el pedido. Solo el cliente cancela pedidos pagados o en preparación;
+el stock vuelve una vez y el pago queda aprobado sin un reembolso ficticio. Al
+pasar a reparto se genera un código de ocho dígitos que solo el dueño puede
+consultar; el administrador lo necesita para confirmar la entrega.
+
+Para verificar esta versión en la instalación local, ejecuta
+`php tests/smoke_admin_v2.php`, `php tests/customer_v2.php` y
+`php tests/browser_v2.php`, `php tests/usuarios_panel.php` y
+`php tests/usuarios_panel_browser.php`. Las pruebas de navegador usan Chrome y Playwright de la instalación
+local de Codex; recorre el panel, la tienda, pagos simulados y entregas. Crea
+datos temporales, cambia momentáneamente la clave del administrador para el
+acceso automatizado y restaura su hash original al terminar. Los scripts
+`tests/admin_flows.php` y `tests/customer_flows.php` documentan el flujo
+anterior a esta migración y conservan expectativas que ya no aplican.
+
 ## Instalación
 
 ### 1. Base de datos
@@ -48,7 +90,8 @@ Para habilitar la recuperación de contraseña y la verificación del registro, 
 Para guardar tipo y departamento de las direcciones, aplica
 `database/migrations/2026-09-28_detalles_direccion.sql`.
 
-Credenciales admin por defecto: `admin@kloset.local` / `password`
+El seed demo genera credenciales aleatorias y las escribe en el archivo seguro
+que se indica al ejecutarlo; no hay una contraseña predeterminada.
 
 ### 2. Backend PHP
 
@@ -120,8 +163,8 @@ GLB con React Three Fiber queda para el Sprint 5.
 ### Panel
 
 Aside con módulos y contadores, cabecera con buscador y acción primaria, y tres
-patrones de contenido: panel general con KPIs, tabla con panel de detalle
-(categorías, productos, usuarios) y editor llave-valor para la configuración.
+patrones de contenido: panel general con indicadores, tablas con panel de detalle
+(categorías, productos, inventario, pedidos y clientes) y configuración agrupada.
 
 ### Flujos integrados desde las referencias de cuenta
 
@@ -133,9 +176,8 @@ patrones de contenido: panel general con KPIs, tabla con panel de detalle
   dentro de Lima Metropolitana o Callao, y simular el pago.
 - `/pedidos?nuevo=1`: confirmación del pedido persistido; `/pedidos/:id`:
   detalle privado, imágenes, resumen y estados registrados.
-- El panel permite registrar preparación, envío, reparto, entrega, transportista,
-  número de seguimiento y fecha estimada. Cancelar devuelve stock y cierra el
-  pedido; no emite reembolsos reales, pues los pagos siguen siendo simulados.
+- El panel registra preparación, envío, reparto, entrega, transportista y número
+  de seguimiento. La entrega estimada se calcula desde el pago aprobado.
 - Las medidas se pueden descargar en JSON o borrar; la contraseña se puede
   cambiar verificando la actual. Los avisos de pedido respetan la preferencia
   guardada y aparecen en la cuenta. El envío de campañas/correos no está conectado.

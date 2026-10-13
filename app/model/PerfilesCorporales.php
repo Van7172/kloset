@@ -13,7 +13,9 @@ class PerfilesCorporales
 	private static function tallaRecomendada(float $pecho, string $corte): string
 	{
 		$c = $pecho;
-		$i = $c < 88 ? 0 : ($c < 96 ? 1 : ($c < 104 ? 2 : ($c < 112 ? 3 : 4)));
+		$config = Conexion::getInstance()->query("SELECT valor_configuracion FROM sistema_configuraciones WHERE llave_configuracion='tallas.tolerancia_cm'")->fetchColumn();
+		$tolerancia = is_numeric($config) ? (float)$config : 2.5;
+		$i = $c < 88 + $tolerancia ? 0 : ($c < 96 + $tolerancia ? 1 : ($c < 104 + $tolerancia ? 2 : ($c < 112 + $tolerancia ? 3 : 4)));
 		$resto = fmod($c, 8);
 		if ($corte === 'Slim' && $resto > 5) {
 			$i = min(4, $i + 1);
