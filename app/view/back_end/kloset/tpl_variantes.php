@@ -13,7 +13,6 @@
             <select class="kl-filter" id="inv-color"><option value="">Colores</option><?php foreach (\Develoweb\App\Model\Colores::todos() as $c): ?><option value="<?= (int)$c['id_color'] ?>" data-producto="<?= (int)$c['id_producto'] ?>"><?= htmlspecialchars($c['nombre_color']) ?></option><?php endforeach; ?></select>
             <select class="kl-filter" id="inv-talla"><option value="">Tallas</option><?php foreach (['XS','S','M','L','XL','XXL'] as $t): ?><option><?= $t ?></option><?php endforeach; ?></select>
             <select class="kl-filter" id="inv-corte"><option value="">Cortes</option><?php foreach (['No aplica','Slim','Regular','Oversize'] as $c): ?><option><?= $c ?></option><?php endforeach; ?></select>
-            <button class="kl-btn kl-btn--ghost" type="button" id="color-abrir">Colores e imágenes</button>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($variantes) ?></span> filas</span>
             <button class="kl-create-btn" type="button" id="var-crear" title="Crear registro" aria-label="Crear registro" <?= empty($productos) ? 'disabled' : '' ?>>
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 2.4v11.2M2.4 8h11.2" /></svg>
@@ -94,6 +93,15 @@
                 </select>
                 <label class="kl-label" for="var-color">Color *</label>
                 <select class="kl-field" id="var-color" name="id_color" required><option value="">Selecciona un producto</option></select>
+                <div id="color-gestion" hidden>
+                    <p class="kl-hint">Las imágenes de este color se comparten entre sus tallas y cortes.</p>
+                    <div class="kl-imgs" id="color-galeria" aria-live="polite"></div>
+                    <label class="kl-label" for="color-imagenes">Agregar imágenes a este color</label>
+                    <input class="kl-field" id="color-imagenes" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+                    <button class="kl-btn kl-btn--ghost kl-btn--sm" id="color-subir" type="button">Guardar imágenes</button>
+                    <label class="kl-label" for="color-renombre">Nombre comercial del color</label>
+                    <div class="kl-inline-actions"><input class="kl-field" id="color-renombre" maxlength="100"><button class="kl-btn kl-btn--ghost kl-btn--sm" id="color-actualizar" type="button">Actualizar</button></div>
+                </div>
 
                 <div class="kl-grid-2">
                     <div>
@@ -128,33 +136,20 @@
         </form>
     </aside>
 
-    <aside class="kl-detail" id="detalle-color" hidden>
-      <div class="kl-detail-head"><div><div class="kl-kicker">Inventario</div><div class="kl-detail-title">Colores e imágenes</div></div><button class="kl-detail-close" type="button" id="color-cerrar" aria-label="Cerrar">&times;</button></div>
-      <div class="kl-detail-section">
-        <label class="kl-label" for="color-producto">Producto</label>
-        <select class="kl-field" id="color-producto"><option value="">Selecciona…</option><?php foreach ($productos as $p): ?><option value="<?= (int)$p['id_producto'] ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option><?php endforeach; ?></select>
-        <label class="kl-label" for="color-nombre">Nuevo color comercial</label>
-        <div style="display:flex;gap:8px;"><input class="kl-field" id="color-nombre" maxlength="100" placeholder="Ej. Icey Blue"><button class="kl-btn" id="color-guardar" type="button">Agregar</button></div>
-        <label class="kl-label" for="color-existente">Color registrado</label>
-        <select class="kl-field" id="color-existente"><option value="">Selecciona un producto</option></select>
-        <label class="kl-label" for="color-renombre">Nombre del color seleccionado</label>
-        <div style="display:flex;gap:8px;"><input class="kl-field" id="color-renombre" maxlength="100" placeholder="Nombre comercial"><button class="kl-btn kl-btn--ghost" id="color-actualizar" type="button">Actualizar</button></div>
-        <label class="kl-label" for="color-imagenes">Imágenes (JPEG, PNG, GIF o WebP, máx. 10 MB)</label>
-        <input class="kl-field" id="color-imagenes" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
-        <button class="kl-btn kl-btn--ghost" id="color-subir" type="button">Subir imágenes</button>
-        <div class="kl-imgs" id="color-galeria"></div>
-      </div>
-    </aside>
+    <div class="kl-modal" id="modal-nuevo-color" role="dialog" aria-modal="true" aria-labelledby="nuevo-color-titulo" hidden>
+        <div class="kl-modal-box kl-color-modal">
+            <div class="kl-modal-head"><h3 id="nuevo-color-titulo">Agregar nuevo color</h3><button class="kl-modal-close" type="button" data-cancelar-color aria-label="Cerrar">&times;</button></div>
+            <form id="form-nuevo-color" class="kl-form">
+                <p class="kl-hint" id="nuevo-color-producto"></p>
+                <div class="kl-form-error" id="nuevo-color-error" hidden></div>
+                <label class="kl-label" for="nuevo-color-nombre">Nombre comercial del color *</label>
+                <input class="kl-field" id="nuevo-color-nombre" name="nombre" maxlength="100" placeholder="Ej. Icey Blue" required>
+                <label class="kl-label" for="nuevo-color-imagenes">Imágenes del producto en ese color *</label>
+                <input class="kl-field" id="nuevo-color-imagenes" name="imagenes[]" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple required>
+                <p class="kl-hint">Una o varias imágenes JPEG, PNG, GIF o WebP, hasta 10 MB cada una.</p>
+                <div class="kl-modal-foot"><button class="kl-btn" type="submit">Guardar color</button><button class="kl-btn kl-btn--ghost" type="button" data-cancelar-color>Cancelar</button></div>
+            </form>
+        </div>
+    </div>
 
-    <aside class="kl-detail kl-confirm" id="confirmar-variante" hidden>
-        <div class="kl-detail-section" style="padding-top:18px;">
-            <div class="kl-kicker kl-fg-red">DELETE · productos_variantes</div>
-            <div class="kl-detail-title" data-rol="titulo">¿Eliminar?</div>
-            <p data-rol="texto" style="margin:0; color:var(--body); font-size:13.5px; line-height:1.55;"></p>
-        </div>
-        <div class="kl-detail-actions">
-            <button class="kl-btn kl-btn--danger" type="button" data-rol="ok">Eliminar</button>
-            <button class="kl-btn kl-btn--ghost" type="button" id="confirmar-variante-cancelar">Cancelar</button>
-        </div>
-    </aside>
 </div>

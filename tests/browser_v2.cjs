@@ -123,12 +123,14 @@ async function main() {
     await adminPage.locator('#login-correo').fill(process.env.KLOSET_BROWSER_ADMIN_EMAIL);
     await adminPage.locator('#login-pass').fill('ClaveIncorrecta!123');
     await adminPage.locator('form button[type=submit]').click();
-    await adminPage.getByText('El usuario o contraseña son incorrectos').waitFor();
+    await adminPage.locator('.kl-error').getByText('El usuario o contraseña son incorrectos').waitFor();
+    await adminPage.locator('#kl-feedback-aceptar').click();
     assert.equal(await adminPage.locator('.kl-shell').count(), 0);
     await adminPage.locator('#login-correo').fill(process.env.KLOSET_BROWSER_CLIENT_EMAIL);
     await adminPage.locator('#login-pass').fill(process.env.KLOSET_BROWSER_CLIENT_PASSWORD);
     await adminPage.locator('form button[type=submit]').click();
-    await adminPage.getByText('Esta cuenta no tiene acceso al panel').waitFor();
+    await adminPage.locator('.kl-error').getByText('Esta cuenta no tiene acceso al panel').waitFor();
+    await adminPage.locator('#kl-feedback-aceptar').click();
     assert.equal(await adminPage.locator('.kl-shell').count(), 0);
   }, adminPage);
   await step('Login, logout y nuevo login administrativo', async () => {
@@ -154,21 +156,36 @@ async function main() {
     await adminPage.locator('form button[type=submit]').click();
     await adminPage.getByText('Panel general').first().waitFor({ timeout: 10000 });
     const links = await adminPage.locator('nav a').allTextContents();
-    assert.ok(links.some((value) => /Usuarios/.test(value)));
+    assert.ok(!links.some((value) => /Usuarios/.test(value)));
+    assert.ok(links.some((value) => /Configuración/.test(value)));
     assert.ok(!links.some((value) => /Roles/.test(value)));
   }, adminPage);
   await step('Secciones y galería del panel', async () => {
-    for (const section of ['categorias', 'productos', 'variantes', 'pedidos', 'pagos', 'notificaciones', 'clientes', 'usuarios', 'configuracion', 'mi-cuenta']) {
+    for (const section of ['categorias', 'productos', 'variantes', 'pedidos', 'pagos', 'notificaciones', 'clientes', 'configuracion', 'mi-cuenta']) {
       await adminPage.goto(`${root}/dw-panel/${section}`, { waitUntil: 'networkidle' });
       assert.ok(await adminPage.locator('.kl-shell').count(), `Falta ${section}`);
     }
     await adminPage.goto(`${root}/dw-panel/variantes`, { waitUntil: 'networkidle' });
-    await adminPage.locator('#color-abrir').click();
-    await adminPage.locator('#color-producto').selectOption({ index: 1 });
-    await adminPage.locator('#color-existente option').nth(1).waitFor({ state: 'attached' });
-    await adminPage.locator('#color-existente').selectOption({ index: 1 });
+    assert.equal(await adminPage.locator('#color-abrir').count(), 0);
+    await adminPage.locator('#var-crear').click();
+    await adminPage.locator('#var-producto').selectOption({ index: 1 });
+    await adminPage.locator('#var-color option').nth(1).waitFor({ state: 'attached' });
+    await adminPage.locator('#var-color').selectOption({ index: 1 });
     await adminPage.locator('#color-galeria img').first().waitFor();
     assert.ok(await adminPage.locator('#color-renombre').inputValue());
+  }, adminPage);
+  await step('Espera visible en una consulta lenta del panel', async () => {
+    await adminPage.goto(`${root}/dw-panel/productos`, { waitUntil: 'networkidle' });
+    let demorado = false;
+    const retrasar = async (route) => {
+      if (!demorado) { demorado = true; await new Promise((resolve) => setTimeout(resolve, 600)); }
+      await route.continue();
+    };
+    await adminPage.route('**/dw-panel/ajax.php', retrasar);
+    await adminPage.locator('.kl-grid-row').first().click();
+    await adminPage.locator('#kl-feedback-spinner').waitFor({ state: 'visible' });
+    await adminPage.locator('#kl-feedback').waitFor({ state: 'hidden' });
+    await adminPage.unroute('**/dw-panel/ajax.php', retrasar);
   }, adminPage);
   await step('Alta de producto, color, imagen y variante desde el panel', async () => {
     const slug = process.env.KLOSET_BROWSER_QA_SLUG;
@@ -186,30 +203,28 @@ async function main() {
     await adminPage.locator('.kl-grid-row').filter({ hasText: name }).waitFor();
 
     await adminPage.goto(`${root}/dw-panel/variantes`, { waitUntil: 'networkidle' });
-    await adminPage.locator('#color-abrir').click();
-    await adminPage.locator('#color-producto').selectOption({ label: name });
-    await adminPage.locator('#color-nombre').fill('Smoke Blue');
-    await adminPage.locator('#color-guardar').click();
-    await adminPage.locator('#color-existente option').filter({ hasText: 'Smoke Blue' }).waitFor({ state: 'attached' });
-    await adminPage.locator('#color-renombre').fill('  Smoke   Navy  ');
-    await adminPage.locator('#color-actualizar').click();
-    await adminPage.locator('#color-existente option').filter({ hasText: 'Smoke Navy' }).waitFor({ state: 'attached' });
-    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXYAAAAASUVORK5CYII=', 'base64');
-    await adminPage.locator('#color-imagenes').setInputFiles({ name: 'qa.png', mimeType: 'image/png', buffer: png });
-    await adminPage.locator('#color-subir').click();
-    await adminPage.locator('#color-galeria img').first().waitFor();
-    await adminPage.locator('#color-cerrar').click();
-
     await adminPage.locator('#var-crear').click();
     await adminPage.locator('#var-producto').selectOption({ label: name });
+    await adminPage.locator('#var-color option').filter({ hasText: '+ Agregar nuevo color' }).waitFor({ state: 'attached' });
+    await adminPage.locator('#var-color').selectOption('__nuevo__');
+    await adminPage.locator('#nuevo-color-nombre').fill('Smoke Blue');
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lXYAAAAASUVORK5CYII=', 'base64');
+    await adminPage.locator('#nuevo-color-imagenes').setInputFiles({ name: 'qa.png', mimeType: 'image/png', buffer: png });
+    await adminPage.locator('#form-nuevo-color [type="submit"]').click();
+    await adminPage.locator('#var-color option').filter({ hasText: 'Smoke Blue' }).waitFor({ state: 'attached' });
+    assert.equal(await adminPage.locator('#var-color').inputValue(), await adminPage.locator('#var-color option').filter({ hasText: 'Smoke Blue' }).getAttribute('value'));
+    await adminPage.locator('#color-galeria img').first().waitFor();
+    await adminPage.locator('#color-renombre').fill('  Smoke   Navy  ');
+    await adminPage.locator('#color-actualizar').click();
     await adminPage.locator('#var-color option').filter({ hasText: 'Smoke Navy' }).waitFor({ state: 'attached' });
-    await adminPage.locator('#var-color').selectOption({ label: 'Smoke Navy' });
+    assert.ok(await adminPage.locator('#color-galeria img').count());
     await adminPage.locator('#var-talla').selectOption('M');
     await adminPage.locator('#var-corte').selectOption('Regular');
     await adminPage.locator('#var-sku').fill(sku);
     await adminPage.locator('#var-stock').fill('7');
     await adminPage.locator('#var-guardar').click();
     await adminPage.locator('.kl-grid-row').filter({ hasText: sku }).waitFor();
+    await adminPage.locator('#kl-toasts').getByText('Variante creada').waitFor();
 
     await clientPage.goto(`${root}/producto/${slug}`, { waitUntil: 'networkidle' });
     await clientPage.getByRole('heading', { name }).waitFor();
@@ -219,7 +234,10 @@ async function main() {
     await adminPage.goto(`${root}/dw-panel/productos`, { waitUntil: 'networkidle' });
     const row = adminPage.locator('.kl-grid-row').filter({ hasText: name });
     await row.locator('[data-accion="eliminar"]').click();
-    await adminPage.locator('#confirmar-producto [data-rol="ok"]').click();
+    await adminPage.locator('#kl-feedback-cancelar').click();
+    assert.ok(await row.count(), 'Cancelar el modal eliminó el producto');
+    await row.locator('[data-accion="eliminar"]').click();
+    await adminPage.locator('#kl-feedback-aceptar').click();
     await row.waitFor({ state: 'detached' });
   }, adminPage);
   await step('Transiciones de pedido y código de entrega', async () => {
@@ -231,9 +249,10 @@ async function main() {
     const save = async (state) => {
       await adminPage.locator(`#ped-estados [data-estado="${state}"]`).click();
       if (state === 'enviado') await adminPage.locator('#ped-transportista').fill('QA Reparto');
+      await adminPage.locator('#ped-guardar').click();
       await Promise.all([
         adminPage.waitForNavigation({ waitUntil: 'networkidle' }),
-        adminPage.locator('#ped-guardar').click(),
+        adminPage.locator('#kl-feedback-aceptar').click(),
       ]);
     };
     await openOrder(); await save('en_preparacion');
@@ -253,21 +272,44 @@ async function main() {
     await adminPage.locator('#ped-estados [data-estado="entregado"]').click();
     await adminPage.locator('#ped-codigo').fill(code === '00000000' ? '11111111' : '00000000');
     await adminPage.locator('#ped-guardar').click();
+    await adminPage.locator('#kl-feedback-aceptar').click();
+    await adminPage.locator('#kl-feedback').filter({ hasText: 'No se pudo completar' }).waitFor();
+    await adminPage.locator('#kl-feedback-aceptar').click();
     await adminPage.locator('#form-pedido-error').getByText(/no coincide/i).waitFor();
     await adminPage.locator('#ped-codigo').fill(code);
+    await adminPage.locator('#ped-guardar').click();
     await Promise.all([
       adminPage.waitForNavigation({ waitUntil: 'networkidle' }),
-      adminPage.locator('#ped-guardar').click(),
+      adminPage.locator('#kl-feedback-aceptar').click(),
     ]);
     await clientPage.reload({ waitUntil: 'networkidle' });
     await clientPage.getByText(/Entregado/i).first().waitFor();
     assert.ok(!(await clientPage.locator('body').innerText()).includes(code));
   }, adminPage);
-  await step('Usuarios habilitado y Roles retirado', async () => {
+  await step('Gestión de usuarios retirada', async () => {
     await adminPage.goto(`${root}/dw-panel/usuarios`, { waitUntil: 'networkidle' });
-    assert.ok(await adminPage.locator('form#form-usuario').count());
+    assert.equal(await adminPage.locator('form#form-usuario').count(), 0);
+    assert.match(await adminPage.locator('body').innerText(), /Esta sección no está disponible/);
     await adminPage.goto(`${root}/dw-panel/roles`, { waitUntil: 'networkidle' });
     assert.ok(!(await adminPage.locator('form#form-rol').count()));
+  }, adminPage);
+  await step('Diálogos del panel dentro de la pantalla móvil', async () => {
+    await adminPage.setViewportSize({ width: 390, height: 844 });
+    const dentro = async (selector) => {
+      const box = await adminPage.locator(selector).boundingBox();
+      assert.ok(box && box.x >= 0 && box.x + box.width <= 391, `${selector} desborda la pantalla`);
+    };
+    await adminPage.goto(`${root}/dw-panel/productos`, { waitUntil: 'networkidle' });
+    await adminPage.locator('.kl-grid-row [data-accion="eliminar"]').first().click();
+    await dentro('#kl-feedback .kl-modal-box');
+    await adminPage.locator('#kl-feedback-cancelar').click();
+    await adminPage.goto(`${root}/dw-panel/variantes`, { waitUntil: 'networkidle' });
+    await adminPage.locator('#var-crear').click();
+    await adminPage.locator('#var-producto').selectOption({ index: 1 });
+    await adminPage.locator('#var-color option').filter({ hasText: '+ Agregar nuevo color' }).waitFor({ state: 'attached' });
+    await adminPage.locator('#var-color').selectOption('__nuevo__');
+    await dentro('#modal-nuevo-color .kl-modal-box');
+    await adminPage.locator('[data-cancelar-color]').last().click();
   }, adminPage);
   await adminContext.close();
 

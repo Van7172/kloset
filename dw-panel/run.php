@@ -135,17 +135,6 @@ if ($logeado) {
 				$crumb = 'Clientes';
 				$search_ph = 'nombre o correo';
 				break;
-			case 'usuarios':
-				$users = \Develoweb\App\Model\Usuarios::get();
-				$roles = \Develoweb\App\Model\Usuarios::rolesDeAlta();
-				$secciones_asesor = \Develoweb\App\Model\Usuarios::seccionesAsesor();
-				$tpl = 'tpl_usuarios.php';
-				$view_js = 'usuarios.js';
-				$title = 'Usuarios';
-				$crumb = 'Sistema';
-				$search_ph = 'nombre, correo o rol';
-				$primary_label = 'Nuevo usuario';
-				break;
 			case 'reportes':
 				$tpl = 'tpl_reportes.php';
 				$title = 'Reportes';

@@ -13,7 +13,7 @@
         <p>Acceso restringido al equipo. Sesión PHP + ACL por sección.</p>
 
         <?php if (!empty($login_error)): ?>
-            <div class="kl-error"><?= htmlspecialchars(is_string($login_error) ? $login_error : 'Error de acceso') ?></div>
+            <div class="kl-error" role="alert"><?= htmlspecialchars(is_string($login_error) ? $login_error : 'Error de acceso') ?></div>
         <?php endif; ?>
 
         <form method="post" action="<?= DW_PANEL ?>sign-in">
@@ -27,5 +27,7 @@
         </form>
     </div>
 </div>
+<?php include ADMIN_INCLUDE . 'inc_feedback.php'; ?>
+<?php include ADMIN_INCLUDE . 'inc_bottom.php'; ?>
 </body>
 </html>

@@ -38,11 +38,6 @@ class MenuAdmin
 			];
 		}
 
-		if ((string) $usuario->getRol() === 'Administrador') {
-			$grouped['cuentas'] = ['nombre_modulo' => 'Sistema', 'secciones' => [[
-				'nombre_seccion' => 'Usuarios', 'url_seccion' => 'usuarios', 'count' => null,
-			]]];
-		}
 		return array_values($grouped);
 	}
 

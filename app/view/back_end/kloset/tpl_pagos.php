@@ -4,10 +4,6 @@
         <div class="kl-table-bar">
             <div class="kl-kicker">tabla · pagos</div>
             <div class="kl-top-spacer"></div>
-            <div class="kl-filters" id="filtros-estado">
-                <button class="kl-filter active" type="button" data-filtro="">Todos</button>
-                <?php foreach (array_unique(array_column($pagos,'estado_pago')) as $estadoPago): ?><button class="kl-filter" type="button" data-filtro="<?= htmlspecialchars($estadoPago) ?>"><?= htmlspecialchars($estadoPago) ?></button><?php endforeach; ?>
-            </div>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($pagos) ?></span> filas</span>
         </div>
 
@@ -31,7 +27,7 @@
                              data-id="<?= (int) $p['id_pago'] ?>"
                              data-estado="<?= htmlspecialchars($p['estado_pago']) ?>"
                              data-buscar="<?= htmlspecialchars(mb_strtolower($p['cliente'] . ' ' . $p['id_transaccion_pasarela_pago'])) ?>">
-                            <div class="kl-cell"><a href="<?= DW_PANEL ?>pedidos" class="kl-serif" style="font-size:16px;">#<?= (int) $p['id_pedido'] ?> →</a></div>
+                            <div class="kl-cell"><a href="<?= DW_PANEL ?>pedidos?pedido=<?= (int) $p['id_pedido'] ?>" class="kl-serif" style="font-size:16px;">#<?= (int) $p['id_pedido'] ?> →</a></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($p['cliente']) ?></b></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($p['metodo_pago']) ?><?= $p['marca_pago'] ? ' · ' . htmlspecialchars($p['marca_pago']) : '' ?></b></div>
                             <div class="kl-cell"><b class="kl-mono kl-fg-soft" style="text-transform:none;"><?= htmlspecialchars($p['id_transaccion_pasarela_pago'] ?? '—') ?></b></div>

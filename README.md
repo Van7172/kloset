@@ -23,10 +23,9 @@ Aplica en orden `database/migrations/2026-10-12_catalogo_pedidos_admin.sql`,
 `database/migrations/2026-10-12_historial_origen.sql`. La primera conserva los
 IDs existentes y asigna a cada producto un color provisional "Original" con sus
 imágenes. Reemplaza ese nombre desde Inventario cuando se conozca el color real.
-Aplica también `database/migrations/2026-10-12_rol_asesor.sql` para habilitar el
-alta de asesores desde Panel → Usuarios. Solo el administrador puede crear
-cuentas: asesores con acceso a las secciones que seleccione y clientes de la
-tienda. El formulario no permite crear otro administrador.
+Aplica también `database/migrations/2026-10-12_rol_asesor.sql` para conservar
+el rol Asesor y sus permisos internos. La sección Usuarios ya no está disponible
+en el panel; las cuentas existentes y el acceso de clientes siguen intactos.
 Los snapshots históricos de artículos se copian del catálogo actual, única
 información disponible. La fecha de aprobación histórica se toma de
 `pagos.fecha_creacion` solo si el pago consta como aprobado; en otro caso queda
@@ -41,13 +40,13 @@ consultar; el administrador lo necesita para confirmar la entrega.
 
 Para verificar esta versión en la instalación local, ejecuta
 `php tests/smoke_admin_v2.php`, `php tests/customer_v2.php` y
-`php tests/browser_v2.php`, `php tests/usuarios_panel.php` y
-`php tests/usuarios_panel_browser.php`. Las pruebas de navegador usan Chrome y Playwright de la instalación
+`php tests/browser_v2.php`. Las pruebas de navegador usan Chrome y Playwright de la instalación
 local de Codex; recorre el panel, la tienda, pagos simulados y entregas. Crea
 datos temporales, cambia momentáneamente la clave del administrador para el
 acceso automatizado y restaura su hash original al terminar. Los scripts
-`tests/admin_flows.php` y `tests/customer_flows.php` documentan el flujo
-anterior a esta migración y conservan expectativas que ya no aplican.
+`tests/admin_flows.php`, `tests/customer_flows.php`, `tests/usuarios_panel.php`
+y `tests/usuarios_panel_browser.php` documentan flujos anteriores y conservan
+expectativas que ya no aplican.
 
 ## Instalación
 
