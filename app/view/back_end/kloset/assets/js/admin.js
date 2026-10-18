@@ -1,6 +1,97 @@
 /* Kloset · utilidades compartidas del panel */
 window.Kloset = (function () {
   const AJAX_URL = URL_ADMIN + 'ajax.php';
+  const feedback = document.getElementById('kl-feedback');
+  let feedbackResolve = null;
+  let feedbackMode = '';
+  let previousFocus = null;
+  let pendingRequests = 0;
+  let loadingTimer = null;
+  let lastNotice = '';
+
+  function closeFeedback(result = false) {
+    if (!feedback || feedback.hidden) return;
+    feedback.hidden = true;
+    feedback.classList.remove('kl-feedback--error', 'kl-feedback--confirm');
+    if (!document.querySelector('.kl-modal:not([hidden])')) document.body.classList.remove('kl-no-scroll');
+    const resolve = feedbackResolve;
+    feedbackResolve = null;
+    feedbackMode = '';
+    resolve?.(result);
+    previousFocus?.focus?.();
+    previousFocus = null;
+  }
+
+  function openFeedback({ mode, title, message, action = 'Aceptar', cancel = 'Cancelar', danger = false }) {
+    if (!feedback) return mode === 'confirm' ? Promise.resolve(false) : undefined;
+    if (!feedback.hidden) closeFeedback(false);
+    feedbackMode = mode;
+    previousFocus = document.activeElement;
+    feedback.classList.toggle('kl-feedback--error', mode === 'error');
+    feedback.classList.toggle('kl-feedback--confirm', mode === 'confirm');
+    document.getElementById('kl-feedback-kicker').textContent = mode === 'loading' ? 'Un momento' : mode === 'error' ? 'No se completó la acción' : mode === 'confirm' ? 'Confirmar acción' : 'Aviso';
+    document.getElementById('kl-feedback-title').textContent = title;
+    document.getElementById('kl-feedback-message').textContent = message || '';
+    document.getElementById('kl-feedback-spinner').hidden = mode !== 'loading';
+    document.getElementById('kl-feedback-actions').hidden = mode === 'loading';
+    const cancelButton = document.getElementById('kl-feedback-cancelar');
+    const acceptButton = document.getElementById('kl-feedback-aceptar');
+    cancelButton.hidden = mode !== 'confirm';
+    cancelButton.textContent = cancel;
+    acceptButton.textContent = action;
+    acceptButton.classList.toggle('kl-btn--danger', danger);
+    feedback.setAttribute('role', mode === 'error' || mode === 'confirm' ? 'alertdialog' : 'dialog');
+    feedback.hidden = false;
+    document.body.classList.add('kl-no-scroll');
+    (mode === 'loading' ? feedback.querySelector('.kl-modal-box') : mode === 'confirm' ? cancelButton : acceptButton).focus();
+    if (mode === 'loading') return;
+    return new Promise((resolve) => { feedbackResolve = resolve; });
+  }
+
+  feedback?.addEventListener('click', (ev) => {
+    if (ev.target.id === 'kl-feedback-aceptar') closeFeedback(true);
+    else if (ev.target.id === 'kl-feedback-cancelar' || ev.target === feedback) {
+      if (feedbackMode !== 'loading') closeFeedback(false);
+    }
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape' && feedback && !feedback.hidden && feedbackMode !== 'loading') closeFeedback(false);
+    if (ev.key === 'Tab' && feedback && !feedback.hidden) {
+      const controls = [...feedback.querySelectorAll('button:not([hidden]):not([disabled])')];
+      const targets = controls.length ? controls : [feedback.querySelector('.kl-modal-box')];
+      const first = targets[0];
+      const last = targets[targets.length - 1];
+      if (ev.shiftKey && (document.activeElement === first || !feedback.contains(document.activeElement))) { ev.preventDefault(); last.focus(); }
+      else if (!ev.shiftKey && (document.activeElement === last || !feedback.contains(document.activeElement))) { ev.preventDefault(); first.focus(); }
+    }
+  });
+
+  function confirmar({ titulo, mensaje, aceptar = 'Confirmar', cancelar = 'Cancelar', peligro = false }) {
+    return openFeedback({ mode: 'confirm', title: titulo, message: mensaje, action: aceptar, cancel: cancelar, danger: peligro });
+  }
+
+  function informar(titulo, mensaje, tipo = 'info') {
+    return openFeedback({ mode: tipo === 'error' ? 'error' : 'info', title: titulo, message: mensaje });
+  }
+
+  function beginRequest(metodo) {
+    pendingRequests++;
+    if (pendingRequests !== 1) return;
+    loadingTimer = setTimeout(() => {
+      if (pendingRequests && feedback?.hidden) {
+        const lectura = /^(get|listar|galeria)/i.test(metodo);
+        openFeedback({ mode: 'loading', title: lectura ? 'Cargando información…' : 'Procesando cambios…', message: 'Espera mientras completamos la acción.' });
+      }
+    }, 180);
+  }
+
+  function endRequest() {
+    pendingRequests = Math.max(0, pendingRequests - 1);
+    if (pendingRequests) return;
+    clearTimeout(loadingTimer);
+    loadingTimer = null;
+    if (feedbackMode === 'loading') closeFeedback();
+  }
 
   /* ---------------------------------------------------------------- AJAX */
 
@@ -14,30 +105,41 @@ window.Kloset = (function () {
     body.set('csrf', CSRF_PANEL);
 
     let res;
-    try { res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin' }); }
-    catch { return { status: 'error', message: 'No hay conexión con el panel' }; }
+    let payload;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+    beginRequest(metodo);
+    try {
+      res = await fetch(AJAX_URL, { method: 'POST', body: body, credentials: 'same-origin', signal: controller.signal });
+      try { payload = await res.json(); }
+      catch { payload = { status: 'error', message: 'Respuesta inválida del servidor' }; }
+    } catch (e) {
+      payload = { status: 'error', message: e?.name === 'AbortError' ? 'La solicitud tardó demasiado. Inténtalo de nuevo.' : 'No hay conexión con el panel' };
+    } finally {
+      clearTimeout(timeout);
+      endRequest();
+    }
 
-    if (res.status === 401) {
+    if (res?.status === 401) {
       toast('Tu sesión expiró · vuelve a entrar', 'error');
       setTimeout(() => (window.location.href = URL_ADMIN + 'sign-in'), 1500);
       return { status: 'error', message: 'Sesión expirada' };
     }
-
-    try {
-      return await res.json();
-    } catch (e) {
-      return { status: 'error', message: 'Respuesta inválida del servidor' };
-    }
+    return payload && typeof payload === 'object' ? payload : { status: 'error', message: 'Respuesta inválida del servidor' };
   }
 
   /* --------------------------------------------------------------- Avisos */
 
   function toast(mensaje, tipo) {
+    if (tipo === 'error') return informar('Revisa la acción', mensaje || 'No se pudo completar la acción', 'error');
+    lastNotice = mensaje;
     let stack = document.getElementById('kl-toasts');
     if (!stack) {
       stack = document.createElement('div');
       stack.id = 'kl-toasts';
       stack.className = 'kl-toasts';
+      stack.setAttribute('role', 'status');
+      stack.setAttribute('aria-live', 'polite');
       document.body.appendChild(stack);
     }
     const el = document.createElement('div');
@@ -53,6 +155,24 @@ window.Kloset = (function () {
     box.textContent = mensaje || '';
     box.hidden = !mensaje;
   }
+
+  function reportarError(id, mensaje) {
+    showError(id, mensaje);
+    informar('No se pudo completar', mensaje, 'error');
+  }
+
+  try {
+    const flash = sessionStorage.getItem('kloset-panel-aviso');
+    if (flash) { sessionStorage.removeItem('kloset-panel-aviso'); toast(flash); }
+  } catch (e) { /* El panel funciona aunque el almacenamiento esté deshabilitado. */ }
+  document.querySelector('.kl-login form')?.addEventListener('submit', () => {
+    openFeedback({ mode: 'loading', title: 'Iniciando sesión…', message: 'Verificando el acceso al panel.' });
+  });
+  const loginError = document.querySelector('.kl-login .kl-error');
+  if (loginError) informar('No se pudo iniciar sesión', loginError.textContent.trim(), 'error');
+  document.querySelector('a[href$="/sign-out"]')?.addEventListener('click', () => {
+    openFeedback({ mode: 'loading', title: 'Cerrando sesión…', message: 'Espera un momento.' });
+  });
 
   /* ----------------------------------------------------------- Panel tema */
 
@@ -85,25 +205,13 @@ window.Kloset = (function () {
     });
   }
 
-  /* ------------------------------------------------- Confirmación de borrado
-     Panel lateral rojo (no el confirm() nativo del navegador), con el texto
-     de advertencia propio de cada tabla. Mutuamente excluyente con el panel
-     de detalle: abrir uno cierra el otro. */
+  /* ------------------------------------------------- Confirmación de borrado */
 
-  function confirmarEliminar(idConfirmar, idDetalle, opciones) {
-    const panel = document.getElementById(idConfirmar);
-    if (!panel) return;
-    if (idDetalle) cerrarDetalle(idDetalle);
-
-    panel.querySelector('[data-rol="titulo"]').textContent = opciones.titulo;
-    panel.querySelector('[data-rol="texto"]').textContent = opciones.texto;
-
-    const okViejo = panel.querySelector('[data-rol="ok"]');
-    const okNuevo = okViejo.cloneNode(true);
-    okViejo.parentNode.replaceChild(okNuevo, okViejo);
-    okNuevo.addEventListener('click', () => opciones.onConfirmar());
-
-    abrirDetalle(idConfirmar);
+  async function confirmarEliminar(opciones) {
+    const aceptado = await confirmar({ titulo: opciones.titulo, mensaje: opciones.texto, aceptar: 'Eliminar', peligro: true });
+    if (!aceptado) return;
+    try { await opciones.onConfirmar(); }
+    catch { informar('No se pudo eliminar', 'Ocurrió un error inesperado. Vuelve a intentarlo.', 'error'); }
   }
 
   /* ---------------------------------------------------------------- Tabla
@@ -180,6 +288,7 @@ window.Kloset = (function () {
   }
 
   function recargar() {
+    try { if (lastNotice) sessionStorage.setItem('kloset-panel-aviso', lastNotice); } catch (e) { /* Sin almacenamiento, recargamos igual. */ }
     window.location.reload();
   }
 
@@ -187,5 +296,5 @@ window.Kloset = (function () {
     return String(value ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   }
 
-  return { ajax, toast, showError, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar, escapeHtml };
+  return { ajax, toast, showError, reportarError, confirmar, informar, setTheme, abrirDetalle, cerrarDetalle, marcarFila, confirmarEliminar, tabla, slug, recargar, escapeHtml };
 })();

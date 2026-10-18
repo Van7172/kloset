@@ -60,6 +60,9 @@
   });
 
   document.getElementById('kl-primary')?.addEventListener('click', async () => {
+    const pendientes = document.querySelectorAll('.kl-grid-row[data-leido="0"]').length;
+    if (!pendientes) return Kloset.informar('Sin notificaciones pendientes', 'Todas las notificaciones ya están marcadas como leídas.');
+    if (!await Kloset.confirmar({ titulo: 'Marcar todas como leídas', mensaje: `Se actualizarán ${pendientes} notificaciones.`, aceptar: 'Marcar leídas' })) return;
     const res = await Kloset.ajax('Notificaciones', 'marcarTodasLeidas', {});
     if (res.status !== 'success') {
       Kloset.toast(res.message || 'No se pudo actualizar', 'error');

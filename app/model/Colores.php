@@ -49,6 +49,32 @@ class Colores
         }
     }
 
+    public static function guardarConImagenes(): array
+    {
+        if ($error = Acl::guard('variantes')) return $error;
+        if ($error = self::validarImagenes($_FILES['imagenes'] ?? null)) return ['status'=>'error','message'=>$error];
+        $con = Conexion::getInstance();
+        $con->beginTransaction();
+        try {
+            $color = self::guardar();
+            if ($color['status'] !== 'success') {
+                $con->rollBack();
+                return $color;
+            }
+            $_POST['id_color'] = $color['id_color'];
+            $imagenes = self::subir();
+            if ($imagenes['status'] !== 'success') {
+                $con->rollBack();
+                return $imagenes;
+            }
+            $con->commit();
+            return $color;
+        } catch (\Throwable $e) {
+            if ($con->inTransaction()) $con->rollBack();
+            throw $e;
+        }
+    }
+
     public static function renombrar(): array
     {
         if ($error = Acl::guard('variantes')) return $error;
@@ -91,26 +117,44 @@ class Colores
         $producto = (int) $sth->fetchColumn();
         if (!$producto) return ['status'=>'error','message'=>'Color no encontrado'];
         $files = $_FILES['imagenes'] ?? null;
-        if (!$files || !is_array($files['name'] ?? null) || count($files['name']) > 20) return ['status'=>'error','message'=>'Selecciona hasta 20 imágenes'];
+        if ($error = self::validarImagenes($files)) return ['status'=>'error','message'=>$error];
         $permitidos = ['image/jpeg'=>'jpg','image/png'=>'png','image/gif'=>'gif','image/webp'=>'webp'];
-        foreach ($files['name'] as $i=>$nombre) {
-            if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($files['size'][$i] ?? 0) < 1 || $files['size'][$i] > 10*1024*1024 || !is_uploaded_file($files['tmp_name'][$i])) return ['status'=>'error','message'=>'Cada imagen debe tener menos de 10 MB'];
-            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($files['tmp_name'][$i]);
-            if (!isset($permitidos[$mime]) || !@getimagesize($files['tmp_name'][$i])) return ['status'=>'error','message'=>'Usa JPEG, PNG, GIF o WebP'];
-        }
         $sth = $con->prepare('SELECT COALESCE(MAX(orden_imagen),0),COUNT(*) FROM productos_imagenes WHERE id_color=?');
         $sth->execute([$id]);
         [$orden,$total] = $sth->fetch(\PDO::FETCH_NUM);
         $dir = PUBLIC_ROOT_HOST.'imgs/productos/';
-        foreach ($files['name'] as $i=>$nombre) {
-            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($files['tmp_name'][$i]);
-            $archivo = bin2hex(random_bytes(16)).'.'.$permitidos[$mime];
-            if (!move_uploaded_file($files['tmp_name'][$i], $dir.$archivo)) return ['status'=>'error','message'=>'No se pudo guardar la imagen'];
-            $orden++;
-            $con->prepare('INSERT INTO productos_imagenes (id_producto,id_color,url_imagen,orden_imagen,principal_imagen) VALUES (?,?,?,?,?)')
-                ->execute([$producto,$id,$archivo,$orden,$total++ === 0 ? 1 : 0]);
+        $transaccionPropia = !$con->inTransaction();
+        $guardados = [];
+        if ($transaccionPropia) $con->beginTransaction();
+        try {
+            foreach ($files['name'] as $i=>$nombre) {
+                $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($files['tmp_name'][$i]);
+                $archivo = bin2hex(random_bytes(16)).'.'.$permitidos[$mime];
+                if (!move_uploaded_file($files['tmp_name'][$i], $dir.$archivo)) throw new \RuntimeException('No se pudo guardar la imagen');
+                $guardados[] = $dir.$archivo;
+                $orden++;
+                $con->prepare('INSERT INTO productos_imagenes (id_producto,id_color,url_imagen,orden_imagen,principal_imagen) VALUES (?,?,?,?,?)')
+                    ->execute([$producto,$id,$archivo,$orden,$total++ === 0 ? 1 : 0]);
+            }
+            if ($transaccionPropia) $con->commit();
+        } catch (\Throwable $e) {
+            if ($transaccionPropia && $con->inTransaction()) $con->rollBack();
+            foreach ($guardados as $ruta) if (is_file($ruta)) unlink($ruta);
+            return ['status'=>'error','message'=>'No se pudieron guardar todas las imágenes'];
         }
         return self::galeria();
+    }
+
+    private static function validarImagenes(?array $files): ?string
+    {
+        if (!$files || !is_array($files['name'] ?? null) || count($files['name']) < 1 || count($files['name']) > 20) return 'Selecciona entre 1 y 20 imágenes';
+        $permitidos = ['image/jpeg','image/png','image/gif','image/webp'];
+        foreach ($files['name'] as $i=>$nombre) {
+            if (($files['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($files['size'][$i] ?? 0) < 1 || $files['size'][$i] > 10*1024*1024 || !is_uploaded_file($files['tmp_name'][$i] ?? '')) return 'Cada imagen debe tener menos de 10 MB';
+            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($files['tmp_name'][$i]);
+            if (!in_array($mime, $permitidos, true) || !@getimagesize($files['tmp_name'][$i])) return 'Usa JPEG, PNG, GIF o WebP';
+        }
+        return null;
     }
 
     public static function ordenar(): array

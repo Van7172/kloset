@@ -23,10 +23,17 @@ if (!$adminId) throw new RuntimeException('Se necesita un administrador activo p
 $admin = new Usuario($adminId);
 $admin->setLogeado(true);
 $_SESSION['usuario'] = $admin;
-if (!Acl::allows('dashboard') || Acl::allows('roles') || !Acl::allows('usuarios')) throw new RuntimeException('ACL incorrecta');
+if (!Acl::allows('dashboard') || Acl::allows('roles') || Acl::allows('usuarios')) throw new RuntimeException('ACL incorrecta');
 
-Dashboard::kpis(); Dashboard::estadoStats(); Dashboard::stockCritico(); Dashboard::actividad();
-Clientes::get(); Notificaciones::get(); Notificaciones::alertas(); Pagos::get();
+$kpis = array_column(Dashboard::kpis(), 'value', 'label');
+foreach (['Pedidos abiertos' => "'pagado','en_preparacion','enviado','en_reparto'", 'Pedidos cerrados' => "'entregado','cancelado'"] as $label => $estados) {
+    $esperado = (int)$db->query("SELECT COUNT(*) FROM pedidos WHERE estado_pedido IN ($estados)")->fetchColumn();
+    if ((int)($kpis[$label] ?? -1) !== $esperado) throw new RuntimeException('Contador incorrecto: '.$label);
+}
+Dashboard::estadoStats(); Dashboard::stockCritico(); Dashboard::actividad();
+Clientes::get(); Notificaciones::get(); Notificaciones::alertas();
+$pagos = Pagos::get();
+if (count($pagos) !== (int)$db->query('SELECT COUNT(*) FROM pagos')->fetchColumn()) throw new RuntimeException('La tabla omite pagos históricos');
 $productos = Productos::get();
 $variantes = Variantes::get();
 if (!$productos || !$variantes) throw new RuntimeException('Falta el catálogo');
@@ -39,14 +46,18 @@ if (Productos::getByUrlPublic()['status'] !== 'success') throw new RuntimeExcept
 $sesion = new Sesion($_config);
 $_SESSION['csrf_panel'] = bin2hex(random_bytes(32));
 if (!defined('NOMBRE_SITIO')) define('NOMBRE_SITIO','Kloset');
-foreach (['dashboard','categorias','productos','variantes','pedidos','pagos','notificaciones','clientes','usuarios','configuracion','mi-cuenta'] as $ruta) {
+foreach (['dashboard','categorias','productos','variantes','pedidos','pagos','notificaciones','clientes','configuracion','mi-cuenta'] as $ruta) {
     $_GET['param1'] = $ruta;
     ob_start();
     include dirname(__DIR__).'/dw-panel/run.php';
     $html = ob_get_clean();
     if (!str_contains($html,'kl-shell')) throw new RuntimeException('No se renderizó '.$ruta);
 }
+$_GET['param1'] = 'usuarios';
+ob_start(); include dirname(__DIR__).'/dw-panel/run.php'; $html = ob_get_clean();
+if (str_contains($html, 'form-usuario') || !str_contains($html, 'Esta sección no está disponible')) throw new RuntimeException('La gestión de usuarios sigue accesible');
 $qaProducto = null;
+$qaSegundoProducto = null;
 try {
     $categoriaId = (int)$db->query('SELECT id_categoria FROM categorias LIMIT 1')->fetchColumn();
     $sufijo = bin2hex(random_bytes(5));
@@ -63,11 +74,25 @@ try {
     $_POST['nombre'] = 'icey blue';
     if (Colores::guardar()['status']!=='error') throw new RuntimeException('Color duplicado aceptado');
     $colorId = (int)$color['id_color'];
+    $_POST = ['nombre'=>'QA segundo '.$sufijo,'id_categoria'=>$categoriaId,'precio'=>'99.90','estado'=>'activo'];
+    $segundo = Productos::store();
+    if ($segundo['status']!=='success') throw new RuntimeException('No se creó segundo producto de prueba');
+    $qaSegundoProducto = (int)$segundo['id'];
+    $_POST = ['id_producto'=>$qaSegundoProducto,'nombre'=>'Icey Blue'];
+    $otroColor = Colores::guardar();
+    if ($otroColor['status']!=='success' || (int)$otroColor['id_color']===$colorId) throw new RuntimeException('No se permitió el mismo color en otro producto');
+    $_POST = ['id_producto'=>$qaSegundoProducto,'id_color'=>$colorId,'talla'=>'M','corte'=>'No aplica','sku'=>'QA'.$sufijo.'9','stock'=>'1'];
+    if (Variantes::store()['status']!=='error') throw new RuntimeException('Se aceptó un color de otro producto');
     $insertImagen = $db->prepare('INSERT INTO productos_imagenes (id_producto,id_color,url_imagen,orden_imagen,principal_imagen) VALUES (?,?,?,?,?)');
     $insertImagen->execute([$qaProducto,$colorId,'qa-a-'.$sufijo.'.png',1,1]);
     $primeraImagen = (int)$db->lastInsertId();
     $insertImagen->execute([$qaProducto,$colorId,'qa-b-'.$sufijo.'.png',2,0]);
     $segundaImagen = (int)$db->lastInsertId();
+    $insertImagen->execute([$qaSegundoProducto,(int)$otroColor['id_color'],'qa-otro-'.$sufijo.'.png',1,1]);
+    $_POST = ['id_color'=>$colorId];
+    if (count(Colores::galeria()['imagenes'])!==2) throw new RuntimeException('La galería de otro producto se mezcló');
+    $_POST = ['id_color'=>(int)$otroColor['id_color']];
+    if (count(Colores::galeria()['imagenes'])!==1) throw new RuntimeException('La galería del segundo producto se mezcló');
     $_POST = ['id_imagen'=>$segundaImagen,'orden'=>1,'principal'=>1];
     if (Colores::ordenar()['status']!=='success') throw new RuntimeException('No se ordenó la galería');
     $sth = $db->prepare('SELECT orden_imagen,principal_imagen FROM productos_imagenes WHERE id_imagen=?');
@@ -100,6 +125,7 @@ try {
     }
 } finally {
     if ($qaProducto) { $_POST=['id'=>$qaProducto]; $borrado=Productos::deleteProducto(); if ($borrado['status']!=='success') throw new RuntimeException('No se limpió producto QA'); }
+    if ($qaSegundoProducto) { $_POST=['id'=>$qaSegundoProducto]; $borrado=Productos::deleteProducto(); if ($borrado['status']!=='success') throw new RuntimeException('No se limpió segundo producto QA'); }
 }
 $clienteId = (int)$db->query("SELECT u.id_usuario_sistema FROM sistema_usuarios u JOIN sistema_roles r ON r.id_rol=u.id_rol WHERE r.nombre_rol='Cliente' LIMIT 1")->fetchColumn();
 if ($clienteId) {

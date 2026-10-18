@@ -37,6 +37,7 @@
         </footer>
     </div>
 </div>
+<?php include ADMIN_INCLUDE . 'inc_feedback.php'; ?>
 <?php include ADMIN_INCLUDE . 'inc_bottom.php'; ?>
 </body>
 </html>

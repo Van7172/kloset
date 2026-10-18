@@ -100,6 +100,8 @@
   }
 
   Kloset.tabla({ onSelect: (id) => cargar(id) });
+  const pedidoEnlace = new URLSearchParams(window.location.search).get('pedido');
+  if (pedidoEnlace && /^[0-9]+$/.test(pedidoEnlace)) cargar(pedidoEnlace);
 
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
     btn.addEventListener('click', () => Kloset.cerrarDetalle(PANEL));
@@ -113,6 +115,12 @@
 
   btnGuardar.addEventListener('click', async () => {
     if (!idActual || !estadoElegido) return;
+    const cambioEstado = estadoElegido !== estadoRegistrado;
+    if (!await Kloset.confirmar({
+      titulo: cambioEstado ? 'Cambiar estado del pedido' : 'Guardar datos del pedido',
+      mensaje: cambioEstado ? `El pedido #${idActual} pasará a ${label(estadoElegido)}.` : `Se actualizarán los datos del pedido #${idActual}.`,
+      aceptar: 'Guardar cambios',
+    })) return;
     btnGuardar.disabled = true;
     Kloset.showError('form-pedido-error', '');
 
@@ -127,7 +135,7 @@
 
     if (res.status !== 'success') {
       btnGuardar.disabled = false;
-      Kloset.showError('form-pedido-error', res.message || 'No se pudo guardar');
+      Kloset.reportarError('form-pedido-error', res.message || 'No se pudo guardar');
       return;
     }
     Kloset.toast(res.message);

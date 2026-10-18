@@ -1,6 +1,5 @@
 (function () {
   const PANEL = 'detalle-producto';
-  const CONFIRM = 'confirmar-producto';
   const form = document.getElementById('form-producto');
   if (!form) return;
   const titulo = document.getElementById('prod-titulo');
@@ -32,7 +31,7 @@
   }
   function eliminar(id, fila) {
     const nombre = fila.querySelector('.kl-cell b').textContent;
-    Kloset.confirmarEliminar(CONFIRM, PANEL, {
+    Kloset.confirmarEliminar({
       titulo: '¿Eliminar "' + nombre + '"?',
       texto: 'Solo se eliminará si no existen pedidos o bolsas asociados. Si se vendió, desactívalo.',
       onConfirmar: async () => {
@@ -46,7 +45,6 @@
   document.getElementById('kl-primary')?.addEventListener('click', nuevo);
   document.getElementById('prod-crear')?.addEventListener('click', nuevo);
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => btn.addEventListener('click', () => Kloset.cerrarDetalle(PANEL)));
-  document.getElementById('confirmar-producto-cancelar')?.addEventListener('click', () => Kloset.cerrarDetalle(CONFIRM));
   document.querySelectorAll('.kl-grid-row').forEach((fila) => {
     fila.querySelector('[data-accion="editar"]')?.addEventListener('click', (ev) => { ev.stopPropagation(); editar(fila.dataset.id); });
     fila.querySelector('[data-accion="eliminar"]')?.addEventListener('click', (ev) => { ev.stopPropagation(); eliminar(fila.dataset.id, fila); });
@@ -56,7 +54,7 @@
     ev.preventDefault(); Kloset.showError('form-producto-error', '');
     const metodo = form.elements.id.value ? 'updateProducto' : 'store';
     const res = await Kloset.ajax('Productos', metodo, new FormData(form));
-    if (res.status !== 'success') return Kloset.showError('form-producto-error', res.message || 'No se pudo guardar');
+    if (res.status !== 'success') return Kloset.reportarError('form-producto-error', res.message || 'No se pudo guardar');
     Kloset.toast(res.message); Kloset.recargar();
   });
 })();

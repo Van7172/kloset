@@ -38,6 +38,9 @@ class Dashboard
 		$abiertos = (int) $con->query(
 			"SELECT COUNT(*) FROM pedidos WHERE estado_pedido IN ('pagado', 'en_preparacion', 'enviado', 'en_reparto')"
 		)->fetchColumn();
+		$cerrados = (int) $con->query(
+			"SELECT COUNT(*) FROM pedidos WHERE estado_pedido IN ('entregado', 'cancelado')"
+		)->fetchColumn();
 
 		$sth = $con->prepare('SELECT COUNT(*) FROM productos_variantes WHERE stock_variante < :u');
 		$sth->execute([':u' => $umbral]);
@@ -65,6 +68,13 @@ class Dashboard
 				'delta' => 'Pagado, preparación, enviado o reparto',
 				'url' => 'pedidos',
 				'clase' => 'kl-fg-warn',
+			],
+			[
+				'label' => 'Pedidos cerrados',
+				'value' => (string) $cerrados,
+				'delta' => 'Entregado o cancelado',
+				'url' => 'pedidos',
+				'clase' => 'kl-fg-ok',
 			],
 			[
 				'label' => 'Stock crítico',
