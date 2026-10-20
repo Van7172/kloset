@@ -9,8 +9,8 @@
     <div class="kl-login-box">
         <img src="<?= IMGS ?>kloset-logo-transparente.png" alt="Kloset">
         <div class="kl-kicker">Panel administrativo</div>
-        <h1>Entra a Kloset</h1>
-        <p>Acceso restringido al equipo. Sesión PHP + ACL por sección.</p>
+        <h1>Iniciar sesión</h1>
+        <p>Ingresa con tu correo y contraseña.</p>
 
         <?php if (!empty($login_error)): ?>
             <div class="kl-error" role="alert"><?= htmlspecialchars(is_string($login_error) ? $login_error : 'Error de acceso') ?></div>

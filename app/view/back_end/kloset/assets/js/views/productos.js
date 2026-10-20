@@ -25,12 +25,12 @@
     form.elements.precio.value = p.precio_producto || '';
     form.elements.descripcion.value = p.descripcion_producto || '';
     form.elements.estado.value = p.estado_producto || 'activo';
-    kicker.textContent = 'Producto #' + p.id_producto; titulo.textContent = p.nombre_producto;
+    kicker.textContent = p.codigo_producto; titulo.textContent = p.nombre_producto;
     document.getElementById('prod-kv-variantes').textContent = Number(p.stock_total || 0) + ' unidades en ' + Number(p.total_variantes || 0) + ' variantes';
     resumen.hidden = false; Kloset.marcarFila(p.id_producto); Kloset.abrirDetalle(PANEL);
   }
   function eliminar(id, fila) {
-    const nombre = fila.querySelector('.kl-cell b').textContent;
+    const nombre = fila.querySelector('.kl-product-name').textContent;
     Kloset.confirmarEliminar({
       titulo: '¿Eliminar "' + nombre + '"?',
       texto: 'Solo se eliminará si no existen pedidos o bolsas asociados. Si se vendió, desactívalo.',

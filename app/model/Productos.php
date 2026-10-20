@@ -9,6 +9,11 @@ class Productos
 	private const SECCION = 'productos';
 	private const DIR_IMGS = 'imgs/productos/';
 
+	public static function codigo(int $id): string
+	{
+		return 'KL' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+	}
+
 	/* ---------------------------------------------------------------- Admin */
 
 	public static function get(): array
@@ -23,7 +28,11 @@ class Productos
 			 LEFT JOIN categorias c ON c.id_categoria = p.id_categoria
 			 ORDER BY p.id_producto DESC"
 		);
-		return $sth->fetchAll();
+		$productos = $sth->fetchAll();
+		foreach ($productos as &$producto) {
+			$producto['codigo_producto'] = self::codigo((int) $producto['id_producto']);
+		}
+		return $productos;
 	}
 
 	public static function getById(): array
@@ -48,6 +57,7 @@ class Productos
 		if (!$producto) {
 			return ['status' => 'error', 'message' => 'Producto no encontrado'];
 		}
+		$producto['codigo_producto'] = self::codigo((int) $producto['id_producto']);
 
 		return [
 			'status' => 'success',

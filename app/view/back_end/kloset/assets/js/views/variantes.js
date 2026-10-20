@@ -56,7 +56,7 @@
     form.reset(); form.elements.id.value = v.id_variante; producto.value = v.id_producto;
     await cargarColores(v.id_producto, v.id_color);
     form.elements.talla.value = v.talla_variante; form.elements.corte.value = v.corte_variante;
-    form.elements.sku.value = v.sku_variante; form.elements.stock.value = v.stock_variante;
+    document.getElementById('var-sku').value = v.sku_variante; form.elements.stock.value = v.stock_variante;
     document.getElementById('var-titulo').textContent = v.sku_variante;
     Kloset.showError('form-variante-error', ''); Kloset.marcarFila(id); Kloset.abrirDetalle('detalle-variante');
   }
@@ -73,7 +73,11 @@
   }
   filas.forEach((fila) => {
     fila.addEventListener('click', () => editar(fila.dataset.id));
-    fila.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') editar(fila.dataset.id); });
+    fila.addEventListener('keydown', (ev) => {
+      if (ev.target !== fila || (ev.key !== 'Enter' && ev.key !== ' ')) return;
+      ev.preventDefault();
+      editar(fila.dataset.id);
+    });
     fila.querySelector('[data-accion="editar"]')?.addEventListener('click', (ev) => { ev.stopPropagation(); editar(fila.dataset.id); });
     fila.querySelector('[data-accion="eliminar"]')?.addEventListener('click', (ev) => { ev.stopPropagation(); eliminar(fila.dataset.id, fila); });
   });
@@ -82,15 +86,11 @@
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => btn.addEventListener('click', () => Kloset.cerrarDetalle('detalle-variante')));
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault(); Kloset.showError('form-variante-error', '');
-    const sku = form.elements.sku.value.trim().toUpperCase();
     const stock = form.elements.stock.value.trim();
     if (!producto.value || !color.value || color.value === '__nuevo__' || !colores.some((c) => String(c.id_color) === color.value)) return Kloset.showError('form-variante-error', 'Selecciona un color del producto');
-    if (!/^(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*[0-9])[A-Z0-9]{3,50}$/.test(sku)) return Kloset.showError('form-variante-error', 'El SKU debe tener de 3 a 50 letras y números, incluyendo ambos');
     if (!/^(0|[1-9][0-9]*)$/.test(stock) || Number(stock) > 2147483647) return Kloset.showError('form-variante-error', 'El stock debe ser un entero mayor o igual a cero');
     const duplicado = filas.find((fila) => fila.dataset.id !== form.elements.id.value && fila.dataset.producto === producto.value && fila.dataset.color === color.value && fila.dataset.talla === form.elements.talla.value && fila.dataset.corte === form.elements.corte.value);
     if (duplicado) return Kloset.showError('form-variante-error', 'La combinación de producto, color, talla y corte ya existe');
-    if (filas.some((fila) => fila.dataset.id !== form.elements.id.value && fila.querySelector('.kl-mono')?.textContent.trim().toUpperCase() === sku)) return Kloset.showError('form-variante-error', 'El SKU ya está en uso');
-    form.elements.sku.value = sku;
     const res = await Kloset.ajax('Variantes', form.elements.id.value ? 'updateVariante' : 'store', new FormData(form));
     if (res.status !== 'success') return Kloset.reportarError('form-variante-error', res.message || 'No se pudo guardar');
     Kloset.toast(res.message); Kloset.recargar();

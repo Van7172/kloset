@@ -74,10 +74,12 @@ Si la base demo fue cargada antes de esta revisión, ejecuta una vez
 `database/seeds/2026-09-28_restock_catalogo_demo.sql`: repone a 25 unidades
 las seis variantes iniciales de `Short Split 5"` y deja todo el catálogo demo
 comprable.
-Los códigos de variantes nuevos son únicos y combinan letras y números. Para
-convertir los SKU del catálogo demo anterior, aplica
-`database/migrations/2026-10-05_codigos_alfanumericos_variantes.sql` antes de
-editarlos en el panel. La migración conserva los IDs y los pedidos existentes.
+La tabla de productos muestra un código estable, como `KL000001`, basado en
+su identificador. Al crear una variante, el servidor genera un SKU único con
+el código del producto y un sufijo aleatorio. El panel lo muestra en modo de
+solo lectura; editar una variante conserva su SKU, incluidos los códigos anteriores.
+`database/migrations/2026-10-05_codigos_alfanumericos_variantes.sql` queda
+disponible para convertir los SKU del catálogo demo antiguo.
 En una base local vacía, carga `database/seeds/2026-10-05_base_demo_local.sql`,
 el seed de catálogo y el de imágenes en ese orden. Luego ejecuta por CLI
 `database/seeds/2026-10-05_datos_demo_local.php` indicando una ruta nueva para

@@ -120,6 +120,8 @@ async function main() {
   watch(adminPage, 'panel');
   await step('Credenciales incorrectas y cuenta de cliente bloqueadas en el panel', async () => {
     await adminPage.goto(`${root}/dw-panel/`, { waitUntil: 'networkidle' });
+    assert.match(await adminPage.locator('.kl-login-box h1').innerText(), /Iniciar sesión/);
+    assert.doesNotMatch(await adminPage.locator('.kl-login-box').innerText(), /PHP|ACL/);
     await adminPage.locator('#login-correo').fill(process.env.KLOSET_BROWSER_ADMIN_EMAIL);
     await adminPage.locator('#login-pass').fill('ClaveIncorrecta!123');
     await adminPage.locator('form button[type=submit]').click();
@@ -190,7 +192,6 @@ async function main() {
   await step('Alta de producto, color, imagen y variante desde el panel', async () => {
     const slug = process.env.KLOSET_BROWSER_QA_SLUG;
     const name = `QA Browser ${slug.slice(-10)}`;
-    const sku = `QA${slug.replace(/[^a-z0-9]/gi, '').slice(-14).toUpperCase()}1`;
     await adminPage.goto(`${root}/dw-panel/productos`, { waitUntil: 'networkidle' });
     await adminPage.locator('#prod-crear').click();
     await adminPage.locator('#prod-nombre').fill(name);
@@ -201,6 +202,14 @@ async function main() {
     await adminPage.locator('#prod-descripcion').fill('Prueba temporal de navegador');
     await adminPage.locator('#prod-guardar').click();
     await adminPage.locator('.kl-grid-row').filter({ hasText: name }).waitFor();
+    const productRow = adminPage.locator('.kl-grid-row').filter({ hasText: name });
+    const productCode = (await productRow.locator('.kl-mono').innerText()).trim();
+    assert.match(productCode, /^KL\d{6,}$/);
+    await adminPage.locator('#kl-search').fill(productCode);
+    assert.equal(await adminPage.locator('.kl-grid-row:visible').count(), 1);
+    await productRow.click();
+    await adminPage.locator('#detalle-producto:not([hidden])').waitFor();
+    assert.equal(await adminPage.locator('#prod-kicker').innerText(), productCode);
 
     await adminPage.goto(`${root}/dw-panel/variantes`, { waitUntil: 'networkidle' });
     await adminPage.locator('#var-crear').click();
@@ -220,11 +229,25 @@ async function main() {
     assert.ok(await adminPage.locator('#color-galeria img').count());
     await adminPage.locator('#var-talla').selectOption('M');
     await adminPage.locator('#var-corte').selectOption('Regular');
-    await adminPage.locator('#var-sku').fill(sku);
+    assert.equal(await adminPage.locator('#var-sku').getAttribute('readonly'), '');
+    assert.equal(await adminPage.locator('#var-sku').inputValue(), '');
+    assert.equal(await adminPage.locator('#var-sku').getAttribute('placeholder'), 'Se genera al guardar');
     await adminPage.locator('#var-stock').fill('7');
     await adminPage.locator('#var-guardar').click();
-    await adminPage.locator('.kl-grid-row').filter({ hasText: sku }).waitFor();
+    const variantRow = adminPage.locator('.kl-grid-row').filter({ hasText: name });
+    await variantRow.waitFor();
+    const sku = (await variantRow.locator('.kl-mono').innerText()).trim();
+    assert.match(sku, new RegExp(`^${productCode}V[A-F0-9]{12}$`));
     await adminPage.locator('#kl-toasts').getByText('Variante creada').waitFor();
+    await variantRow.click();
+    await adminPage.locator('#detalle-variante:not([hidden])').waitFor();
+    assert.equal(await adminPage.locator('#var-sku').inputValue(), sku);
+    await adminPage.locator('#var-stock').fill('8');
+    await adminPage.locator('#var-guardar').click();
+    await adminPage.locator('#kl-toasts').getByText('Variante actualizada').waitFor();
+    assert.equal((await variantRow.locator('.kl-mono').innerText()).trim(), sku);
+    await adminPage.locator('#var-crear').click();
+    assert.equal(await adminPage.locator('#var-sku').inputValue(), '');
 
     await clientPage.goto(`${root}/producto/${slug}`, { waitUntil: 'networkidle' });
     await clientPage.getByRole('heading', { name }).waitFor();
@@ -233,7 +256,10 @@ async function main() {
 
     await adminPage.goto(`${root}/dw-panel/productos`, { waitUntil: 'networkidle' });
     const row = adminPage.locator('.kl-grid-row').filter({ hasText: name });
-    await row.locator('[data-accion="eliminar"]').click();
+    await row.locator('[data-accion="eliminar"]').press('Enter');
+    await adminPage.locator('#kl-feedback').waitFor({ state: 'visible' });
+    assert.equal(await adminPage.locator('#detalle-producto').isVisible(), false, 'El botón de eliminar abrió también la edición');
+    assert.ok((await adminPage.locator('#kl-feedback').innerText()).includes(name));
     await adminPage.locator('#kl-feedback-cancelar').click();
     assert.ok(await row.count(), 'Cancelar el modal eliminó el producto');
     await row.locator('[data-accion="eliminar"]').click();

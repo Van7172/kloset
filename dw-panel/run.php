@@ -85,7 +85,7 @@ if ($logeado) {
 				$view_js = 'productos.js';
 				$title = 'Productos';
 				$crumb = 'Catálogo';
-				$search_ph = 'nombre o URL del producto';
+				$search_ph = 'código, nombre o URL del producto';
 				$primary_label = 'Nuevo producto';
 				$primary_disabled = empty($categorias);
 				break;
