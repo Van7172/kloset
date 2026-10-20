@@ -108,14 +108,32 @@ try {
     $sth = $db->prepare('SELECT nombre_color,nombre_clave FROM productos_colores WHERE id_color=?');
     $sth->execute([$colorId]);
     if ($sth->fetch() != ['nombre_color'=>'Midnight Navy','nombre_clave'=>'midnight navy']) throw new RuntimeException('Nombre de color no normalizado');
-    $_POST = ['id_producto'=>$qaProducto,'id_color'=>$colorId,'talla'=>'M','corte'=>'No aplica','sku'=>'QA'.$sufijo.'1','stock'=>'10'];
-    if (Variantes::store()['status']!=='success') throw new RuntimeException('No se creó variante');
-    $_POST['sku'] = 'QA'.$sufijo.'2';
+    $_POST = ['id_producto'=>$qaProducto,'id_color'=>$colorId,'talla'=>'M','corte'=>'No aplica','stock'=>'10'];
+    $variante = Variantes::store();
+    if ($variante['status']!=='success') throw new RuntimeException('No se creó variante sin SKU manual');
+    $sku = $variante['sku'];
+    if (!preg_match('/^'.Productos::codigo($qaProducto).'V[A-F0-9]{12}$/D', $sku)) throw new RuntimeException('SKU automático incorrecto');
     if (Variantes::store()['status']!=='error') throw new RuntimeException('Combinación duplicada aceptada');
-    $_POST['talla']='L'; $_POST['stock']='15';
-    if (Variantes::store()['status']!=='success') throw new RuntimeException('No se creó segunda variante');
+    $_POST['talla']='L'; $_POST['stock']='15'; $_POST['sku']=$sku;
+    $segundaVariante = Variantes::store();
+    if ($segundaVariante['status']!=='success' || $segundaVariante['sku']===$sku) throw new RuntimeException('No se generó un SKU distinto al enviado por el cliente');
+    $_POST['id']=$segundaVariante['id']; $_POST['sku']='MANUAL123';
+    if (Variantes::updateVariante()['status']!=='success') throw new RuntimeException('No se editó variante');
+    $_POST=['id'=>$segundaVariante['id']];
+    if (Variantes::getById()['variante']['sku_variante']!==$segundaVariante['sku']) throw new RuntimeException('Se sobrescribió el SKU en la edición');
+    $skuAnterior = 'QA-'.$sufijo;
+    $db->prepare('UPDATE productos_variantes SET sku_variante=? WHERE id_variante=?')->execute([$skuAnterior,$variante['id']]);
+    $_POST=['id'=>$variante['id'],'id_producto'=>$qaProducto,'id_color'=>$colorId,'talla'=>'M','corte'=>'No aplica','stock'=>'10'];
+    if (Variantes::updateVariante()['status']!=='success') throw new RuntimeException('No se editó una variante con SKU anterior sin enviar SKU');
+    $_POST=['id'=>$variante['id']];
+    if (Variantes::getById()['variante']['sku_variante']!==$skuAnterior) throw new RuntimeException('Se modificó un SKU anterior');
+    foreach (['-1','1.5','2147483648'] as $stockInvalido) {
+        $_POST=['id_producto'=>$qaProducto,'id_color'=>$colorId,'talla'=>'S','corte'=>'No aplica','stock'=>$stockInvalido];
+        if (Variantes::store()['status']!=='error') throw new RuntimeException('Se aceptó stock inválido');
+    }
     $_POST=['id'=>$qaProducto];
     $detalle = Productos::getById();
+    if ($detalle['producto']['codigo_producto']!==Productos::codigo($qaProducto)) throw new RuntimeException('Código del producto incorrecto');
     if ((int)$detalle['producto']['stock_total']!==25) throw new RuntimeException('Stock total incorrecto');
     if ($_POST['id'] && ($pedidoId=(int)$db->query('SELECT id_pedido FROM pedidos LIMIT 1')->fetchColumn())) {
         $_POST=['id'=>$pedidoId,'estado'=>'cancelado'];

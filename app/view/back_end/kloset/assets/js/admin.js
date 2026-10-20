@@ -265,6 +265,7 @@ window.Kloset = (function () {
         const abrir = () => opciones.onSelect(fila.dataset.id, fila);
         fila.addEventListener('click', abrir);
         fila.addEventListener('keydown', (ev) => {
+          if (ev.target !== fila) return;
           if (ev.key === 'Enter' || ev.key === ' ') {
             ev.preventDefault();
             abrir();

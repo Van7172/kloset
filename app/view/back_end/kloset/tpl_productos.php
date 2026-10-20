@@ -28,8 +28,9 @@
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:2.2fr 1fr .8fr .7fr .9fr 84px; --min-w:760px;">
+            <div class="kl-grid" style="--cols:110px 2.2fr 1fr .8fr .7fr .9fr 84px; --min-w:870px;">
                 <div class="kl-grid-head">
+                    <div>código</div>
                     <div>producto</div>
                     <div>categoría</div>
                     <div class="kl-cell--right">precio</div>
@@ -46,9 +47,10 @@
                              data-id="<?= (int) $prod['id_producto'] ?>"
                              data-categoria="<?= (int) $prod['id_categoria'] ?>"
                              data-estado="<?= htmlspecialchars($prod['estado_producto']) ?>"
-                             data-buscar="<?= htmlspecialchars(mb_strtolower($prod['nombre_producto'] . ' ' . $prod['url_producto'])) ?>">
+                             data-buscar="<?= htmlspecialchars(mb_strtolower($prod['codigo_producto'] . ' ' . $prod['nombre_producto'] . ' ' . $prod['url_producto'])) ?>">
+                            <div class="kl-cell"><b class="kl-mono"><?= htmlspecialchars($prod['codigo_producto']) ?></b></div>
                             <div class="kl-cell">
-                                <b><?= htmlspecialchars($prod['nombre_producto']) ?></b>
+                                <b class="kl-product-name"><?= htmlspecialchars($prod['nombre_producto']) ?></b>
                                 <small>/<?= htmlspecialchars($prod['url_producto']) ?></small>
                             </div>
                             <div class="kl-cell"><b><?= htmlspecialchars($prod['nombre_categoria'] ?? '—') ?></b></div>

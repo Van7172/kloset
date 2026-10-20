@@ -54,9 +54,6 @@ class Variantes
 		if (isset($datos['status'])) {
 			return $datos;
 		}
-		if (self::skuEnUso($datos['sku'], 0)) {
-			return ['status' => 'error', 'message' => 'El SKU ya está en uso'];
-		}
 		if (self::comboEnUso($datos['id_producto'], $datos['id_color'], $datos['talla'], $datos['corte'], 0)) {
 			return ['status' => 'error', 'message' => 'La combinación de color, talla y corte ya existe'];
 		}
@@ -66,19 +63,28 @@ class Variantes
 			'INSERT INTO productos_variantes (id_producto, id_color, talla_variante, corte_variante, sku_variante, stock_variante)
 			 VALUES (:producto, :color, :talla, :corte, :sku, :stock)'
 		);
-		try { $sth->execute([
-			':producto' => $datos['id_producto'],
-			':color' => $datos['id_color'],
-			':talla' => $datos['talla'],
-			':corte' => $datos['corte'],
-			':sku' => $datos['sku'],
-			':stock' => $datos['stock'],
-		]); } catch (\PDOException $e) {
-			if ($e->getCode() === '23000') return ['status'=>'error','message'=>'SKU o combinación de variante ya registrados'];
-			throw $e;
+		for ($intento = 0; $intento < 5; $intento++) {
+			$sku = Productos::codigo($datos['id_producto']) . 'V' . strtoupper(bin2hex(random_bytes(6)));
+			try {
+				$sth->execute([
+					':producto' => $datos['id_producto'],
+					':color' => $datos['id_color'],
+					':talla' => $datos['talla'],
+					':corte' => $datos['corte'],
+					':sku' => $sku,
+					':stock' => $datos['stock'],
+				]);
+				return ['status' => 'success', 'message' => 'Variante creada', 'id' => (int) $con->lastInsertId(), 'sku' => $sku];
+			} catch (\PDOException $e) {
+				if ($e->getCode() !== '23000') throw $e;
+				if (self::comboEnUso($datos['id_producto'], $datos['id_color'], $datos['talla'], $datos['corte'], 0)) {
+					return ['status' => 'error', 'message' => 'La combinación de color, talla y corte ya existe'];
+				}
+				if (!self::skuEnUso($sku, 0)) throw $e;
+			}
 		}
 
-		return ['status' => 'success', 'message' => 'Variante creada', 'id' => (int) $con->lastInsertId()];
+		return ['status' => 'error', 'message' => 'No se pudo asignar un SKU único. Inténtalo nuevamente.'];
 	}
 
 	public static function updateVariante(): array
@@ -96,9 +102,6 @@ class Variantes
 		if (isset($datos['status'])) {
 			return $datos;
 		}
-		if (self::skuEnUso($datos['sku'], $id)) {
-			return ['status' => 'error', 'message' => 'El SKU ya está en uso'];
-		}
 		if (self::comboEnUso($datos['id_producto'], $datos['id_color'], $datos['talla'], $datos['corte'], $id)) {
 			return ['status' => 'error', 'message' => 'La combinación de color, talla y corte ya existe'];
 		}
@@ -108,7 +111,7 @@ class Variantes
 		$existe->execute([$id]);
 		$actual = $existe->fetch();
 		if (!$actual) return ['status' => 'error', 'message' => 'Variante no encontrada'];
-		if ((int)$actual['id_producto'] !== $datos['id_producto'] || (int)$actual['id_color'] !== $datos['id_color'] || $actual['talla_variante'] !== $datos['talla'] || $actual['corte_variante'] !== $datos['corte'] || $actual['sku_variante'] !== $datos['sku']) {
+		if ((int)$actual['id_producto'] !== $datos['id_producto'] || (int)$actual['id_color'] !== $datos['id_color'] || $actual['talla_variante'] !== $datos['talla'] || $actual['corte_variante'] !== $datos['corte']) {
 			foreach (['pedidos_items', 'carritos_items', 'prendas_guardadas_clientes'] as $tabla) {
 				$usos = $con->prepare("SELECT COUNT(*) FROM $tabla WHERE id_variante = ?");
 				$usos->execute([$id]);
@@ -117,7 +120,7 @@ class Variantes
 		}
 		$sth = $con->prepare(
 			'UPDATE productos_variantes SET id_producto = :producto, id_color = :color, talla_variante = :talla,
-			 corte_variante = :corte, sku_variante = :sku, stock_variante = :stock
+			 corte_variante = :corte, stock_variante = :stock
 			 WHERE id_variante = :id'
 		);
 		try { $sth->execute([
@@ -125,11 +128,10 @@ class Variantes
 			':color' => $datos['id_color'],
 			':talla' => $datos['talla'],
 			':corte' => $datos['corte'],
-			':sku' => $datos['sku'],
 			':stock' => $datos['stock'],
 			':id' => $id,
 		]); } catch (\PDOException $e) {
-			if ($e->getCode() === '23000') return ['status'=>'error','message'=>'SKU o combinación de variante ya registrados'];
+			if ($e->getCode() === '23000') return ['status'=>'error','message'=>'La combinación de color, talla y corte ya existe'];
 			throw $e;
 		}
 		if ((int)$actual['stock_variante'] > 0 && $datos['stock'] === 0) {
@@ -181,9 +183,8 @@ class Variantes
 		$idColor = (int) ($_POST['id_color'] ?? 0);
 		$talla = (string) ($_POST['talla'] ?? '');
 		$corte = (string) ($_POST['corte'] ?? '');
-		$sku = strtoupper(trim((string) ($_POST['sku'] ?? '')));
 		$stock = (int) ($_POST['stock'] ?? 0);
-		if (filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT) === false || $stock > 2147483647 || mb_strlen($sku) > 50) return ['status'=>'error', 'message'=>'Revisa el stock entero y el SKU (máximo 50 caracteres)'];
+		if (filter_var($_POST['stock'] ?? 0, FILTER_VALIDATE_INT) === false || $stock > 2147483647) return ['status'=>'error', 'message'=>'El stock debe ser un entero entre 0 y 2147483647'];
 
 		if ($idProducto <= 0) {
 			return ['status' => 'error', 'message' => 'Selecciona un producto'];
@@ -200,22 +201,11 @@ class Variantes
 		if (!in_array($corte, self::CORTES, true)) {
 			return ['status' => 'error', 'message' => 'Corte no válido'];
 		}
-		if ($sku === '') {
-			return ['status' => 'error', 'message' => 'El SKU es obligatorio'];
-		}
-		if (!self::codigoValido($sku)) {
-			return ['status' => 'error', 'message' => 'El código debe tener entre 3 y 50 caracteres, solo letras y números, e incluir ambos'];
-		}
 		if ($stock < 0) {
 			return ['status' => 'error', 'message' => 'El stock no puede ser negativo'];
 		}
 
-		return ['id_producto' => $idProducto, 'id_color' => $idColor, 'talla' => $talla, 'corte' => $corte, 'sku' => $sku, 'stock' => $stock];
-	}
-
-	public static function codigoValido(string $codigo): bool
-	{
-		return (bool) preg_match('/\A(?=[A-Z0-9]*[A-Z])(?=[A-Z0-9]*[0-9])[A-Z0-9]{3,50}\z/D', $codigo);
+		return ['id_producto' => $idProducto, 'id_color' => $idColor, 'talla' => $talla, 'corte' => $corte, 'stock' => $stock];
 	}
 
 	private static function skuEnUso(string $sku, int $id): bool
