@@ -6,6 +6,7 @@ import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 import { api, type ApiDireccion } from '../services/api';
 import { AddressForm } from '../components/AddressForm';
+import { validarCaducidad } from '../lib/checkoutValidation';
 
 type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'error' | 'done';
 
@@ -78,8 +79,8 @@ export function CheckoutPage() {
       !usarManual && direccionId ? { id_direccion: direccionId } : { direccion: envio.direccion, ciudad: envio.ciudad, referencia: envio.referencia },
       { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4), numero: soloDigitos(pago.num), otp },
     );
-    if (fallo) {
-      setErrorPedido(fallo);
+    if (fallo.error) {
+      setErrorPedido(fallo.error);
       setEstado('error');
       return;
     }
@@ -89,14 +90,15 @@ export function CheckoutPage() {
     setProgreso('100%');
     setOtp('');
     setPago({ holder: '', num: '', exp: '', cvc: '' });
-    navigate('/pedidos?nuevo=1', { replace: true });
+    navigate(`/pedidos?nuevo=1&correo=${fallo.correoEnviado ? 'enviado' : 'fallo'}`, { replace: true });
   };
 
   const pagar = () => {
     if ((usarManual || !direccionId) && (!envio.direccion.trim() || !envio.ciudad.trim())) return setError('La dirección y el distrito son obligatorios');
     const d = soloDigitos(pago.num);
     if (d.length < 15) return setError('Número de tarjeta incompleto');
-    if (!/^\d{2}\/\d{2}$/.test(pago.exp)) return setError('Caducidad en formato MM/AA');
+    const errorCaducidad = validarCaducidad(pago.exp);
+    if (errorCaducidad) return setError(errorCaducidad);
     if (soloDigitos(pago.cvc).length < 3) return setError('CVC incompleto');
     if (!pago.holder.trim()) return setError('Falta el titular de la tarjeta');
     if (!aceptaTerminos) return setError('Acepta los términos y condiciones para continuar');

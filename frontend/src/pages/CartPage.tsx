@@ -1,6 +1,5 @@
 import { Seo } from '../components/Seo';
-import { useEffect, useState } from 'react';
-import { api, type ApiCarritoItem } from '../services/api';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
@@ -8,13 +7,8 @@ import { Marco } from '../components/Marco';
 
 export function CartPage({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
-  const { bolsa, quitarDeBolsa, cambiarCantidad, guardarParaDespues, recuperarGuardado, usuario, setIntencion } = useKloset();
+  const { bolsa, quitarDeBolsa, cambiarCantidad, usuario, setIntencion } = useKloset();
   const [error, setError] = useState('');
-  const [guardados, setGuardados] = useState<ApiCarritoItem[]>([]);
-  useEffect(() => {
-    if (!usuario) { setGuardados([]); return; }
-    void api.carrito.guardados().then((r) => { if (r.status === 'success') setGuardados(r.items); }).catch(() => undefined);
-  }, [usuario, bolsa]);
   const totalPrendas = bolsa.reduce((a, b) => a + b.cantidad, 0);
   const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
@@ -75,7 +69,6 @@ export function CartPage({ compact = false }: { compact?: boolean }) {
                   >
                     Quitar
                   </button>
-                  {it.id_carrito_item && <button type="button" onClick={async () => { const fallo = await guardarParaDespues(it.id_carrito_item!); setError(fallo ?? ''); }} className="min-h-10 cursor-pointer border-none bg-transparent text-xs text-soft underline">Guardar para después</button>}
                 </div>
               </div>
             ))}
@@ -105,7 +98,6 @@ export function CartPage({ compact = false }: { compact?: boolean }) {
         </>
       )}
       {error && <p role="alert" className="mt-4 border-l-[3px] border-red pl-3 text-sm text-red">{error}</p>}
-      {guardados.length > 0 && <section className="mt-8"><h3 className="border-b border-ink pb-3 font-narrow text-xs font-semibold uppercase tracking-[0.1em] text-soft">Guardado para después</h3>{guardados.map((it) => <div key={it.id_variante} className="flex items-center gap-4 border-b border-rule py-4"><img src={it.url_imagen ?? ''} alt="" className="h-16 w-14 shrink-0 bg-surface object-cover" /><div className="min-w-0 flex-1"><div className="font-display text-lg">{it.nombre_producto}</div><div className="text-xs text-soft">{it.nombre_color} · talla {it.talla_variante} · {it.corte_variante} · SKU {it.sku_variante} · ×{it.cantidad_carrito_item}</div></div><button type="button" onClick={async () => { const fallo = await recuperarGuardado(it.id_variante); setError(fallo ?? ''); }} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">A la bolsa</button></div>)}</section>}
     </div>
   );
 }

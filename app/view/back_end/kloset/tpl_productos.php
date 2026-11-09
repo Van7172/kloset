@@ -93,7 +93,10 @@
         <form id="form-producto">
             <input type="hidden" name="id" value="">
 
-            <div class="kl-detail-body" id="prod-resumen" hidden><dl class="kl-kv" style="margin:0;"><dt>Stock total calculado</dt><dd id="prod-kv-variantes">0</dd></dl></div>
+            <div class="kl-detail-body" id="prod-resumen" hidden>
+                <dl class="kl-kv" style="margin:0 0 10px;"><dt>Código del producto</dt><dd id="prod-codigo"></dd></dl>
+                <dl class="kl-kv" style="margin:0;"><dt>Stock total calculado</dt><dd id="prod-kv-variantes">0</dd></dl>
+            </div>
 
             <div class="kl-detail-section">
                 <div class="kl-form-error" id="form-producto-error" hidden></div>
@@ -124,7 +127,7 @@
                     <option value="inactivo">inactivo</option>
                 </select>
 
-                <p class="kl-hint">Después de guardar el producto, configura colores, imágenes y variantes en Inventario.</p>
+                <p class="kl-hint">El código único se genera automáticamente al guardar. Después, configura colores, imágenes y variantes en Inventario.</p>
             </div>
 
             <div class="kl-detail-actions">

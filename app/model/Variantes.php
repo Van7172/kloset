@@ -8,6 +8,16 @@ class Variantes
 	private const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 	private const CORTES = ['No aplica', 'Slim', 'Regular', 'Oversize'];
 
+	public static function skuAutomatico(int $producto, string $abreviaturaColor, string $talla, string $corte): string
+	{
+		$abreviaturasCorte = ['No aplica'=>'NAC','Slim'=>'SLM','Regular'=>'REG','Oversize'=>'OVR'];
+		if ($producto <= 0 || !preg_match('/^[A-Z0-9]+(?:-[1-9][0-9]*)?$/D', $abreviaturaColor)
+			|| !in_array($talla, self::TALLAS, true) || !isset($abreviaturasCorte[$corte])) {
+			throw new \InvalidArgumentException('Datos no válidos para generar el SKU de la variante');
+		}
+		return Productos::codigo($producto) . '-' . $abreviaturaColor . '-' . $talla . '-' . $abreviaturasCorte[$corte];
+	}
+
 	public static function get(): array
 	{
 		$con = Conexion::getInstance();
@@ -59,32 +69,34 @@ class Variantes
 		}
 
 		$con = Conexion::getInstance();
-		$sth = $con->prepare(
-			'INSERT INTO productos_variantes (id_producto, id_color, talla_variante, corte_variante, sku_variante, stock_variante)
-			 VALUES (:producto, :color, :talla, :corte, :sku, :stock)'
-		);
-		for ($intento = 0; $intento < 5; $intento++) {
-			$sku = Productos::codigo($datos['id_producto']) . 'V' . strtoupper(bin2hex(random_bytes(6)));
-			try {
-				$sth->execute([
-					':producto' => $datos['id_producto'],
-					':color' => $datos['id_color'],
-					':talla' => $datos['talla'],
-					':corte' => $datos['corte'],
-					':sku' => $sku,
-					':stock' => $datos['stock'],
-				]);
-				return ['status' => 'success', 'message' => 'Variante creada', 'id' => (int) $con->lastInsertId(), 'sku' => $sku];
-			} catch (\PDOException $e) {
-				if ($e->getCode() !== '23000') throw $e;
+		$color = $con->prepare('SELECT abreviatura_color FROM productos_colores WHERE id_color=? AND id_producto=?');
+		$color->execute([$datos['id_color'], $datos['id_producto']]);
+		$abreviatura = $color->fetchColumn();
+		$sku = self::skuAutomatico($datos['id_producto'], (string) $abreviatura, $datos['talla'], $datos['corte']);
+		if (self::skuEnUso($sku, 0)) return ['status'=>'error','message'=>'El SKU generado ya está asignado. Revisa las abreviaturas de color del producto.'];
+		try {
+			$sth = $con->prepare(
+				'INSERT INTO productos_variantes (id_producto, id_color, talla_variante, corte_variante, sku_variante, stock_variante)
+				 VALUES (:producto, :color, :talla, :corte, :sku, :stock)'
+			);
+			$sth->execute([
+				':producto' => $datos['id_producto'],
+				':color' => $datos['id_color'],
+				':talla' => $datos['talla'],
+				':corte' => $datos['corte'],
+				':sku' => $sku,
+				':stock' => $datos['stock'],
+			]);
+			return ['status' => 'success', 'message' => 'Variante creada', 'id' => (int) $con->lastInsertId(), 'sku' => $sku];
+		} catch (\PDOException $e) {
+			if ($e->getCode() === '23000') {
 				if (self::comboEnUso($datos['id_producto'], $datos['id_color'], $datos['talla'], $datos['corte'], 0)) {
-					return ['status' => 'error', 'message' => 'La combinación de color, talla y corte ya existe'];
+					return ['status'=>'error','message'=>'La combinación de producto, color, talla y corte ya existe'];
 				}
-				if (!self::skuEnUso($sku, 0)) throw $e;
+				if (self::skuEnUso($sku, 0)) return ['status'=>'error','message'=>'El SKU generado ya está asignado. Revisa las abreviaturas de color del producto.'];
 			}
+			throw $e;
 		}
-
-		return ['status' => 'error', 'message' => 'No se pudo asignar un SKU único. Inténtalo nuevamente.'];
 	}
 
 	public static function updateVariante(): array
@@ -118,9 +130,20 @@ class Variantes
 				if ($usos->fetchColumn()) return ['status' => 'error', 'message' => 'No cambies la identidad de una variante usada por clientes. Crea otra variante.'];
 			}
 		}
+		$identidadCambio = (int)$actual['id_producto'] !== $datos['id_producto']
+			|| (int)$actual['id_color'] !== $datos['id_color']
+			|| $actual['talla_variante'] !== $datos['talla']
+			|| $actual['corte_variante'] !== $datos['corte'];
+		$sku = (string) $actual['sku_variante'];
+		if ($identidadCambio) {
+			$color = $con->prepare('SELECT abreviatura_color FROM productos_colores WHERE id_color=? AND id_producto=?');
+			$color->execute([$datos['id_color'], $datos['id_producto']]);
+			$sku = self::skuAutomatico($datos['id_producto'], (string) $color->fetchColumn(), $datos['talla'], $datos['corte']);
+			if (self::skuEnUso($sku, $id)) return ['status'=>'error','message'=>'El SKU generado ya está asignado. Revisa las abreviaturas de color del producto.'];
+		}
 		$sth = $con->prepare(
 			'UPDATE productos_variantes SET id_producto = :producto, id_color = :color, talla_variante = :talla,
-			 corte_variante = :corte, stock_variante = :stock
+			 corte_variante = :corte, sku_variante = :sku, stock_variante = :stock
 			 WHERE id_variante = :id'
 		);
 		try { $sth->execute([
@@ -128,10 +151,14 @@ class Variantes
 			':color' => $datos['id_color'],
 			':talla' => $datos['talla'],
 			':corte' => $datos['corte'],
+			':sku' => $sku,
 			':stock' => $datos['stock'],
 			':id' => $id,
 		]); } catch (\PDOException $e) {
-			if ($e->getCode() === '23000') return ['status'=>'error','message'=>'La combinación de color, talla y corte ya existe'];
+			if ($e->getCode() === '23000') {
+				if (self::comboEnUso($datos['id_producto'], $datos['id_color'], $datos['talla'], $datos['corte'], $id)) return ['status'=>'error','message'=>'La combinación de producto, color, talla y corte ya existe'];
+				if (self::skuEnUso($sku, $id)) return ['status'=>'error','message'=>'El SKU generado ya está asignado. Revisa las abreviaturas de color del producto.'];
+			}
 			throw $e;
 		}
 		if ((int)$actual['stock_variante'] > 0 && $datos['stock'] === 0) {
@@ -139,7 +166,7 @@ class Variantes
 				->execute([$id,Acl::usuario()->getId()]);
 		}
 
-		return ['status' => 'success', 'message' => 'Variante actualizada', 'id' => $id];
+		return ['status' => 'success', 'message' => 'Variante actualizada', 'id' => $id, 'sku' => $sku];
 	}
 
 	public static function deleteVariante(): array

@@ -52,8 +52,11 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
   const [productos, setProductos] = useState<ApiProducto[]>([]);
   const [q, setQ] = useState('');
   const [cat, setCat] = useState(categoriaUrl);
+  const [precioHasta, setPrecioHasta] = useState(0);
+  const [pagina, setPagina] = useState(1);
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(true);
+  const productosPorPagina = 16;
 
   useEffect(() => {
     api.productos().then((res) => {
@@ -65,8 +68,13 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
 
   const mostrados = useMemo(() => productos.filter((p) =>
     (cat === 'Todo' || p.nombre_categoria === cat) &&
-    (!q || (p.nombre_producto + ' ' + (p.nombre_categoria ?? '')).toLowerCase().includes(q.toLowerCase()))
-  ), [productos, cat, q]);
+    (!q || (p.codigo_producto + ' ' + p.nombre_producto + ' ' + (p.nombre_categoria ?? '')).toLowerCase().includes(q.toLowerCase())) &&
+    (!precioHasta || Number(p.precio_producto) <= precioHasta)
+  ), [productos, cat, q, precioHasta]);
+  const precioMaximo = useMemo(() => Math.ceil(Math.max(0, ...productos.map((p) => Number(p.precio_producto)))), [productos]);
+  const paginas = Math.max(1, Math.ceil(mostrados.length / productosPorPagina));
+  const paginaVisible = Math.min(pagina, paginas);
+  const productosVisibles = mostrados.slice((paginaVisible - 1) * productosPorPagina, paginaVisible * productosPorPagina);
   useEffect(() => {
     if (irAlCatalogo) document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' });
   }, [irAlCatalogo]);
@@ -75,7 +83,12 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
     const categoriasValidas = ['Todo', ...categorias.map((item) => item.nombre)];
     setCat(categoriasValidas.includes(categoriaUrl) ? categoriaUrl : 'Todo');
     setQ('');
+    setPagina(1);
   }, [categoriaUrl]);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [q, cat, precioHasta]);
 
   const talla = tallaRecomendada(medidas, corte);
 
@@ -85,26 +98,55 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
 
   const listadoCatalogo = (
     <section id="catalogo" className="home-products" aria-labelledby="catalogo-title">
-      <div className="home-section-heading">
-        <div><p className="home-eyebrow">PRENDAS PARA MOVERTE</p><h2 id="catalogo-title">El catálogo Kloset</h2><p>Elige tu corte y descubre las prendas hechas para tu ritmo.</p></div>
-        <Link to="/medidas" className="home-text-link">Descubre tu talla <span aria-hidden="true">→</span></Link>
+      <div className="mb-8 border-b border-ink pb-6">
+        <p className="home-eyebrow">PRENDAS PARA MOVERTE</p>
+        <h2 id="catalogo-title">El catálogo Kloset</h2>
+        <p>Encuentra prendas que se adaptan a tu estilo y a tu talla.</p>
       </div>
-      <div className="home-catalog-tools">
-        <label className="home-search"><span aria-hidden="true">⌕</span><span className="sr-only">Buscar productos</span><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar camiseta, malla, cortavientos…" /></label>
-        <div className="home-filter-row" aria-label="Filtrar por categoría">
-          {['Todo', ...categorias.map((c) => c.nombre)].map((nombre) => <button key={nombre} type="button" className={cat === nombre ? 'is-active' : ''} onClick={() => setCat(nombre)}>{nombre}</button>)}
+      <div className="grid gap-8 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-10">
+        <aside className="border-t border-ink pt-4 lg:sticky lg:top-24 lg:self-start" aria-label="Filtros del catálogo">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="font-narrow text-xs font-semibold uppercase tracking-[0.14em]">Filtrar</h3>
+            <span className="text-xs text-soft">{mostrados.length} prendas</span>
+          </div>
+          <label className="mb-6 block border-b border-rule pb-5">
+            <span className="mb-2 block font-narrow text-[11px] font-semibold uppercase tracking-[0.12em] text-soft">Buscar</span>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar prendas" className="min-h-10 w-full border-b border-ink bg-transparent text-sm text-ink outline-none placeholder:text-soft" />
+          </label>
+          <div className="mb-6 border-b border-rule pb-5">
+            <h3 className="mb-3 font-narrow text-[11px] font-semibold uppercase tracking-[0.12em] text-soft">Categoría</h3>
+            <div className="space-y-1">
+              {['Todo', ...categorias.map((c) => c.nombre)].map((nombre) => <button key={nombre} type="button" className={`block w-full cursor-pointer border-none bg-transparent py-1 text-left text-sm ${cat === nombre ? 'font-semibold text-ink' : 'text-body'}`} onClick={() => setCat(nombre)}><span className="mr-2 text-soft">{cat === nombre ? '●' : '○'}</span>{nombre}</button>)}
+            </div>
+          </div>
+          <div className="mb-6 border-b border-rule pb-5">
+            <h3 className="mb-3 font-narrow text-[11px] font-semibold uppercase tracking-[0.12em] text-soft">Precio máximo</h3>
+            <input type="range" min={0} max={precioMaximo || 1} step="1" value={precioHasta || precioMaximo || 1} onChange={(event) => setPrecioHasta(Number(event.target.value))} aria-label="Precio máximo" className="w-full cursor-pointer" />
+            <div className="mt-2 flex justify-between text-xs text-soft"><span>S/ 0</span><span>{money(precioHasta || precioMaximo)}</span></div>
+          </div>
+          <div className="border-b border-rule pb-5">
+            <h3 className="mb-3 font-narrow text-[11px] font-semibold uppercase tracking-[0.12em] text-soft">Corte</h3>
+            <div className="space-y-1">
+              {CORTES.map((opcion) => <button key={opcion} type="button" className={`block w-full cursor-pointer border-none bg-transparent py-1 text-left text-sm ${corte === opcion ? 'font-semibold text-ink' : 'text-body'}`} onClick={() => setCorte(opcion as Corte)}><span className="mr-2 text-soft">{corte === opcion ? '●' : '○'}</span>{opcion}</button>)}
+            </div>
+          </div>
+          <Link to="/medidas" className="mt-5 block border-b border-ink pb-1 font-narrow text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">Descubre tu talla <span aria-hidden="true">→</span></Link>
+        </aside>
+        <div className="min-w-0">
+          {error && <div className="home-message" role="alert">{error}</div>}
+          {!error && !cargando && mostrados.length === 0 && <p className="home-message">{productos.length === 0 ? 'Todavía no hay productos publicados.' : 'Ninguna prenda coincide con tu búsqueda.'}</p>}
+          <div className="home-product-grid">
+            {productosVisibles.map((p, i) => <Link key={p.id_producto} to={'/producto/' + p.url_producto} className="home-product">
+              <Marco src={p.url_imagen} alt={p.nombre_producto} etiqueta="foto de producto" className="p-3" prioridad={i < 4}>{tienePerfil && <div className="home-size-tag">TU TALLA · {talla}</div>}</Marco>
+              <div className="home-product-details"><div><strong>{p.nombre_producto}</strong><small>{p.codigo_producto ? `${p.codigo_producto} · ` : ''}{corte} · {p.nombre_categoria ?? 'Sin categoría'}</small></div><span>{money(Number(p.precio_producto))}</span></div>
+            </Link>)}
+          </div>
+          {paginas > 1 && <nav className="mt-8 flex items-center justify-center gap-2 border-t border-rule pt-5" aria-label="Paginación del catálogo">
+            <button type="button" onClick={() => setPagina((actual) => Math.max(1, actual - 1))} disabled={paginaVisible === 1} className="min-h-10 min-w-10 cursor-pointer border border-rule bg-transparent px-3 font-narrow text-xs uppercase disabled:cursor-default disabled:opacity-40" aria-label="Página anterior">←</button>
+            {Array.from({ length: paginas }, (_, indice) => indice + 1).map((numero) => <button key={numero} type="button" onClick={() => setPagina(numero)} className={`min-h-10 min-w-10 cursor-pointer border px-3 font-narrow text-xs ${paginaVisible === numero ? 'border-ink bg-ink text-paper' : 'border-rule bg-transparent text-ink'}`} aria-current={paginaVisible === numero ? 'page' : undefined}>{numero}</button>)}
+            <button type="button" onClick={() => setPagina((actual) => Math.min(paginas, actual + 1))} disabled={paginaVisible === paginas} className="min-h-10 min-w-10 cursor-pointer border border-rule bg-transparent px-3 font-narrow text-xs uppercase disabled:cursor-default disabled:opacity-40" aria-label="Página siguiente">→</button>
+          </nav>}
         </div>
-        <div className="home-fit-row"><span>CORTE</span><div className="home-cut-options">
-          {CORTES.map((opcion) => <button key={opcion} type="button" className={corte === opcion ? 'is-active' : ''} onClick={() => setCorte(opcion as Corte)}>{opcion}</button>)}
-        </div><small>{mostrados.length} prendas</small></div>
-      </div>
-      {error && <div className="home-message" role="alert">{error}</div>}
-      {!error && !cargando && mostrados.length === 0 && <p className="home-message">{productos.length === 0 ? 'Todavía no hay productos publicados.' : 'Ninguna prenda coincide con tu búsqueda.'}</p>}
-      <div className="home-product-grid">
-        {mostrados.map((p, i) => <Link key={p.id_producto} to={'/producto/' + p.url_producto} className="home-product">
-          <Marco src={p.url_imagen} alt={p.nombre_producto} etiqueta="foto de producto" className="p-3" prioridad={i < 4}>{tienePerfil && <div className="home-size-tag">TU TALLA · {talla}</div>}</Marco>
-          <div className="home-product-details"><div><strong>{p.nombre_producto}</strong><small>{corte} · {p.nombre_categoria ?? 'Sin categoría'}</small></div><span>{money(Number(p.precio_producto))}</span></div>
-        </Link>)}
       </div>
     </section>
   );

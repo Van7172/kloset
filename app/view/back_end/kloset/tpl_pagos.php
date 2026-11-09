@@ -10,7 +10,7 @@
         <div class="kl-scroll">
             <div class="kl-grid" style="--cols:.8fr 1.2fr 1fr 1.6fr .8fr .8fr 1fr; --min-w:940px;">
                 <div class="kl-grid-head">
-                    <div>id_pedido</div>
+                    <div>codigo_pedido</div>
                     <div>cliente</div>
                     <div>metodo_pago</div>
                     <div>id_transaccion_pasarela_pago</div>
@@ -27,7 +27,7 @@
                              data-id="<?= (int) $p['id_pago'] ?>"
                              data-estado="<?= htmlspecialchars($p['estado_pago']) ?>"
                              data-buscar="<?= htmlspecialchars(mb_strtolower($p['cliente'] . ' ' . $p['id_transaccion_pasarela_pago'])) ?>">
-                            <div class="kl-cell"><a href="<?= DW_PANEL ?>pedidos?pedido=<?= (int) $p['id_pedido'] ?>" class="kl-serif" style="font-size:16px;">#<?= (int) $p['id_pedido'] ?> →</a></div>
+                            <div class="kl-cell"><a href="<?= DW_PANEL ?>pedidos?pedido=<?= (int) $p['id_pedido'] ?>" class="kl-serif" style="font-size:16px;"><?= htmlspecialchars($p['codigo_pedido'] ?? '—') ?> →</a></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($p['cliente']) ?></b></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($p['metodo_pago']) ?><?= $p['marca_pago'] ? ' · ' . htmlspecialchars($p['marca_pago']) : '' ?></b></div>
                             <div class="kl-cell"><b class="kl-mono kl-fg-soft" style="text-transform:none;"><?= htmlspecialchars($p['id_transaccion_pasarela_pago'] ?? '—') ?></b></div>

@@ -21,7 +21,7 @@ $acciones = [
     'PedidosAdmin' => ['pedidos', ['getById','cambiarEstado']],
     'Pagos' => ['pagos', ['getById']],
     'Clientes' => ['clientes', ['getById']],
-    'Notificaciones' => ['notificaciones', ['marcarLeida','marcarTodasLeidas']],
+    'Notificaciones' => ['notificaciones', ['responderConsulta','marcarLeida','marcarTodasLeidas']],
     'Configuracion' => ['configuracion', ['saveAll']],
     'MiCuentaAdmin' => ['mi-cuenta', ['guardar','cambiarClave']],
 ];

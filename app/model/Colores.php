@@ -6,12 +6,12 @@ class Colores
 {
     public static function todos(): array
     {
-        return Conexion::getInstance()->query('SELECT id_color,id_producto,nombre_color FROM productos_colores ORDER BY nombre_color')->fetchAll();
+        return Conexion::getInstance()->query('SELECT id_color,id_producto,nombre_color,abreviatura_color FROM productos_colores ORDER BY nombre_color')->fetchAll();
     }
 
     public static function deProducto(int $producto): array
     {
-        $sth = Conexion::getInstance()->prepare('SELECT id_color,id_producto,nombre_color FROM productos_colores WHERE id_producto=? ORDER BY nombre_color');
+        $sth = Conexion::getInstance()->prepare('SELECT id_color,id_producto,nombre_color,abreviatura_color FROM productos_colores WHERE id_producto=? ORDER BY nombre_color');
         $sth->execute([$producto]);
         return $sth->fetchAll();
     }
@@ -29,6 +29,34 @@ class Colores
         return [$nombre, mb_strtolower($nombre, 'UTF-8')];
     }
 
+    private static function abreviaturaBase(string $nombre): string
+    {
+        $ascii = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nombre);
+        $ascii = str_replace("'", '', $ascii === false ? $nombre : $ascii);
+        $ascii = strtoupper(preg_replace('/[^A-Za-z0-9]+/', ' ', $ascii));
+        $palabras = preg_split('/\s+/', trim($ascii), -1, PREG_SPLIT_NO_EMPTY);
+        if (!$palabras) return '';
+        if (count($palabras) === 1) return substr($palabras[0], 0, 3);
+        return substr($palabras[0], 0, 1) . substr($palabras[count($palabras) - 1], 0, 2);
+    }
+
+    private static function abreviaturaDisponible(int $producto, string $nombre, int $excluir = 0): string
+    {
+        $base = self::abreviaturaBase($nombre);
+        if ($base === '') return '';
+        $sth = Conexion::getInstance()->prepare(
+            'SELECT abreviatura_color FROM productos_colores WHERE id_producto=? AND id_color<>?'
+        );
+        $sth->execute([$producto, $excluir]);
+        $usadas = array_fill_keys(array_column($sth->fetchAll(), 'abreviatura_color'), true);
+        if (!isset($usadas[$base])) return $base;
+        for ($indice = 2; $indice < 10000; $indice++) {
+            $alternativa = $base . $indice;
+            if (!isset($usadas[$alternativa])) return $alternativa;
+        }
+        throw new \RuntimeException('No se pudo asignar una abreviatura única al color');
+    }
+
     public static function guardar(): array
     {
         if ($error = Acl::guard('variantes')) return $error;
@@ -36,15 +64,31 @@ class Colores
         [$nombre,$clave] = self::normalizar((string) ($_POST['nombre'] ?? ''));
         if ($producto <= 0 || $nombre === '' || mb_strlen($nombre) > 100) return ['status'=>'error','message'=>'Selecciona un producto y escribe un nombre de color'];
         $con = Conexion::getInstance();
-        $sth = $con->prepare('SELECT 1 FROM productos WHERE id_producto=?');
-        $sth->execute([$producto]);
-        if (!$sth->fetchColumn()) return ['status'=>'error','message'=>'Producto no encontrado'];
+        $transaccionPropia = !$con->inTransaction();
+        if ($transaccionPropia) $con->beginTransaction();
         try {
-            $sth = $con->prepare('INSERT INTO productos_colores (id_producto,nombre_color,nombre_clave) VALUES (?,?,?)');
-            $sth->execute([$producto,$nombre,$clave]);
-            return ['status'=>'success','message'=>'Color registrado','id_color'=>(int) $con->lastInsertId()];
+            $sth = $con->prepare('SELECT id_producto FROM productos WHERE id_producto=? FOR UPDATE');
+            $sth->execute([$producto]);
+            if (!$sth->fetchColumn()) {
+                if ($transaccionPropia) $con->rollBack();
+                return ['status'=>'error','message'=>'Producto no encontrado'];
+            }
+            $abreviatura = self::abreviaturaDisponible($producto, $nombre);
+            if ($abreviatura === '') {
+                if ($transaccionPropia) $con->rollBack();
+                return ['status'=>'error','message'=>'El nombre del color debe incluir letras o números'];
+            }
+            $sth = $con->prepare('INSERT INTO productos_colores (id_producto,nombre_color,abreviatura_color,nombre_clave) VALUES (?,?,?,?)');
+            $sth->execute([$producto,$nombre,$abreviatura,$clave]);
+            $id = (int) $con->lastInsertId();
+            if ($transaccionPropia) $con->commit();
+            return ['status'=>'success','message'=>'Color registrado','id_color'=>$id,'abreviatura_color'=>$abreviatura];
         } catch (\PDOException $e) {
+            if ($transaccionPropia && $con->inTransaction()) $con->rollBack();
             if ($e->getCode() === '23000') return ['status'=>'error','message'=>'Ese color ya existe para este producto'];
+            throw $e;
+        } catch (\Throwable $e) {
+            if ($transaccionPropia && $con->inTransaction()) $con->rollBack();
             throw $e;
         }
     }
@@ -81,17 +125,44 @@ class Colores
         $id = (int) ($_POST['id_color'] ?? 0);
         [$nombre,$clave] = self::normalizar((string) ($_POST['nombre'] ?? ''));
         if ($id <= 0 || $nombre === '' || mb_strlen($nombre) > 100) return ['status'=>'error','message'=>'Selecciona un color y escribe un nombre válido'];
+        $con = Conexion::getInstance();
+        $con->beginTransaction();
         try {
-            $sth = Conexion::getInstance()->prepare('UPDATE productos_colores SET nombre_color=?,nombre_clave=? WHERE id_color=?');
-            $sth->execute([$nombre,$clave,$id]);
-            if (!$sth->rowCount()) {
-                $existe = Conexion::getInstance()->prepare('SELECT 1 FROM productos_colores WHERE id_color=?');
-                $existe->execute([$id]);
-                if (!$existe->fetchColumn()) return ['status'=>'error','message'=>'Color no encontrado'];
+            $lock = $con->prepare('SELECT id_producto FROM productos_colores WHERE id_color=? FOR UPDATE');
+            $lock->execute([$id]);
+            $producto = (int) $lock->fetchColumn();
+            if (!$producto) {
+                $con->rollBack();
+                return ['status'=>'error','message'=>'Color no encontrado'];
             }
-            return ['status'=>'success','message'=>'Color actualizado'];
+            $con->prepare('SELECT id_producto FROM productos WHERE id_producto=? FOR UPDATE')->execute([$producto]);
+            $abreviatura = self::abreviaturaDisponible($producto, $nombre, $id);
+            if ($abreviatura === '') {
+                $con->rollBack();
+                return ['status'=>'error','message'=>'El nombre del color debe incluir letras o números'];
+            }
+            $con->prepare('UPDATE productos_colores SET nombre_color=?,nombre_clave=?,abreviatura_color=? WHERE id_color=?')
+                ->execute([$nombre,$clave,$abreviatura,$id]);
+            $variantes = $con->prepare('SELECT id_variante,id_producto,talla_variante,corte_variante FROM productos_variantes WHERE id_color=?');
+            $variantes->execute([$id]);
+            $actualizarSku = $con->prepare('UPDATE productos_variantes SET sku_variante=? WHERE id_variante=?');
+            foreach ($variantes->fetchAll() as $variante) {
+                $sku = Variantes::skuAutomatico(
+                    (int) $variante['id_producto'],
+                    $abreviatura,
+                    $variante['talla_variante'],
+                    $variante['corte_variante']
+                );
+                $actualizarSku->execute([$sku, $variante['id_variante']]);
+            }
+            $con->commit();
+            return ['status'=>'success','message'=>'Color y códigos de variantes actualizados','abreviatura_color'=>$abreviatura];
         } catch (\PDOException $e) {
+            if ($con->inTransaction()) $con->rollBack();
             if ($e->getCode() === '23000') return ['status'=>'error','message'=>'Ese color ya existe para este producto'];
+            throw $e;
+        } catch (\Throwable $e) {
+            if ($con->inTransaction()) $con->rollBack();
             throw $e;
         }
     }

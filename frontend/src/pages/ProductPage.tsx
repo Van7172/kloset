@@ -17,6 +17,7 @@ export function ProductPage() {
   const [talla, setTalla] = useState<Talla | null>(null);
   const [idColor, setIdColor] = useState<number | null>(null);
   const [corteElegido, setCorteElegido] = useState<string | null>(null);
+  const [cantidad, setCantidad] = useState(1);
   const [errorBolsa, setErrorBolsa] = useState('');
   const [añadiendo, setAñadiendo] = useState(false);
   const [favorito, setFavorito] = useState(false);
@@ -76,7 +77,11 @@ export function ProductPage() {
   const corteActual = corteElegido && cortesDisponibles.includes(corteElegido) ? corteElegido : cortesDisponibles.includes(corte) ? corte : cortesDisponibles[0];
   const variante = disponibles.find((v) => v.talla_variante === elegida && v.corte_variante === corteActual);
   const imagenes = detalle.imagenes.filter((i) => Number(i.id_color) === Number(colorActual?.id_color));
-  const stock = detalle.variantes.reduce((a, v) => a + Number(v.stock_variante), 0);
+  const stockDisponible = variante
+    ? Number(variante.stock_variante)
+    : disponibles.reduce((total, v) => total + Number(v.stock_variante), 0);
+  const cantidadDisponible = Math.max(0, Math.floor(stockDisponible));
+  const cantidadSeleccionada = Math.min(cantidad, cantidadDisponible);
 
   const item: ItemBolsa = {
     id_variante: variante?.id_variante ?? 0,
@@ -89,11 +94,15 @@ export function ProductPage() {
     fit: corteActual ?? 'No aplica',
     price: precio,
     imagen: imagenes[0]?.url_imagen ?? null,
-    cantidad: 1,
+    cantidad: cantidadSeleccionada,
   };
 
   const añadir = async () => {
     if (!variante) { setErrorBolsa('Selecciona una combinación disponible'); return; }
+    if (cantidadSeleccionada < 1 || cantidadSeleccionada > cantidadDisponible) {
+      setErrorBolsa('La cantidad debe estar dentro del stock disponible');
+      return;
+    }
     if (!usuario) {
       setIntencion({ then: 'cart', item });
       navigate('/entrar');
@@ -104,7 +113,6 @@ export function ProductPage() {
     const fallo = await añadirABolsa(item);
     setAñadiendo(false);
     if (fallo) return setErrorBolsa(fallo);
-    navigate('/bolsa');
   };
 
   const alternarFavorito = async () => {
@@ -119,11 +127,10 @@ export function ProductPage() {
   };
 
   const specs = [
+    { k: 'Código del producto', v: p.codigo_producto ?? '—' },
     { k: 'Categoría', v: p.nombre_categoria ?? '—' },
     { k: 'Color seleccionado', v: colorActual?.nombre_color ?? '—' },
     { k: 'Corte seleccionado', v: corteActual ?? '—' },
-    { k: 'SKU', v: variante?.sku_variante ?? '—' },
-    { k: 'SKU disponibles', v: `${detalle.variantes.length} variantes · ${stock} uds` },
     { k: 'Cambio de talla', v: 'Sin coste durante 30 días' },
   ];
 
@@ -187,13 +194,13 @@ export function ProductPage() {
           <div className="mb-[10px] mt-4 flex items-start justify-between gap-3"><h2 className="font-display text-4xl font-normal leading-[1.06] tracking-[-0.025em]">{p.nombre_producto}</h2><button type="button" onClick={() => void alternarFavorito()} disabled={favoritoOcupado} aria-label={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} title={favorito ? 'Quitar de favoritos' : 'Guardar en favoritos'} className="min-h-11 min-w-11 cursor-pointer border border-rule bg-transparent text-2xl text-red disabled:opacity-50">{favorito ? '♥' : '♡'}</button></div>
           <div className="mb-[18px] flex items-baseline gap-[14px]">
             <span className="font-display text-2xl">{money(precio)}</span>
-            <span className="text-[13px] text-soft">{variante ? `${variante.stock_variante} uds de esta variante` : `${stock} uds en stock`}</span>
+            <span className="text-[13px] text-soft">{stockDisponible} {stockDisponible === 1 ? 'unidad disponible' : 'unidades disponibles'}</span>
           </div>
           {p.descripcion_producto && (
             <p className="mb-6 max-w-[48ch] text-[15px] leading-[1.65] text-body">{p.descripcion_producto}</p>
           )}
 
-          {colores.length > 1 && <div className="mb-5"><div className="mb-2 font-narrow text-xs uppercase tracking-[0.12em] text-soft">Color</div><div className="flex flex-wrap gap-2">{colores.map((c) => <button key={c.id_color} type="button" onClick={() => { setIdColor(c.id_color); setTalla(null); setCorteElegido(null); setFoto(0); }} className="min-h-11 border border-ink px-4 text-sm" style={{ background: colorActual?.id_color === c.id_color ? 'var(--ink)' : 'transparent', color: colorActual?.id_color === c.id_color ? 'var(--paper)' : 'var(--ink)' }}>{c.nombre_color}</button>)}</div></div>}
+          {colores.length > 1 && <div className="mb-5"><div className="mb-2 font-narrow text-xs uppercase tracking-[0.12em] text-soft">Color</div><div className="flex flex-wrap gap-2">{colores.map((c) => <button key={c.id_color} type="button" onClick={() => { setIdColor(c.id_color); setTalla(null); setCorteElegido(null); setCantidad(1); setFoto(0); }} className="min-h-11 border border-ink px-4 text-sm" style={{ background: colorActual?.id_color === c.id_color ? 'var(--ink)' : 'transparent', color: colorActual?.id_color === c.id_color ? 'var(--paper)' : 'var(--ink)' }}>{c.nombre_color}</button>)}</div></div>}
           {colores.length === 1 && <p className="mb-5 text-sm text-soft">Color: {colores[0].nombre_color}</p>}
 
           <div className="flex items-baseline justify-between border-b border-ink pb-[10px]">
@@ -207,7 +214,7 @@ export function ProductPage() {
               <button
                 key={s}
                 type="button"
-                onClick={() => setTalla(s)}
+                onClick={() => { setTalla(s); setCantidad(1); }}
                 disabled={!tallasDisponibles.includes(s)}
                 className="relative min-h-[52px] cursor-pointer border-none font-narrow text-[14.5px] font-semibold tracking-[0.06em] transition-colors"
                 style={{
@@ -226,9 +233,50 @@ export function ProductPage() {
             ))}
           </div>
 
-          {cortesDisponibles.length > 1 && <div className="mb-5"><div className="mb-2 font-narrow text-xs uppercase tracking-[0.12em] text-soft">Corte</div><div className="flex flex-wrap gap-2">{cortesDisponibles.map((c) => <button key={c} type="button" onClick={() => setCorteElegido(c)} className="min-h-11 border border-ink px-4 text-sm" style={{ background: corteActual === c ? 'var(--ink)' : 'transparent', color: corteActual === c ? 'var(--paper)' : 'var(--ink)' }}>{c}</button>)}</div></div>}
+          {cortesDisponibles.length > 1 && <div className="mb-5"><div className="mb-2 font-narrow text-xs uppercase tracking-[0.12em] text-soft">Corte</div><div className="flex flex-wrap gap-2">{cortesDisponibles.map((c) => <button key={c} type="button" onClick={() => { setCorteElegido(c); setCantidad(1); }} className="min-h-11 border border-ink px-4 text-sm" style={{ background: corteActual === c ? 'var(--ink)' : 'transparent', color: corteActual === c ? 'var(--paper)' : 'var(--ink)' }}>{c}</button>)}</div></div>}
 
           <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between border-y border-rule py-3">
+              <label htmlFor="cantidad-producto" className="font-narrow text-xs font-semibold uppercase tracking-[0.12em] text-soft">
+                Cantidad
+              </label>
+              <div className="flex items-center border border-rule">
+                <button
+                  type="button"
+                  onClick={() => setCantidad((actual) => Math.max(1, actual - 1))}
+                  disabled={!variante || cantidadSeleccionada <= 1}
+                  aria-label="Disminuir cantidad"
+                  className="h-10 w-10 cursor-pointer border-none bg-transparent text-lg disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  −
+                </button>
+                <input
+                  id="cantidad-producto"
+                  type="number"
+                  min={1}
+                  max={cantidadDisponible}
+                  value={cantidadSeleccionada}
+                  disabled={!variante}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    if (Number.isInteger(value) && value >= 1 && value <= cantidadDisponible) {
+                      setCantidad(value);
+                    }
+                  }}
+                  aria-label={`Cantidad de ${p.nombre_producto}`}
+                  className="h-10 w-12 border-x border-rule bg-transparent text-center text-sm disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCantidad((actual) => Math.min(cantidadDisponible, actual + 1))}
+                  disabled={!variante || cantidadSeleccionada >= cantidadDisponible}
+                  aria-label="Aumentar cantidad"
+                  className="h-10 w-10 cursor-pointer border-none bg-transparent text-lg disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  +
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => navigate(`/avatar?producto=${p.url_producto}`)}
@@ -239,10 +287,10 @@ export function ProductPage() {
             <button
               type="button"
               onClick={añadir}
-              disabled={añadiendo || !variante}
+              disabled={añadiendo || !variante || cantidadSeleccionada < 1}
               className="min-h-[56px] cursor-pointer border border-ink bg-transparent font-narrow text-[15px] font-semibold uppercase tracking-[0.08em] text-ink hover:bg-hover disabled:opacity-50"
             >
-              {añadiendo ? 'Añadiendo…' : `Añadir a la bolsa · ${elegida}`}
+              {añadiendo ? 'Añadiendo…' : 'Añadir a la bolsa'}
             </button>
           </div>
 

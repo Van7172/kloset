@@ -16,6 +16,13 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number]['id'];
 const nombresEstado: Record<string, string> = { pagado: 'Pagado', en_preparacion: 'En preparación', enviado: 'Enviado', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' };
+const etapasPedido = [
+  { estado: 'pagado', etiqueta: 'Pagado' },
+  { estado: 'en_preparacion', etiqueta: 'En preparación' },
+  { estado: 'enviado', etiqueta: 'Enviado' },
+  { estado: 'en_reparto', etiqueta: 'En reparto' },
+  { estado: 'entregado', etiqueta: 'Entregado' },
+];
 
 function fechaEntrega(pedido: Pedido): string {
   if (!pedido.entregaEstimada) return 'fecha por confirmar';
@@ -64,8 +71,10 @@ export function AccountPage() {
   const tab = (value: Tab) => { setError(''); setMensaje(''); setParams(value === 'resumen' ? {} : { tab: value }); };
   const totalBolsa = bolsa.reduce((sum, item) => sum + item.price * item.cantidad, 0);
   const totalPrendas = bolsa.reduce((sum, item) => sum + item.cantidad, 0);
-  const actual = pedidos[0];
-  const etapaPedido = actual ? ({ pagado: 'Pagado', en_preparacion: 'Preparación', enviado: 'Enviado', en_reparto: 'En reparto', entregado: 'Entregado', cancelado: 'Cancelado' } as Record<string, string>)[actual.estado] ?? actual.estado : 'Pagado';
+  const actual = pedidos.find((pedido) => ['pagado', 'en_preparacion', 'enviado', 'en_reparto'].includes(pedido.estado));
+  const etapaPedido = actual ? nombresEstado[actual.estado] ?? actual.estado : 'Pagado';
+  const indiceEtapaActual = actual ? etapasPedido.findIndex((etapa) => etapa.estado === actual.estado) : -1;
+  const pedidoCancelado = actual?.estado === 'cancelado';
 
   const guardarDatos = async (event: FormEvent) => {
     event.preventDefault(); setError(''); setMensaje(''); setOcupado(true);
@@ -127,7 +136,19 @@ export function AccountPage() {
     {mensaje && <p role="status" className="mb-5 border-l-[3px] border-red bg-surface px-4 py-3 text-sm text-body">{mensaje}</p>}
 
     {active === 'resumen' && <div className="space-y-7">
-      <div className="mb-7 grid border border-rule sm:grid-cols-3">{[{ k: 'En la bolsa', v: totalPrendas, d: `${money(totalBolsa)} guardados` }, { k: 'Favoritos', v: favoritos.length, d: 'Prendas que te gustan' }, { k: 'Pedidos', v: pedidos.length, d: 'En tu historial' }].map((s) => <div key={s.k} className="border-b border-rule p-5 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0"><div className="font-narrow text-xs uppercase tracking-[0.1em] text-soft">{s.k}</div><div className="font-display text-[34px]">{s.v}</div><div className="text-xs text-soft">{s.d}</div></div>)}</div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          { k: 'En la bolsa', v: totalPrendas, d: `${money(totalBolsa)} guardados`, icon: <><path d="M5 8h14l1 13H4L5 8Z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" /></>, style: 'border-t-red bg-red/5', iconStyle: 'bg-red/10 text-red' },
+          { k: 'Favoritos', v: favoritos.length, d: 'Prendas que te gustan', icon: <path d="M20.8 8.7c0 5.5-8.8 11-8.8 11s-8.8-5.5-8.8-11A4.7 4.7 0 0 1 12 6.5a4.7 4.7 0 0 1 8.8 2.2Z" />, style: 'border-t-ink bg-surface', iconStyle: 'bg-paper text-ink' },
+          { k: 'Pedidos', v: pedidos.length, d: 'En tu historial', icon: <><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 8 9 5 9-5v10l-9 5-9-5V8Z" /><path d="M12 13v10" /></>, style: 'border-t-soft bg-surface-2', iconStyle: 'bg-paper text-soft' },
+        ].map((s) => <article key={s.k} className={`min-h-[154px] border border-rule border-t-4 ${s.style} p-5`}>
+          <div className="flex items-start justify-between gap-3">
+            <div><div className="font-narrow text-xs font-semibold uppercase tracking-[0.1em] text-soft">{s.k}</div><div className="mt-2 font-display text-[38px] leading-none text-ink">{s.v}</div></div>
+            <span className={`flex h-10 w-10 items-center justify-center ${s.iconStyle}`}><svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{s.icon}</svg></span>
+          </div>
+          <div className="mt-4 text-sm text-body">{s.d}</div>
+        </article>)}
+      </div>
 
       <div className="grid gap-8 lg:grid-cols-[1.35fr_0.95fr]">
         <section>
@@ -139,21 +160,22 @@ export function AccountPage() {
               <span className="font-narrow text-[10px] font-semibold uppercase tracking-[0.12em] text-red">{etapaPedido}</span>
             </div>
 
-            <div className="mt-6 grid grid-cols-4 gap-2 border-b border-rule pb-3">
-              {['Pagado', 'Preparación', 'En camino', 'Entregado'].map((label, index) => {
-                const etapaActual = ({ pagado: 0, en_preparacion: 1, enviado: 2, en_reparto: 2, entregado: 3, cancelado: -1 } as Record<string, number>)[actual.estado] ?? -1;
-                const ok = index <= etapaActual;
-                const isCurrent = index === etapaActual;
-                return <div key={label} className="text-center">
+            <div className="mt-6 grid grid-cols-5 gap-2 border-b border-rule pb-3">
+              {etapasPedido.map((etapa, index) => {
+                const esUltima = index === etapasPedido.length - 1;
+                const etiqueta = pedidoCancelado && esUltima ? 'Cancelado' : etapa.etiqueta;
+                const ok = !pedidoCancelado && index <= indiceEtapaActual;
+                const isCurrent = pedidoCancelado ? esUltima : index === indiceEtapaActual;
+                return <div key={etapa.estado} className="text-center">
                   <div className="mb-2 h-[2px] w-full bg-rule" style={{ background: ok ? 'var(--red)' : 'var(--rule)' }} />
-                  <span className="block font-narrow text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isCurrent ? 'var(--red)' : 'var(--soft)' }}>{label}</span>
+                  <span className="block font-narrow text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: isCurrent ? 'var(--red)' : 'var(--soft)' }}>{etiqueta}</span>
                 </div>;
               })}
             </div>
 
             <p className="mt-4 text-sm text-body">Entrega estimada el {fechaEntrega(actual)} entre las 9:00 y las 18:00.</p>
 
-          </div> : <p className="py-6 text-sm text-soft">Aún no tienes pedidos. <Link to="/catalogo" className="underline">Explora el catálogo</Link>.</p>}
+          </div> : <p className="py-6 text-sm text-soft">{pedidos.length ? <>No tienes pedidos en curso. <button type="button" onClick={() => tab('pedidos')} className="underline">Revisa tus pedidos</button>.</> : <>Aún no tienes pedidos. <Link to="/catalogo" className="underline">Explora el catálogo</Link>.</>}</p>}
 
           <div className="mt-6">
             <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Avisos</p></div>
@@ -165,9 +187,6 @@ export function AccountPage() {
           <div className="border-b border-ink pb-3"><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-soft">Tu perfil de ajuste</p></div>
 
           {tienePerfil ? <>
-            <div className="mt-5 flex items-center justify-center border border-rule bg-paper p-3">
-              <div className="h-24 w-20 bg-[repeating-linear-gradient(135deg,var(--paper)_0,var(--paper)_4px,var(--rule)_4px,var(--rule)_8px)]" />
-            </div>
             <div className="mt-5 space-y-3 text-sm text-body">
               {[['Estatura', medidas.h], ['Pecho', medidas.chest], ['Cintura', medidas.waist], ['Cadera', medidas.hip]].map(([label, value]) => (
                 <div key={label as string} className="flex items-center justify-between gap-3 border-b border-rule pb-2 last:border-b-0 last:pb-0">
@@ -241,6 +260,10 @@ export function AccountPage() {
 
     {active === 'datos' && <section className="max-w-[850px]">
       <h2 className="mb-5 font-display text-[30px]">Datos de la cuenta</h2>
+      <div className="mb-6 flex items-center gap-4 border border-rule bg-surface p-4">
+        <img src="/imagenes/perfil-predeterminado.svg" alt="Imagen de perfil predeterminada" className="h-20 w-20 rounded-full border border-rule bg-paper object-cover" />
+        <div><h3 className="font-display text-xl">Imagen de perfil</h3><p className="mt-1 text-sm text-soft">Imagen predeterminada de tu cuenta.</p></div>
+      </div>
       <form onSubmit={guardarDatos}>
         <div className="border-y border-ink">
           <label className="grid gap-2 border-b border-rule py-4 sm:grid-cols-[180px_1fr]">

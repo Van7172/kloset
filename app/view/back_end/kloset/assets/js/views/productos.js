@@ -26,6 +26,7 @@
     form.elements.descripcion.value = p.descripcion_producto || '';
     form.elements.estado.value = p.estado_producto || 'activo';
     kicker.textContent = p.codigo_producto; titulo.textContent = p.nombre_producto;
+    document.getElementById('prod-codigo').textContent = p.codigo_producto;
     document.getElementById('prod-kv-variantes').textContent = Number(p.stock_total || 0) + ' unidades en ' + Number(p.total_variantes || 0) + ' variantes';
     resumen.hidden = false; Kloset.marcarFila(p.id_producto); Kloset.abrirDetalle(PANEL);
   }

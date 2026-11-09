@@ -3,6 +3,7 @@ const API_BASE = APP_ROOT ? APP_ROOT + '/api/v1' : (import.meta.env.VITE_API_URL
 
 export type ApiProducto = {
   id_producto: number;
+  codigo_producto?: string;
   nombre_producto: string;
   url_producto: string;
   descripcion_producto: string | null;
@@ -96,8 +97,9 @@ export type ApiPedido = {
   referencia_envio_cliente?: string | null;
   historial?: { estado: string; comentario: string | null; fecha: string }[];
   transportista_pedido?: string | null;
-  seguimiento_pedido?: string | null;
   entrega_estimada_pedido?: string | null;
+  codigo_entrega?: string | null;
+  codigo_anulacion?: string | null;
   marca_pago?: string;
   marca_tarjeta?: string;
   ultimos_digitos_pago?: string | null;
@@ -254,11 +256,11 @@ export const api = {
 
   pedidos: {
     codigo: (id: number) => request<{ status: string; codigo?: string | null }>(`/pedido/codigo?id=${id}`),
-    cancelar: (id: number) => request<{ status: string; message?: string }>('/pedidos/cancelar', { method: 'POST', body: JSON.stringify({ id }) }),
+    cancelar: (id: number) => request<{ status: string; message?: string; codigo_anulacion?: string | null }>('/pedidos/cancelar', { method: 'POST', body: JSON.stringify({ id }) }),
     listar: () => request<{ status: string; pedidos: ApiPedido[] }>('/pedidos'),
     detalle: (id: number) => request<{ status: string; message?: string; pedido?: ApiPedido }>(`/pedido?id=${id}`),
     crear: (datos: { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string; numero_simulado: string; otp_simulado?: string }) =>
-      request<{ status: string; message?: string; pedido?: ApiPedido }>('/pedidos', {
+      request<{ status: string; message?: string; correo_enviado?: boolean; pedido?: ApiPedido }>('/pedidos', {
         method: 'POST',
         body: JSON.stringify(datos),
       }),

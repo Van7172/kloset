@@ -11,7 +11,7 @@ class Productos
 
 	public static function codigo(int $id): string
 	{
-		return 'KL' . str_pad((string) $id, 6, '0', STR_PAD_LEFT);
+		return 'KLO-' . str_pad((string) $id, 4, '0', STR_PAD_LEFT);
 	}
 
 	/* ---------------------------------------------------------------- Admin */
@@ -110,6 +110,7 @@ class Productos
 			'status' => 'success',
 			'message' => 'Producto creado',
 			'id' => $id,
+			'codigo_producto' => self::codigo($id),
 			'imagenes' => self::imagenesDe($id),
 		];
 	}
@@ -169,6 +170,7 @@ class Productos
 			'status' => 'success',
 			'message' => 'Producto actualizado',
 			'id' => $id,
+			'codigo_producto' => self::codigo($id),
 			'imagenes' => self::imagenesDe($id),
 		];
 	}
@@ -235,6 +237,7 @@ class Productos
 
 		$productos = $sth->fetchAll();
 		foreach ($productos as &$producto) {
+			$producto['codigo_producto'] = self::codigo((int) $producto['id_producto']);
 			$producto['url_imagen'] = $producto['url_imagen'] ? self::urlPublica($producto['url_imagen']) : null;
 		}
 		unset($producto);
@@ -262,6 +265,7 @@ class Productos
 			http_response_code(404);
 			return ['status' => 'error', 'message' => 'Producto no encontrado'];
 		}
+		$producto['codigo_producto'] = self::codigo((int) $producto['id_producto']);
 
 		$vars = $con->prepare(
 			'SELECT v.id_variante,v.id_color,c.nombre_color,v.talla_variante,v.corte_variante,v.sku_variante,v.stock_variante

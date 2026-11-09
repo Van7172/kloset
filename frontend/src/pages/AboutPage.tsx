@@ -40,54 +40,72 @@ export function AboutPage() {
         description="Kloset nació en Lima para resolver las devoluciones por talla: registras tus medidas una vez y ves cómo te queda cada prenda antes de pagar."
         path="/nosotros"
       />
-      <div className="mb-[30px] max-w-[800px] border-b border-ink pb-[26px]">
-        <div className="mb-[18px] inline-block border-b-[3px] border-red pb-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-ink">
-          Nosotros
-        </div>
-        <h1 className="mb-4 font-display text-[34px] font-normal leading-[1.04] tracking-[-0.025em] md:text-[54px]">
-          Una tienda que mide
-          <br />
-          <em className="italic">antes de vender.</em>
-        </h1>
-        <p className="m-0 max-w-[60ch] text-base leading-[1.7] text-body">
-          Kloset nació en Lima con una idea simple: la mayoría de las devoluciones de ropa deportiva no ocurren por
-          la prenda, sino por la talla. Construimos una tienda donde el cliente registra sus medidas una vez y ve
-          cómo le queda cada prenda sobre su propio avatar antes de pagar.
-        </p>
-      </div>
-
-      <div className="mb-[34px] flex flex-col items-start gap-6 lg:flex-row lg:gap-11">
-        <div className="min-w-0 flex-[1.1]">
-          {BLOQUES.map((b) => (
-            <div key={b.t} className="border-b border-rule py-5">
-              <div className="mb-2 font-display text-[21px] tracking-[-0.015em]">{b.t}</div>
-              <p className="m-0 max-w-[58ch] text-[14.5px] leading-[1.65] text-body">{b.d}</p>
-            </div>
-          ))}
-        </div>
-        <div className="w-full flex-none border-t-[3px] border-red bg-surface p-6 lg:w-[320px]">
-          <div className="mb-4 font-narrow text-[11.5px] uppercase tracking-[0.14em] text-soft">En cifras</div>
-          {CIFRAS.map((f) => (
-            <div key={f.k} className="border-b border-rule py-[13px]">
-              <div className="font-display text-[26px] leading-none tracking-[-0.02em]">{f.v}</div>
-              <div className="mt-[6px] text-[13px] leading-[1.5] text-body">{f.k}</div>
-            </div>
-          ))}
+      <div className="mb-9 border-b border-ink pb-8">
+        <div>
+          <div className="mb-[18px] inline-block border-b-[3px] border-red pb-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-ink">
+            Nosotros
+          </div>
+          <h1 className="mb-4 font-display text-[34px] font-normal leading-[1.04] tracking-[-0.025em] md:text-[54px]">
+            Una tienda que mide
+            <br />
+            <em className="italic">antes de vender.</em>
+          </h1>
+          <p className="m-0 max-w-[60ch] text-base leading-[1.7] text-body">
+            Kloset nació en Lima con una idea simple: la mayoría de las devoluciones de ropa deportiva no ocurren por
+            la prenda, sino por la talla. Construimos una tienda donde el cliente registra sus medidas una vez y ve
+            cómo le queda cada prenda sobre su propio avatar antes de pagar.
+          </p>
         </div>
       </div>
 
-      <div className="border-t-2 border-ink pt-[22px]">
-        <div className="mb-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">Cómo trabajamos</div>
-        <div className="grid grid-cols-1 gap-x-[26px] md:grid-cols-3">
+      <section aria-labelledby="cifras-title" className="mb-10">
+        <div className="mb-4 flex items-end justify-between gap-3 border-b border-ink pb-3">
+          <div><p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-red">Kloset en breve</p><h2 id="cifras-title" className="mt-1 font-display text-[28px]">En cifras</h2></div>
+          <span className="hidden text-xs text-soft sm:block">Una mirada a lo que nos mueve</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {CIFRAS.map((f, index) => (
+            <article key={f.k} className={`min-h-[142px] border border-rule border-t-4 p-5 ${index === 0 ? 'border-t-red bg-red/5' : index === 1 ? 'border-t-ink bg-surface' : index === 2 ? 'border-t-soft bg-surface-2' : 'border-t-red bg-surface'}`}>
+              <div className="font-display text-[32px] leading-none tracking-[-0.02em]">{f.v}</div>
+              <div className="mt-3 text-[13px] leading-[1.5] text-body">{f.k}</div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="historia-title" className="mb-10">
+        <div className="mb-4 border-b border-ink pb-3">
+          <p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-red">Lo que hacemos</p>
+          <h2 id="historia-title" className="mt-1 font-display text-[28px]">Una mejor experiencia, desde la talla</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {BLOQUES.map((b, index) => (
+            <article key={b.t} className="border border-rule bg-surface p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center bg-red/10 font-narrow text-xs font-semibold text-red">0{index + 1}</span>
+                <h3 className="font-display text-[21px] tracking-[-0.015em]">{b.t}</h3>
+              </div>
+              <p className="m-0 text-[14px] leading-[1.7] text-body">{b.d}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="valores-title" className="border-t-2 border-ink pt-5">
+        <div className="mb-4">
+          <p className="font-narrow text-[11px] font-semibold uppercase tracking-[0.14em] text-red">Lo que nos guía</p>
+          <h2 id="valores-title" className="mt-1 font-display text-[28px]">Cómo trabajamos</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
           {VALORES.map((v) => (
-            <div key={v.n} className="border-b border-rule py-[18px]">
-              <div className="mb-2 font-narrow text-xs uppercase tracking-[0.1em] text-red">{v.n}</div>
-              <div className="mb-[7px] font-display text-[19px]">{v.t}</div>
-              <p className="m-0 text-[13.5px] leading-[1.6] text-body">{v.d}</p>
-            </div>
+            <article key={v.n} className="border border-rule bg-paper p-5">
+              <div className="mb-4 flex h-9 w-9 items-center justify-center bg-ink font-narrow text-xs font-semibold text-paper">{v.n}</div>
+              <h3 className="mb-2 font-display text-[20px]">{v.t}</h3>
+              <p className="m-0 text-[13.5px] leading-[1.65] text-body">{v.d}</p>
+            </article>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

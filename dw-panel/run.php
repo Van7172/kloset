@@ -118,14 +118,13 @@ if ($logeado) {
 				$search_ph = 'id_transaccion o cliente';
 				break;
 			case 'notificaciones':
-				$notificaciones = Notificaciones::get();
+				$consultas = Notificaciones::consultas();
 				$alertas = Notificaciones::alertas();
 				$tpl = 'tpl_notificaciones.php';
 				$view_js = 'notificaciones.js';
-				$title = 'Notificaciones';
+				$title = 'Consultas de clientes';
 				$crumb = 'Ventas';
-				$search_ph = 'cliente o mensaje';
-				$primary_label = 'Marcar leídas';
+				$search_ph = 'nombre o correo electrónico del cliente';
 				break;
 			case 'clientes':
 				$clientes = Clientes::get();

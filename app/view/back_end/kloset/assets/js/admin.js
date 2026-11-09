@@ -235,7 +235,8 @@ window.Kloset = (function () {
         const ok =
           (texto === '' || (fila.dataset.buscar || '').includes(texto)) &&
           (estado === '' || fila.dataset.estado === estado) &&
-          (categoria === '' || fila.dataset.categoria === categoria);
+          (categoria === '' || fila.dataset.categoria === categoria) &&
+          (!opciones || typeof opciones.filterRow !== 'function' || opciones.filterRow(fila));
         fila.hidden = !ok;
         if (ok) visibles++;
       });

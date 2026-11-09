@@ -88,7 +88,7 @@
                 <select class="kl-field" id="var-producto" name="id_producto" required>
                     <option value="">Selecciona…</option>
                     <?php foreach ($productos as $p): ?>
-                        <option value="<?= (int) $p['id_producto'] ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option>
+                        <option value="<?= (int) $p['id_producto'] ?>" data-codigo="<?= htmlspecialchars(\Develoweb\App\Model\Productos::codigo((int) $p['id_producto'])) ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <label class="kl-label" for="var-color">Color *</label>
@@ -124,7 +124,7 @@
 
                 <label class="kl-label" for="var-sku">SKU</label>
                 <input class="kl-field kl-mono" type="text" id="var-sku" placeholder="Se genera al guardar" readonly aria-describedby="var-sku-ayuda">
-                <p class="kl-hint" id="var-sku-ayuda">Código único asignado automáticamente.</p>
+                <p class="kl-hint" id="var-sku-ayuda">Se genera con el código del producto, color, talla y corte. NAC indica que el corte no aplica.</p>
 
                 <label class="kl-label" for="var-stock">Stock *</label>
                 <input class="kl-field" type="number" id="var-stock" name="stock" min="0" step="1" required>

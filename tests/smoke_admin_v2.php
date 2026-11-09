@@ -31,7 +31,7 @@ foreach (['Pedidos abiertos' => "'pagado','en_preparacion','enviado','en_reparto
     if ((int)($kpis[$label] ?? -1) !== $esperado) throw new RuntimeException('Contador incorrecto: '.$label);
 }
 Dashboard::estadoStats(); Dashboard::stockCritico(); Dashboard::actividad();
-Clientes::get(); Notificaciones::get(); Notificaciones::alertas();
+Clientes::get(); Notificaciones::consultas(); Notificaciones::alertas();
 $pagos = Pagos::get();
 if (count($pagos) !== (int)$db->query('SELECT COUNT(*) FROM pagos')->fetchColumn()) throw new RuntimeException('La tabla omite pagos históricos');
 $productos = Productos::get();

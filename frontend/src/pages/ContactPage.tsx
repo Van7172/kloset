@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Seo } from '../components/Seo';
 import { api } from '../services/api';
+import { useKloset } from '../store/KlosetContext';
 
 const TEMAS = [
   { key: 'talla', label: 'Duda de talla' },
@@ -16,15 +17,42 @@ const CANALES = [
 type Tema = (typeof TEMAS)[number]['key'];
 
 export function ContactPage() {
+  const { usuario } = useKloset();
   const [tema, setTema] = useState<Tema>('talla');
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [errorDatosCuenta, setErrorDatosCuenta] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [enviado, setEnviado] = useState('');
   const [error, setError] = useState('');
   const [errores, setErrores] = useState<Record<string, string>>({});
   const [enviando, setEnviando] = useState(false);
+  const camposEditados = useRef({ nombre: false, correo: false });
+
+  useEffect(() => {
+    camposEditados.current = { nombre: false, correo: false };
+    setNombre(usuario?.nombre ?? '');
+    setCorreo(usuario?.correo ?? '');
+    setTelefono('');
+    setErrorDatosCuenta('');
+    if (!usuario) return;
+
+    let activo = true;
+    void api.cuenta.datos().then((res) => {
+      if (!activo) return;
+      if (res.status !== 'success' || !res.datos) {
+        setErrorDatosCuenta('No pudimos cargar los datos de tu cuenta. Puedes completar el nombre y correo manualmente.');
+        return;
+      }
+      if (!camposEditados.current.nombre) setNombre(res.datos.nombre);
+      if (!camposEditados.current.correo) setCorreo(res.datos.correo);
+    }).catch(() => {
+      if (activo) setErrorDatosCuenta('No pudimos cargar los datos de tu cuenta. Puedes completar el nombre y correo manualmente.');
+    });
+
+    return () => { activo = false; };
+  }, [usuario]);
 
   const campos = [
     { k: 'nombre', label: 'Nombre', ph: 'Tu nombre', value: nombre, set: setNombre },
@@ -130,6 +158,8 @@ export function ContactPage() {
                   type={f.k === 'correo' ? 'email' : f.k === 'tel' ? 'tel' : 'text'}
                   value={f.value}
                   onChange={(e) => {
+                    if (f.k === 'nombre') camposEditados.current.nombre = true;
+                    else if (f.k === 'correo') camposEditados.current.correo = true;
                     f.set(e.target.value);
                     setEnviado('');
                     limpiarError(f.k);
@@ -167,6 +197,7 @@ export function ContactPage() {
             </div>
           </div>
 
+          {errorDatosCuenta && <p role="status" className="mt-4 border-l-[3px] border-red bg-surface px-[14px] py-3 text-sm text-body">{errorDatosCuenta}</p>}
           {enviado && (
             <div role="status" className="mt-4 border-l-[3px] border-red bg-surface px-[14px] py-3 font-narrow text-xs uppercase tracking-[0.06em]">
               {enviado}

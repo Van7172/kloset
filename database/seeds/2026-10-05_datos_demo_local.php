@@ -66,7 +66,7 @@ function demoVariant(PDO $db, string $slug, string $size = 'M', string $fit = 'R
     return $variant;
 }
 
-function demoOrder(PDO $db, int $user, int $address, array $lines, string $state, ?string $tracking): int
+function demoOrder(PDO $db, int $user, int $address, array $lines, string $state): int
 {
     $total = 0.0;
     $items = [];
@@ -78,9 +78,9 @@ function demoOrder(PDO $db, int $user, int $address, array $lines, string $state
     }
     $money = number_format($total, 2, '.', '');
     $stmt = $db->prepare('INSERT INTO pedidos
-        (id_usuario_sistema, id_direccion_envio, estado_pedido, subtotal_pedido, total_pedido, transportista_pedido, seguimiento_pedido, entrega_estimada_pedido)
-        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 3 DAY))');
-    $stmt->execute([$user, $address, $state, $money, $money, $tracking ? 'Reparto Demo Kloset' : null, $tracking]);
+        (id_usuario_sistema, id_direccion_envio, estado_pedido, subtotal_pedido, total_pedido, transportista_pedido, entrega_estimada_pedido)
+        VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 3 DAY))');
+    $stmt->execute([$user, $address, $state, $money, $money, $state === 'enviado' ? 'Reparto Demo Kloset' : null]);
     $order = (int) $db->lastInsertId();
 
     $insertItem = $db->prepare('INSERT INTO pedidos_items (id_pedido, id_variante, cantidad_pedido_item, precio_unitario_pedido_item) VALUES (?, ?, ?, ?)');
@@ -92,7 +92,16 @@ function demoOrder(PDO $db, int $user, int $address, array $lines, string $state
     }
 
     $db->prepare('INSERT INTO pagos (id_pedido, metodo_pago, marca_pago, ultimos_digitos_pago, monto_pago, estado_pago, id_transaccion_pasarela_pago)
-        VALUES (?, ?, ?, ?, ?, ?, ?)')->execute([$order, 'tarjeta_demo', 'Visa', '4242', $money, 'aprobado', 'DEMO-' . strtoupper(bin2hex(random_bytes(6)))]);
+        VALUES (?, ?, ?, ?, ?, ?, ?)')->execute([$order, 'tarjeta_demo', 'Visa', '4242', $money, 'aprobado', 'SIM-' . strtoupper(bin2hex(random_bytes(6)))]);
+    $db->exec('INSERT INTO secuencias_pedidos (anio, ultimo_secuencial)
+        VALUES (YEAR(CURRENT_TIMESTAMP), LAST_INSERT_ID(1))
+        ON DUPLICATE KEY UPDATE ultimo_secuencial = LAST_INSERT_ID(ultimo_secuencial + 1)');
+    $codigoPedido = sprintf(
+        'PED-%04d-%04d',
+        (int) $db->query('SELECT YEAR(CURRENT_TIMESTAMP)')->fetchColumn(),
+        (int) $db->lastInsertId()
+    );
+    $db->prepare('UPDATE pedidos SET codigo_pedido=? WHERE id_pedido=?')->execute([$codigoPedido, $order]);
     $history = $db->prepare('INSERT INTO historial_estados_pedidos (id_pedido, id_usuario_sistema, estado_historial_estado_pedido, comentario_historial_estado_pedido) VALUES (?, NULL, ?, ?)');
     foreach ($state === 'enviado' ? ['pagado', 'en_preparacion', 'enviado'] : ['pagado', 'en_preparacion'] as $step) {
         $history->execute([$order, $step, 'Movimiento ficticio de demostración']);
@@ -132,17 +141,14 @@ try {
     $db->prepare('INSERT INTO carritos_items (id_carrito, id_variante, cantidad_carrito_item) VALUES (?, ?, 1)')
         ->execute([$cart, (int) $cartVariant['id_variante']]);
 
-    demoOrder($db, $ana, $anaAddress, [['malla-vector-long', 1], ['camiseta-tempo-dry', 1]], 'en_preparacion', null);
-    demoOrder($db, $luis, $luisAddress, [['short-split-5', 2]], 'enviado', 'DEMO-ENV-0002');
+    demoOrder($db, $ana, $anaAddress, [['malla-vector-long', 1], ['camiseta-tempo-dry', 1]], 'en_preparacion');
+    demoOrder($db, $luis, $luisAddress, [['short-split-5', 2]], 'enviado');
     $db->prepare("UPDATE productos_variantes SET stock_variante = 4 WHERE id_producto =
         (SELECT id_producto FROM productos WHERE url_producto = 'malla-vector-long')
         AND talla_variante = 'XS' AND corte_variante = 'Slim'")->execute();
 
     $db->prepare("INSERT INTO contactos (tema_contacto, nombre_contacto, correo_contacto, mensaje_contacto)
         VALUES ('talla', 'Luis Demo', 'luis.demo@kloset.test', 'Consulta ficticia: necesito orientación para elegir talla.')")->execute();
-    $contact = (int) $db->lastInsertId();
-    $db->prepare('INSERT INTO notificaciones (id_usuario_sistema, id_contacto, mensaje_notificacion) VALUES (?, ?, ?)')
-        ->execute([$admin, $contact, 'Nueva consulta demo de Luis Demo']);
 
     $credentials = "KLOSET · CUENTAS FICTICIAS PARA LA INSTALACIÓN LOCAL\r\n"
         . "Panel: http://127.0.0.1/kloset/dw-panel/sign-in\r\n"

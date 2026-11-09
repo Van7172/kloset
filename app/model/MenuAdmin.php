@@ -32,7 +32,7 @@ class MenuAdmin
 				];
 			}
 			$grouped[$modId]['secciones'][] = [
-				'nombre_seccion' => $sec->getNombre(),
+				'nombre_seccion' => $url === 'notificaciones' ? 'Consultas' : $sec->getNombre(),
 				'url_seccion' => $url,
 				'count' => $counts[$url] ?? null,
 			];
@@ -58,7 +58,7 @@ class MenuAdmin
 			)->fetchColumn(),
 			'pagos' => (int) $con->query('SELECT COUNT(*) FROM pagos')->fetchColumn(),
 			'notificaciones' => (int) $con->query(
-				'SELECT COUNT(*) FROM notificaciones WHERE leido_notificacion = 0'
+				"SELECT COUNT(*) FROM contactos WHERE estado_contacto = 'pendiente'"
 			)->fetchColumn(),
 			'clientes' => (int) $con->query(
 				"SELECT COUNT(*) FROM sistema_usuarios u

@@ -166,9 +166,9 @@ export function AuthPage() {
     }
   }
 
-  return <div className="kl-rise mx-auto flex max-w-[960px] flex-col gap-10 lg:flex-row lg:gap-16">
+  return <div className="kl-rise mx-auto flex w-full max-w-[560px] justify-center">
     <Seo title="Entrar o crear cuenta" description="Accede a tu cuenta Kloset para guardar tus medidas, tu bolsa y tus pedidos." path="/entrar" noindex />
-    <div className="min-w-0 flex-1">
+    <div className="w-full">
       <p className="mb-3 font-narrow text-xs uppercase tracking-[0.14em] text-soft">{verificandoRegistro ? 'Paso 2 de 2' : 'Tu cuenta Kloset'}</p>
       <h1 className="mb-3 font-display text-[36px] leading-[1.08] tracking-[-0.025em]">{verificandoRegistro ? 'Verifica tu correo electrónico' : modo === 'signup' ? 'Encuentra tu talla y guárdala.' : 'Vuelve a tu talla.'}</h1>
       <p className="mb-6 max-w-[45ch] text-[15px] leading-[1.65] text-body">{verificandoRegistro ? <>Se envió un código de verificación de 6 dígitos al <strong className="break-all text-ink">{correo.trim()}</strong>.</> : modo === 'signup' ? 'Crea una cuenta para conservar tu perfil, favoritos, direcciones y pedidos.' : 'Entra para continuar con tu bolsa y consultar tus pedidos.'}</p>
@@ -200,10 +200,5 @@ export function AuthPage() {
       {!verificandoRegistro && modo === 'login' && <p className="mt-5 text-sm text-body"><Link to="/recuperar" className="underline">¿Olvidaste tu contraseña?</Link></p>}
       {verificandoRegistro && <p className="mt-5 text-sm text-body"><Link to="/entrar" className="underline" onClick={() => { setVerificandoRegistro(false); setModo('login'); setPassword(''); setConfirmarPassword(''); setError(''); }}>Volver al inicio de sesión</Link></p>}
     </div>
-    <aside className="border-t-[3px] border-red bg-surface p-6 lg:w-[320px]">
-      <p className="mb-3 font-narrow text-xs uppercase tracking-[0.14em] text-soft">Con tu cuenta</p>
-      {['Tu perfil de medidas y talla recomendada', 'Tus prendas favoritas y bolsa guardada', 'Direcciones e historial de pedidos'].map((texto, i) => <div key={texto} className="border-b border-rule py-4"><span className="mr-3 font-narrow text-xs text-red">0{i + 1}</span><span className="text-sm text-body">{texto}</span></div>)}
-      <p className="mt-5 text-[12px] leading-[1.55] text-soft">Verificamos el correo antes de activar la cuenta. Los pagos son simulados.</p>
-    </aside>
   </div>;
 }

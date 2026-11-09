@@ -16,7 +16,7 @@ final class CodigoEntrega
         $iv = random_bytes(12);
         $tag = '';
         $cifrado = openssl_encrypt($codigo, 'aes-256-gcm', self::key(), OPENSSL_RAW_DATA, $iv, $tag);
-        if ($cifrado === false) throw new \RuntimeException('No se pudo crear el código de entrega');
+        if ($cifrado === false) throw new \RuntimeException('No se pudo crear el código de verificación');
         return [password_hash($codigo, PASSWORD_DEFAULT), base64_encode($iv . $tag . $cifrado)];
     }
 

@@ -24,27 +24,42 @@
     return '';
   }
 
+  function actualizarSku() {
+    const codigo = producto.selectedOptions[0]?.dataset.codigo;
+    const colorSeleccionado = colores.find((c) => String(c.id_color) === color.value);
+    const abreviaturasCorte = { 'No aplica': 'NAC', Slim: 'SLM', Regular: 'REG', Oversize: 'OVR' };
+    const sku = codigo && colorSeleccionado && form.elements.talla.value && abreviaturasCorte[form.elements.corte.value]
+      ? `${codigo}-${colorSeleccionado.abreviatura_color}-${form.elements.talla.value}-${abreviaturasCorte[form.elements.corte.value]}`
+      : '';
+    document.getElementById('var-sku').value = sku;
+  }
+
   async function cargarColores(id, elegido) {
     colores = [];
     colorAnterior = '';
     gestionColor.hidden = true;
     galeria.replaceChildren();
     color.replaceChildren(new Option(id ? 'Selecciona un color' : 'Selecciona un producto', ''));
+    actualizarSku();
     if (!id) return;
     const res = await Kloset.ajax('Colores', 'listar', { id_producto: id });
     if (producto.value !== String(id)) return;
     if (res.status !== 'success') return Kloset.toast(res.message, 'error');
     colores = res.colores;
-    colores.forEach((c) => color.add(new Option(c.nombre_color, c.id_color)));
+    colores.forEach((c) => color.add(new Option(`${c.nombre_color} (${c.abreviatura_color})`, c.id_color)));
     color.add(new Option('+ Agregar nuevo color', '__nuevo__'));
     if (elegido && colores.some((c) => String(c.id_color) === String(elegido))) color.value = String(elegido);
     colorAnterior = color.value;
+    actualizarSku();
     await cargarGaleria();
   }
   producto.addEventListener('change', () => cargarColores(producto.value));
+  form.elements.talla.addEventListener('change', actualizarSku);
+  form.elements.corte.addEventListener('change', actualizarSku);
   function nuevo() {
     form.reset(); form.elements.id.value = ''; colores = []; colorAnterior = '';
     color.replaceChildren(new Option('Selecciona un producto', ''));
+    document.getElementById('var-sku').value = '';
     gestionColor.hidden = true; galeria.replaceChildren();
     document.getElementById('var-titulo').textContent = 'Nueva variante';
     Kloset.showError('form-variante-error', ''); Kloset.marcarFila(null); Kloset.abrirDetalle('detalle-variante');
@@ -56,7 +71,7 @@
     form.reset(); form.elements.id.value = v.id_variante; producto.value = v.id_producto;
     await cargarColores(v.id_producto, v.id_color);
     form.elements.talla.value = v.talla_variante; form.elements.corte.value = v.corte_variante;
-    document.getElementById('var-sku').value = v.sku_variante; form.elements.stock.value = v.stock_variante;
+    form.elements.stock.value = v.stock_variante; actualizarSku();
     document.getElementById('var-titulo').textContent = v.sku_variante;
     Kloset.showError('form-variante-error', ''); Kloset.marcarFila(id); Kloset.abrirDetalle('detalle-variante');
   }
@@ -164,6 +179,7 @@
   }
   color.addEventListener('change', () => {
     if (color.value === '__nuevo__') {
+      actualizarSku();
       document.getElementById('nuevo-color-producto').textContent = 'Producto: ' + producto.selectedOptions[0].textContent;
       modalColor.hidden = false;
       document.body.classList.add('kl-no-scroll');
@@ -171,6 +187,7 @@
       return;
     }
     colorAnterior = color.value;
+    actualizarSku();
     cargarGaleria();
   });
   document.querySelectorAll('[data-cancelar-color]').forEach((boton) => boton.addEventListener('click', cerrarModalColor));
@@ -205,7 +222,7 @@
       if (res.status !== 'success') return Kloset.reportarError('nuevo-color-error', res.message || 'No se pudo guardar el color');
       cerrarModalColor();
       await cargarColores(producto.value, res.id_color);
-      Kloset.toast('Color e imágenes guardados');
+      Kloset.toast(`Color e imágenes guardados (${res.abreviatura_color})`);
     } finally { guardar.disabled = false; }
   });
   document.getElementById('color-actualizar').addEventListener('click', async () => {
@@ -215,7 +232,8 @@
     if (colores.some((c) => String(c.id_color) !== color.value && nombreClave(c.nombre_color) === nombreClave(nombre))) return Kloset.toast('Ese color ya existe para este producto', 'error');
     const res = await Kloset.ajax('Colores', 'renombrar', { id_color: color.value, nombre });
     if (res.status !== 'success') return Kloset.toast(res.message, 'error');
-    await cargarColores(producto.value, color.value); Kloset.toast(res.message);
+    await cargarColores(producto.value, color.value);
+    Kloset.toast(`${res.message} (${res.abreviatura_color})`);
   });
   document.getElementById('color-subir').addEventListener('click', async () => {
     const archivos = document.getElementById('color-imagenes').files;
