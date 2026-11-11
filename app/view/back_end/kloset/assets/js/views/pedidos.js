@@ -27,17 +27,49 @@
   const etiquetaCodigo = document.getElementById('ped-codigo-etiqueta');
   const entradaCodigo = document.getElementById('ped-codigo');
   const logistica = document.getElementById('ped-logistica');
+  const btnIncidencia = document.getElementById('ped-registrar-incidencia');
+  const incidenciaRegistrada = document.getElementById('ped-incidencia-registrada');
+  const formularioIncidencia = document.getElementById('ped-formulario-incidencia');
+  const resumenIncidencia = document.getElementById('ped-incidencia-resumen');
+  const tipoIncidencia = document.getElementById('ped-incidencia-tipo');
+  const bloqueCodigoIncidencia = document.getElementById('ped-incidencia-codigo-bloque');
+  const codigoIncidencia = document.getElementById('ped-incidencia-codigo');
+  const motivoIncidencia = document.getElementById('ped-incidencia-motivo');
+  const descripcionIncidencia = document.getElementById('ped-incidencia-descripcion');
+  const evidenciasIncidencia = document.getElementById('ped-incidencia-evidencias');
+  const btnGuardarIncidencia = document.getElementById('ped-incidencia-guardar');
+  const btnCancelarIncidencia = document.getElementById('ped-incidencia-cancelar');
+  const errorIncidencia = document.getElementById('form-ped-incidencia-error');
 
   let idActual = null;
   let codigoActual = '';
   let estadoElegido = null;
   let estadoRegistrado = null;
+  let tieneIncidencia = false;
+  let puedeRegistrarIncidencia = false;
+  let resItems = [];
 
   function kv(clave, valor, clase = '') {
     return (
       '<dl class="kl-order-kv"><dt>' + clave + '</dt>' +
       '<dd class="' + clase + '">' + valor + '</dd></dl>'
     );
+  }
+
+  function abrirFormularioIncidencia() {
+    const seleccionados = [...document.querySelectorAll('input[name="ped-incidencia-item"]:checked')].map((input) => input.value);
+    resumenIncidencia.innerHTML = '<b>Pedido:</b> ' + esc(codigoActual) + '<br><b>Cliente:</b> ' + esc(document.getElementById('ped-titulo').textContent) +
+      '<div style="margin-top:10px;"><b>Productos afectados *</b></div>' +
+      resItems.map((it) => '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;"><input type="checkbox" name="ped-incidencia-item" value="' + it.id_pedido_item + '"' + (seleccionados.includes(String(it.id_pedido_item)) ? ' checked' : '') + '><span><b>' + esc(it.nombre_producto) + '</b><br><small>' + esc(it.nombre_color) + ' · talla ' + esc(it.talla_variante) + ' · corte ' + esc(it.corte_variante) + ' · variante comprada: ' + esc(it.sku_variante) + '</small></span></label>').join('');
+    formularioIncidencia.hidden = false;
+    formularioIncidencia.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function actualizarCodigoIncidencia() {
+    const requiereCodigo = tipoIncidencia.value === 'reembolso';
+    bloqueCodigoIncidencia.hidden = !requiereCodigo;
+    codigoIncidencia.required = requiereCodigo;
+    if (!requiereCodigo) codigoIncidencia.value = '';
   }
 
   function grupo(tituloGrupo, contenido, clase = '') {
@@ -57,11 +89,13 @@
     }).join('');
     const requiereCodigo = seleccionado === 'entregado' || seleccionado === 'cancelado';
     formularioEstado.hidden = opciones.length === 0;
+    btnIncidencia.hidden = estadoRegistrado !== 'en_reparto' || tieneIncidencia || !puedeRegistrarIncidencia;
+    incidenciaRegistrada.hidden = !tieneIncidencia;
     logistica.hidden = seleccionado !== 'enviado';
     bloqueCodigo.hidden = !requiereCodigo;
     entradaCodigo.required = requiereCodigo;
     etiquetaCodigo.textContent = seleccionado === 'cancelado'
-      ? 'Código de anulación proporcionado por el cliente *'
+      ? 'Código de cancelación proporcionado por el cliente *'
       : 'Código de confirmación proporcionado por el cliente *';
     if (!requiereCodigo || seleccionAnterior !== seleccionado) entradaCodigo.value = '';
     btnGuardar.disabled = !seleccionado;
@@ -75,6 +109,8 @@
     }
     idActual = id;
     const p = res.pedido;
+    tieneIncidencia = Boolean(res.incidencia);
+    puedeRegistrarIncidencia = res.puede_registrar_incidencia === true;
     codigoActual = p.codigo_pedido || `pedido #${p.id_pedido}`;
 
     kicker.textContent = 'pedidos · id interno ' + p.id_pedido;
@@ -104,7 +140,8 @@
         kv('Total', '<strong class="kl-order-total">' + money(p.total_pedido) + '</strong>')),
     ].join('');
 
-    itemsBox.innerHTML = res.items
+    resItems = res.items || [];
+    itemsBox.innerHTML = resItems
       .map((it) => {
         const cantidad = Number(it.cantidad_pedido_item);
         const precio = Number(it.precio_unitario_pedido_item);
@@ -123,6 +160,14 @@
 
     estadoRegistrado = p.estado_pedido;
     pintarEstados();
+    formularioIncidencia.hidden = true;
+    errorIncidencia.hidden = true;
+    motivoIncidencia.value = '';
+    descripcionIncidencia.value = '';
+    evidenciasIncidencia.value = '';
+    codigoIncidencia.value = '';
+    tipoIncidencia.value = 'reembolso';
+    actualizarCodigoIncidencia();
     document.getElementById('ped-transportista').value = p.transportista_pedido || '';
     entradaCodigo.value = '';
     comentario.value = '';
@@ -155,6 +200,51 @@
     const btn = ev.target.closest('button[data-estado]');
     if (!btn) return;
     pintarEstados(btn.dataset.estado);
+  });
+
+  btnIncidencia.addEventListener('click', () => abrirFormularioIncidencia());
+  tipoIncidencia.addEventListener('change', actualizarCodigoIncidencia);
+  btnCancelarIncidencia.addEventListener('click', () => {
+    formularioIncidencia.hidden = true;
+    errorIncidencia.hidden = true;
+  });
+
+  btnGuardarIncidencia.addEventListener('click', async () => {
+    const afectados = [...document.querySelectorAll('input[name="ped-incidencia-item"]:checked')].map((input) => Number(input.value));
+    if (!afectados.length) return Kloset.reportarError('form-ped-incidencia-error', 'Selecciona al menos un producto afectado');
+    if (!motivoIncidencia.value.trim() || descripcionIncidencia.value.trim().length < 10) {
+      return Kloset.reportarError('form-ped-incidencia-error', 'Indica el motivo y describe el inconveniente con al menos 10 caracteres');
+    }
+    if (tipoIncidencia.value === 'reembolso' && !/^\d{8}$/.test(codigoIncidencia.value.trim())) {
+      return Kloset.reportarError('form-ped-incidencia-error', 'Ingresa el código de cancelación de 8 dígitos proporcionado por el cliente');
+    }
+    if (!evidenciasIncidencia.files.length) {
+      return Kloset.reportarError('form-ped-incidencia-error', 'Adjunta al menos una fotografía como evidencia');
+    }
+    if (!await Kloset.confirmar({
+      titulo: 'Registrar incidencia',
+      mensaje: `La incidencia del pedido ${codigoActual} aparecerá en Devoluciones e incidencias para su revisión.`,
+      aceptar: 'Registrar incidencia',
+    })) return;
+    btnGuardarIncidencia.disabled = true;
+    errorIncidencia.hidden = true;
+    const datos = new FormData();
+    datos.set('id_pedido', String(idActual));
+    datos.set('tipo', tipoIncidencia.value);
+    datos.set('items', JSON.stringify(afectados));
+    datos.set('motivo', motivoIncidencia.value.trim());
+    datos.set('descripcion', descripcionIncidencia.value.trim());
+    if (tipoIncidencia.value === 'reembolso') datos.set('codigo_cancelacion', codigoIncidencia.value.trim());
+    [...evidenciasIncidencia.files].forEach((file) => datos.append('evidencias[]', file));
+    const res = await Kloset.ajax('Postventa', 'registrarAdmin', datos);
+    if (res.status !== 'success') {
+      btnGuardarIncidencia.disabled = false;
+      return Kloset.reportarError('form-ped-incidencia-error', res.message || 'No se pudo registrar la incidencia');
+    }
+    Kloset.toast(res.message, 'ok');
+    formularioIncidencia.hidden = true;
+    btnGuardarIncidencia.disabled = false;
+    Kloset.recargar();
   });
 
   btnGuardar.addEventListener('click', async () => {

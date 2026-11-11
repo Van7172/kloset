@@ -44,7 +44,7 @@ class Carritos
 		$sth->execute([':id' => $idCarrito]);
 		$items = $sth->fetchAll();
 		foreach ($items as &$item) {
-			$item['url_imagen'] = $item['url_imagen'] ? IMGS . 'productos/' . $item['url_imagen'] : null;
+			$item['url_imagen'] = $item['url_imagen'] ? Productos::urlImagenPublica($item['url_imagen']) : null;
 		}
 		unset($item);
 
@@ -177,7 +177,7 @@ class Carritos
 		$sth = $con->prepare('SELECT g.id_variante,g.cantidad AS cantidad_carrito_item,v.talla_variante,v.corte_variante,v.sku_variante,v.stock_variante,c.nombre_color,p.id_producto,p.nombre_producto,p.url_producto,p.precio_producto,(SELECT i.url_imagen FROM productos_imagenes i WHERE i.id_color=v.id_color ORDER BY i.principal_imagen DESC,i.orden_imagen,i.id_imagen LIMIT 1) AS url_imagen FROM prendas_guardadas_clientes g INNER JOIN productos_variantes v ON v.id_variante=g.id_variante INNER JOIN productos_colores c ON c.id_color=v.id_color INNER JOIN productos p ON p.id_producto=v.id_producto WHERE g.id_usuario_sistema=? ORDER BY g.fecha_creacion DESC');
 		$sth->execute([$userId]);
 		$items = $sth->fetchAll();
-		foreach ($items as &$item) $item['url_imagen'] = $item['url_imagen'] ? IMGS . 'productos/' . $item['url_imagen'] : null;
+		foreach ($items as &$item) $item['url_imagen'] = $item['url_imagen'] ? Productos::urlImagenPublica($item['url_imagen']) : null;
 		unset($item);
 		return ['status' => 'success', 'items' => $items];
 	}

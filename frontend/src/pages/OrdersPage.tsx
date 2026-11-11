@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Seo } from '../components/Seo';
 import { ShipmentInfo } from '../components/ShipmentInfo';
-import { api, type ApiPedido } from '../services/api';
+import { api, type ApiPedido, type ApiSolicitudPostventa } from '../services/api';
 import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 
@@ -36,6 +36,33 @@ function fechaEntrega(valor?: string | null) {
   return Number.isNaN(date.getTime()) ? 'Por confirmar' : date.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+const etapasPostventa = {
+  cambio: [
+    ['pendiente_revision', 'Incidencia registrada'],
+    ['en_revision', 'En revisión'],
+    ['aprobada', 'Aprobada'],
+    ['cambio_en_preparacion', 'En preparación'],
+    ['cambio_enviado', 'Enviado'],
+    ['cambio_en_reparto', 'En reparto'],
+    ['completada', 'Entregado / completado'],
+  ],
+  reembolso: [
+    ['pendiente_revision', 'Incidencia registrada'],
+    ['en_revision', 'En revisión'],
+    ['aprobada', 'Aprobada'],
+    ['reembolso_en_proceso', 'Reembolso en proceso'],
+    ['reembolso_realizado', 'Reembolso realizado'],
+    ['completada', 'Completada'],
+  ],
+} as const;
+
+function indiceEtapaPostventa(tipo: 'cambio' | 'reembolso', estado: string) {
+  const estados = tipo === 'cambio'
+    ? ['pendiente_revision', 'en_revision', 'aprobada', 'cambio_en_preparacion', 'cambio_enviado', 'cambio_en_reparto', 'completada']
+    : ['pendiente_revision', 'en_revision', 'aprobada', 'reembolso_en_proceso', 'reembolso_realizado', 'completada'];
+  return estados.indexOf(estado);
+}
+
 export function OrdersPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -49,6 +76,7 @@ export function OrdersPage() {
   const [cancelando, setCancelando] = useState(false);
   const [copiado, setCopiado] = useState('');
   const [errorCopia, setErrorCopia] = useState(false);
+  const [solicitudesPostventa, setSolicitudesPostventa] = useState<ApiSolicitudPostventa[]>([]);
 
   useEffect(() => { if (!cargandoSesion && !usuario) navigate('/entrar', { replace: true }); }, [cargandoSesion, usuario, navigate]);
   useEffect(() => { if (!id && !nuevo && !cargandoSesion) navigate('/cuenta?tab=pedidos', { replace: true }); }, [id, nuevo, cargandoSesion, navigate]);
@@ -58,6 +86,16 @@ export function OrdersPage() {
       if (res.status === 'success' && res.pedido) { setPedido(res.pedido); void recargarPedidos(); }
       else setError(res.message || 'Pedido no encontrado');
     }).catch(() => setError('No pudimos cargar el pedido.'));
+    void api.postventa.listar().then(async (res) => {
+      if (res.status === 'success') {
+        const solicitudes = (res.solicitudes ?? []).filter((solicitud) => solicitud.id_pedido === pedidoId);
+        const detalles = await Promise.all(solicitudes.map(async (solicitud) => {
+          const detalle = await api.postventa.detalle(solicitud.id_solicitud_postventa);
+          return detalle.status === 'success' ? { ...solicitud, ...detalle.solicitud, items: detalle.items, cambios: detalle.cambios, historial: detalle.historial, evidencias: detalle.evidencias } : solicitud;
+        }));
+        setSolicitudesPostventa(detalles);
+      }
+    }).catch(() => undefined);
   }, [usuario, pedidoId, recargarPedidos]);
 
   if (!usuario) return null;
@@ -68,9 +106,7 @@ export function OrdersPage() {
   const historial = pedido.historial ?? [];
   const codigos = [
     { titulo: 'Código de entrega', valor: pedido.codigo_entrega, tipo: 'entrega', textoVacio: 'No disponible' },
-    ...(['pagado', 'en_preparacion', 'cancelado'].includes(pedido.estado_pedido || '')
-      ? [{ titulo: 'Código de anulación', valor: pedido.codigo_anulacion, tipo: 'anulacion', textoVacio: 'No disponible' }]
-      : []),
+    { titulo: 'Código de cancelación', valor: pedido.codigo_anulacion, tipo: 'anulacion', textoVacio: 'No disponible' },
   ];
   const tarjetasCodigos = codigos.map((codigo) => <div key={codigo.tipo} className="flex min-w-0 items-center gap-3 border border-rule p-3">
     <span className="h-6 w-6 shrink-0 text-ink"><IconoEstado nombre="check" /></span>
@@ -114,6 +150,7 @@ export function OrdersPage() {
       <div className="grid gap-2 sm:grid-cols-2">{tarjetasCodigos}</div>
     </div>
     <section aria-label="Progreso del pedido" className="mb-5">
+      <h2 className="mb-3 border-b border-ink pb-2 font-narrow text-xs font-semibold uppercase tracking-[0.1em]">Seguimiento del pedido</h2>
       <div className="overflow-x-auto pb-2">
         <div className="relative grid min-w-[500px] grid-cols-5 gap-1 pb-4 pt-1 sm:min-w-0">
           <div className="absolute left-[10%] right-[10%] top-[18px] h-px bg-rule" />
@@ -160,6 +197,43 @@ export function OrdersPage() {
         <div className="shrink-0 text-right"><div className="font-display text-base">{money(Number(it.precio_unitario_pedido_item) * Number(it.cantidad_pedido_item))}</div><span className="text-xs text-soft">x{it.cantidad_pedido_item}</span></div>
       </div>)}
     </section>
+    {solicitudesPostventa.length > 0 && <section className="mt-5">
+      <h2 className="border-b border-ink pb-2 font-narrow text-xs font-semibold uppercase tracking-[0.1em]">Seguimiento de la incidencia</h2>
+      {solicitudesPostventa.map((solicitud) => {
+        const estado = solicitud.estado_solicitud.replace(/_/g, ' ');
+        const actualizaciones = new Map((solicitud.historial ?? []).map((avance) => [avance.estado_nuevo, avance]));
+        const indice = solicitud.estado_solicitud === 'rechazada'
+          ? 2
+          : indiceEtapaPostventa(solicitud.tipo_solicitud, solicitud.estado_solicitud);
+        return <article key={solicitud.id_solicitud_postventa} className="border-b border-rule py-4 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3"><strong className="font-narrow uppercase tracking-[0.06em]">INCIDENCIA REGISTRADA</strong><span className="font-narrow uppercase tracking-[0.06em] text-soft">{estado}</span></div>
+          <details className="mt-3">
+            <summary className="cursor-pointer font-narrow text-xs font-semibold uppercase tracking-[0.08em] text-ink">VER SEGUIMIENTO</summary>
+            <div className="mt-3">
+          <p className="text-soft">Registrada el {fecha(solicitud.fecha_creacion)}</p>
+          <p className="mt-1"><strong>Motivo:</strong> {solicitud.motivo_solicitud}</p>
+          <p className="mt-1">{solicitud.descripcion_solicitud}</p>
+          <div className="mt-3 space-y-2">{solicitud.items?.map((item) => <div key={item.id_item_postventa} className="border-l-2 border-rule pl-3 text-xs text-soft"><strong className="text-ink">{item.nombre_producto_compra}</strong> · {item.nombre_color_compra} · talla {item.talla_compra} · variante {item.sku_compra}</div>)}</div>
+          <div className={`mt-4 grid gap-2 ${solicitud.tipo_solicitud === 'cambio' ? 'sm:grid-cols-7' : 'sm:grid-cols-5'}`}>
+            {etapasPostventa[solicitud.tipo_solicitud].map(([codigo, etapa], i) => {
+              const avance = actualizaciones.get(codigo) ?? (codigo === 'aprobada' && solicitud.estado_solicitud === 'rechazada' ? actualizaciones.get('rechazada') : undefined);
+              return <div key={codigo} className={`border-t-2 pt-2 text-[11px] ${i <= indice ? 'border-red text-ink' : 'border-rule text-soft'}`}>
+                <span className="font-semibold uppercase">{codigo === 'aprobada' && solicitud.estado_solicitud === 'rechazada' ? 'Rechazada' : etapa}</span>
+                <span className="mt-1 block">{i < indice ? 'Completada' : i === indice ? 'Estado actual' : 'Pendiente'}</span>
+                {avance && <time className="mt-1 block text-[10px] text-soft">{fecha(avance.fecha_creacion)}</time>}
+              </div>;
+            })}
+          </div>
+          {solicitud.tipo_solicitud === 'reembolso' && <div className="mt-3 border-l-2 border-red bg-red/5 p-3"><p>Importe aprobado: <strong>{solicitud.importe_aprobado != null ? money(Number(solicitud.importe_aprobado)) : 'Pendiente de aprobación'}</strong></p><p className="mt-1 text-xs text-soft">Medio de pago: {[solicitud.metodo_pago, solicitud.marca_pago].filter(Boolean).join(' · ') || 'No disponible'}</p><p className="mt-1 text-xs uppercase text-soft">Estado: {estado}</p></div>}
+          {solicitud.tipo_solicitud === 'cambio' && solicitud.estado_solicitud === 'cambio_en_reparto' && solicitud.codigo_confirmacion && <div className="mt-3 border-l-2 border-red bg-red/5 p-3">Código de recepción del reemplazo: <strong className="tracking-widest">{solicitud.codigo_confirmacion}</strong><button type="button" className="ml-3 underline" onClick={() => void copiarCodigo(`cambio-${solicitud.id_solicitud_postventa}`, solicitud.codigo_confirmacion!)}>Copiar</button></div>}
+          {solicitud.evidencias && solicitud.evidencias.length > 0 && <div className="mt-3 flex flex-wrap gap-3">{solicitud.evidencias.map((evidencia) => <a key={evidencia.ruta_evidencia} href={evidencia.ruta_evidencia} target="_blank" rel="noreferrer"><img src={evidencia.ruta_evidencia} alt="Evidencia de la incidencia" className="h-16 w-16 border border-rule object-cover" /></a>)}</div>}
+          {solicitud.historial && solicitud.historial.length > 0 && <details className="mt-3 text-xs"><summary className="cursor-pointer font-semibold uppercase text-soft">Historial de avances</summary>{solicitud.historial.map((avance, i) => <p key={`${avance.fecha_creacion}-${i}`} className="mt-2 text-soft">{avance.estado_nuevo.replace(/_/g, ' ')} · {fecha(avance.fecha_creacion)}{avance.comentario ? ` · ${avance.comentario}` : ''}</p>)}</details>}
+          {solicitud.estado_solicitud === 'rechazada' && <p className="mt-2 text-red">Motivo del rechazo: {solicitud.motivo_rechazo || 'No especificado'}</p>}
+            </div>
+          </details>
+        </article>;
+      })}
+    </section>}
     <section className="mt-5">
       <h2 className="border-b border-ink pb-2 font-narrow text-xs font-semibold uppercase tracking-[0.1em]">Resumen de pago</h2>
       <div className="flex justify-between border-b border-rule py-2 text-sm"><span>Subtotal ({items.reduce((n, it) => n + (it.cantidad_pedido_item ?? 1), 0)} productos)</span><span>{money(Number(pedido.subtotal_pedido ?? pedido.total_pedido))}</span></div>

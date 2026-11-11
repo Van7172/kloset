@@ -49,7 +49,7 @@ class PedidosAdmin
         $pedido = $sth->fetch();
         if (!$pedido) return ['status'=>'error','message'=>'Pedido no encontrado'];
         $sth = $con->prepare(
-            'SELECT pi.cantidad_pedido_item,pi.precio_unitario_pedido_item,
+            'SELECT pi.id_pedido_item,pi.id_variante,pi.cantidad_pedido_item,pi.precio_unitario_pedido_item,
                     COALESCE(pi.nombre_producto_compra,p.nombre_producto) AS nombre_producto,
                     COALESCE(pi.nombre_color_compra,c.nombre_color) AS nombre_color,
                     COALESCE(pi.talla_compra,v.talla_variante) AS talla_variante,
@@ -61,6 +61,12 @@ class PedidosAdmin
         );
         $sth->execute([$id]);
         $items = $sth->fetchAll();
+        $incidencia = $con->prepare(
+            'SELECT id_solicitud_postventa,tipo_solicitud,estado_solicitud,fecha_creacion
+             FROM solicitudes_postventa WHERE id_pedido=? ORDER BY id_solicitud_postventa LIMIT 1'
+        );
+        $incidencia->execute([$id]);
+        $incidencia = $incidencia->fetch() ?: null;
         $sth = $con->prepare(
             'SELECT h.estado_anterior_historial,h.estado_historial_estado_pedido,h.comentario_historial_estado_pedido,h.fecha_creacion,
                     u.nombre_usuario_sistema AS autor
@@ -68,7 +74,14 @@ class PedidosAdmin
              WHERE h.id_pedido=? ORDER BY h.fecha_creacion DESC,h.id_historial_estado_pedido DESC'
         );
         $sth->execute([$id]);
-        return ['status'=>'success','pedido'=>$pedido,'items'=>$items,'historial'=>$sth->fetchAll()];
+        return [
+            'status'=>'success',
+            'pedido'=>$pedido,
+            'items'=>$items,
+            'incidencia'=>$incidencia,
+            'puede_registrar_incidencia'=>(string) Acl::usuario()->getRol() === 'Administrador',
+            'historial'=>$sth->fetchAll(),
+        ];
     }
 
     public static function cambiarEstado(): array
@@ -108,13 +121,13 @@ class PedidosAdmin
                 }
             }
             if ($estado === 'cancelado') {
-                if (!preg_match('/^\d{8}$/', $codigo)) throw new \DomainException('Introduce el código de anulación de 8 dígitos del cliente');
-                if ((int) $pedido['codigo_anulacion_intentos'] >= 5) throw new \DomainException('Código de anulación bloqueado; contacta soporte');
-                if (!$pedido['codigo_anulacion_hash']) throw new \DomainException('Este pedido no tiene código de anulación; contacta soporte');
+                if (!preg_match('/^\d{8}$/', $codigo)) throw new \DomainException('Introduce el código de cancelación de 8 dígitos del cliente');
+                if ((int) $pedido['codigo_anulacion_intentos'] >= 5) throw new \DomainException('Código de cancelación bloqueado; contacta soporte');
+                if (!$pedido['codigo_anulacion_hash']) throw new \DomainException('Este pedido no tiene código de cancelación; contacta soporte');
                 if (!password_verify($codigo, $pedido['codigo_anulacion_hash'])) {
                     $con->prepare('UPDATE pedidos SET codigo_anulacion_intentos=codigo_anulacion_intentos+1 WHERE id_pedido=?')->execute([$id]);
                     $con->commit();
-                    return ['status'=>'error','message'=>'El código de anulación no coincide'];
+                    return ['status'=>'error','message'=>'El código de cancelación no coincide'];
                 }
             }
             if ($estado === 'en_reparto' && (!$pedido['codigo_entrega_hash'] || !$pedido['codigo_entrega_cifrado'])) {
@@ -132,17 +145,28 @@ class PedidosAdmin
             )->execute([$estado,$estado === 'enviado' ? $transportista : $pedido['transportista_pedido'],
                 $estado,$estado,$estado,$estado,$id]);
             if ($estado === 'cancelado') {
-                $con->prepare(
-                    'UPDATE productos_variantes v
-                     INNER JOIN pedidos_items pi ON pi.id_variante=v.id_variante
-                     SET v.stock_variante=v.stock_variante+pi.cantidad_pedido_item
-                     WHERE pi.id_pedido=?'
-                )->execute([$id]);
-                $con->prepare(
-                    "INSERT INTO inventario_eventos (id_variante,tipo_evento,id_usuario_sistema)
-                     SELECT pi.id_variante,'devolucion_cancelacion',?
-                     FROM pedidos_items pi WHERE pi.id_pedido=?"
-                )->execute([Acl::usuario()->getId(),$id]);
+                if ($actual === 'en_reparto') {
+                    $con->prepare('INSERT INTO pedidos_retorno_fisico (id_pedido,estado_retorno,id_usuario_registro) VALUES (?,\'pendiente\',?)')
+                        ->execute([$id, Acl::usuario()->getId()]);
+                    $idRetorno = (int) $con->lastInsertId();
+                    $con->prepare(
+                        'INSERT INTO pedidos_retorno_fisico_items (id_retorno,id_pedido_item,id_variante,cantidad_esperada)
+                         SELECT ?,pi.id_pedido_item,pi.id_variante,pi.cantidad_pedido_item
+                         FROM pedidos_items pi WHERE pi.id_pedido=?'
+                    )->execute([$idRetorno, $id]);
+                } else {
+                    $con->prepare(
+                        'UPDATE productos_variantes v
+                         INNER JOIN pedidos_items pi ON pi.id_variante=v.id_variante
+                         SET v.stock_variante=v.stock_variante+pi.cantidad_pedido_item
+                         WHERE pi.id_pedido=?'
+                    )->execute([$id]);
+                    $con->prepare(
+                        "INSERT INTO inventario_eventos (id_variante,tipo_evento,id_usuario_sistema)
+                         SELECT pi.id_variante,'devolucion_cancelacion',?
+                         FROM pedidos_items pi WHERE pi.id_pedido=?"
+                    )->execute([Acl::usuario()->getId(),$id]);
+                }
                 Pagos::reembolsarPedido($con, $id);
             }
             $con->prepare(
@@ -159,7 +183,9 @@ class PedidosAdmin
             return [
                 'status'=>'success',
                 'message'=>$estado === 'cancelado'
-                    ? 'Pedido cancelado; stock devuelto y reembolso simulado registrado.'
+                    ? ($actual === 'en_reparto'
+                        ? 'Pedido cancelado; retorno físico pendiente y reembolso simulado registrado.'
+                        : 'Pedido cancelado; stock devuelto y reembolso simulado registrado.')
                     : 'Estado e historial guardados',
             ];
         } catch (\DomainException $e) {
@@ -170,5 +196,57 @@ class PedidosAdmin
             error_log('Kloset cambiar estado: '.$e->getMessage());
             return ['status'=>'error','message'=>'No se pudo actualizar el pedido'];
         }
+    }
+
+    public static function registrarRecepcionRetorno(): array
+        {
+            if ($error = Acl::guard(self::SECCION)) return $error;
+            $id = (int) ($_POST['id_pedido'] ?? 0);
+            $items = json_decode((string) ($_POST['items'] ?? '[]'), true);
+            if ($id <= 0 || !is_array($items) || !$items) return ['status' => 'error', 'message' => 'Indica las unidades recibidas y aptas'];
+            $con = Conexion::getInstance();
+            try {
+                $con->beginTransaction();
+                $retorno = $con->prepare('SELECT id_retorno,estado_retorno FROM pedidos_retorno_fisico WHERE id_pedido=? FOR UPDATE');
+                $retorno->execute([$id]);
+                $cabecera = $retorno->fetch();
+                if (!$cabecera) throw new \DomainException('El pedido no tiene un retorno físico pendiente');
+                if ($cabecera['estado_retorno'] === 'completado') throw new \DomainException('El retorno físico ya fue registrado');
+                $linea = $con->prepare('SELECT id_retorno_item,id_variante,cantidad_esperada,cantidad_apta,cantidad_no_apta FROM pedidos_retorno_fisico_items WHERE id_retorno=? AND id_pedido_item=? FOR UPDATE');
+                $actualizar = $con->prepare('UPDATE pedidos_retorno_fisico_items SET cantidad_apta=?,cantidad_no_apta=?,fecha_verificacion=NOW() WHERE id_retorno_item=? AND cantidad_apta IS NULL');
+                $sumarStock = $con->prepare('UPDATE productos_variantes SET stock_variante=stock_variante+? WHERE id_variante=?');
+                $evento = $con->prepare("INSERT INTO inventario_eventos (id_variante,tipo_evento,id_usuario_sistema) VALUES (?,'devolucion_cancelacion_apta',?)");
+                foreach ($items as $pedidoItemId => $cantidades) {
+                    $pedidoItemId = (int) $pedidoItemId;
+                    $apta = (int) ($cantidades['apta'] ?? -1);
+                    $noApta = (int) ($cantidades['no_apta'] ?? -1);
+                    $linea->execute([(int) $cabecera['id_retorno'], $pedidoItemId]);
+                    $registro = $linea->fetch();
+                    if (!$registro || $registro['cantidad_apta'] !== null || $apta < 0 || $noApta < 0 || $apta + $noApta !== (int) $registro['cantidad_esperada']) {
+                        throw new \DomainException('La recepción física no coincide con las unidades esperadas');
+                    }
+                    $actualizar->execute([$apta, $noApta, $registro['id_retorno_item']]);
+                    if ($actualizar->rowCount() !== 1) throw new \DomainException('La recepción ya fue registrada');
+                    if ($apta > 0) {
+                        $sumarStock->execute([$apta, $registro['id_variante']]);
+                        $evento->execute([$registro['id_variante'], Acl::usuario()->getId()]);
+                    }
+                }
+                $pendientes = $con->prepare('SELECT COUNT(*) FROM pedidos_retorno_fisico_items WHERE id_retorno=? AND cantidad_apta IS NULL');
+                $pendientes->execute([(int) $cabecera['id_retorno']]);
+                if ((int) $pendientes->fetchColumn() === 0) {
+                    $con->prepare('UPDATE pedidos_retorno_fisico SET estado_retorno=\'completado\',fecha_completado=NOW(),id_usuario_verificacion=? WHERE id_retorno=?')
+                        ->execute([Acl::usuario()->getId(), $cabecera['id_retorno']]);
+                }
+                $con->commit();
+                return ['status' => 'success', 'message' => 'Recepción física registrada'];
+            } catch (\DomainException $e) {
+                if ($con->inTransaction()) $con->rollBack();
+                return ['status' => 'error', 'message' => $e->getMessage()];
+            } catch (\Throwable $e) {
+                if ($con->inTransaction()) $con->rollBack();
+                error_log('Kloset retorno físico: ' . $e->getMessage());
+                return ['status' => 'error', 'message' => 'No se pudo registrar la recepción física'];
+            }
     }
 }

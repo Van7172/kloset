@@ -65,6 +65,7 @@ export type ApiCarritoItem = {
 };
 
 export type ApiPedidoItem = {
+  id_pedido_item?: number;
   id_variante?: number;
   nombre_color?: string;
   sku_variante?: string;
@@ -105,6 +106,66 @@ export type ApiPedido = {
   ultimos_digitos_pago?: string | null;
   ultimos_digitos?: string;
   items: ApiPedidoItem[];
+};
+
+export type ApiSolicitudPostventa = {
+  id_solicitud_postventa: number;
+  id_pedido: number;
+  codigo_pedido?: string;
+  tipo_solicitud: 'reembolso' | 'cambio';
+  estado_solicitud: string;
+  motivo_solicitud: string;
+  descripcion_solicitud?: string;
+  importe_aprobado?: string | number | null;
+  motivo_rechazo?: string | null;
+  codigo_confirmacion?: string | null;
+  fecha_creacion: string;
+  fecha_actualizacion?: string;
+  cliente?: string;
+  correo?: string;
+  metodo_pago?: string | null;
+  marca_pago?: string | null;
+  items?: ApiItemPostventa[];
+  cambios?: ApiCambioPostventa[];
+  historial?: ApiHistorialPostventa[];
+  evidencias?: ApiEvidenciaPostventa[];
+};
+
+export type ApiCambioPostventa = {
+  id_cambio_postventa: number;
+  id_item_postventa: number;
+  estado_cambio: string;
+  codigo_confirmacion?: string | null;
+  fecha_preparacion?: string | null;
+  fecha_reparto?: string | null;
+  fecha_completado?: string | null;
+};
+
+export type ApiItemPostventa = {
+  id_item_postventa: number;
+  id_pedido_item: number;
+  id_variante: number;
+  cantidad: number;
+  importe_item: string | number;
+  nombre_producto_compra: string;
+  nombre_color_compra: string;
+  talla_compra: string;
+  corte_compra: string;
+  sku_compra: string;
+};
+
+export type ApiHistorialPostventa = {
+  estado_anterior?: string | null;
+  estado_nuevo: string;
+  comentario?: string | null;
+  fecha_creacion: string;
+  autor?: string;
+};
+
+export type ApiEvidenciaPostventa = {
+  ruta_evidencia: string;
+  tipo_mime_evidencia: string;
+  fecha_creacion: string;
 };
 
 export type ApiDireccion = {
@@ -237,7 +298,7 @@ export const api = {
     guardados: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito/guardados'),
     guardar: (id_carrito_item: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/guardar', { method: 'POST', body: JSON.stringify({ id_carrito_item }) }),
     restaurar: (id_variante: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/restaurar', { method: 'POST', body: JSON.stringify({ id_variante }) }),
-    obtener: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito'),
+    obtener: () => request<{ status: string; message?: string; items: ApiCarritoItem[] }>('/carrito'),
     agregar: (datos: { id_variante: number; cantidad?: number }) =>
       request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/agregar', {
         method: 'POST',
@@ -264,6 +325,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(datos),
       }),
+  },
+
+  postventa: {
+    listar: () => request<{ status: string; message?: string; solicitudes?: ApiSolicitudPostventa[] }>('/postventa'),
+    detalle: (id: number) => request<{ status: string; message?: string; solicitud?: ApiSolicitudPostventa; items?: ApiItemPostventa[]; cambios?: ApiCambioPostventa[]; historial?: ApiHistorialPostventa[]; evidencias?: ApiEvidenciaPostventa[] }>(`/postventa/detalle?id=${id}`),
   },
 
   direcciones: {

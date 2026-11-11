@@ -9,6 +9,7 @@ use Develoweb\App\Model\MiCuentaAdmin;
 use Develoweb\App\Model\Notificaciones;
 use Develoweb\App\Model\Pagos;
 use Develoweb\App\Model\PedidosAdmin;
+use Develoweb\App\Model\Postventa;
 use Develoweb\App\Model\Productos as ProductosModel;
 use Develoweb\App\Model\Sesion;
 use Develoweb\App\Model\Variantes;
@@ -116,6 +117,14 @@ if ($logeado) {
 				$title = 'Pagos';
 				$crumb = 'Ventas';
 				$search_ph = 'id_transaccion o cliente';
+				break;
+			case 'postventa':
+				$solicitudes = Postventa::get()['solicitudes'] ?? [];
+				$tpl = 'tpl_postventa.php';
+				$view_js = 'postventa.js';
+				$title = 'Devoluciones e incidencias';
+				$crumb = 'Ventas';
+				$search_ph = 'cliente, correo o código del pedido';
 				break;
 			case 'notificaciones':
 				$consultas = Notificaciones::consultas();

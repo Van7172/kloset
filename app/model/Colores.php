@@ -174,7 +174,7 @@ class Colores
         $sth = Conexion::getInstance()->prepare('SELECT id_imagen,url_imagen,orden_imagen,principal_imagen FROM productos_imagenes WHERE id_color=? ORDER BY principal_imagen DESC,orden_imagen,id_imagen');
         $sth->execute([$id]);
         $imagenes = $sth->fetchAll();
-        foreach ($imagenes as &$img) $img['url_imagen'] = IMGS.'productos/'.$img['url_imagen'];
+        foreach ($imagenes as &$img) $img['url_imagen'] = Productos::urlImagenPublica($img['url_imagen']);
         return ['status'=>'success','imagenes'=>$imagenes];
     }
 

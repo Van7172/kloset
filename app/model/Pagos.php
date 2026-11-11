@@ -15,6 +15,42 @@ class Pagos
 		}
 	}
 
+	public static function procesarReembolsoPostventa(\PDO $con, int $idSolicitud, float $importe): string
+	{
+		if ($importe <= 0) {
+			throw new \DomainException('El importe del reembolso debe ser mayor que cero');
+		}
+		$existente = $con->prepare('SELECT importe_reembolso,referencia_reembolso,estado_reembolso FROM reembolsos_postventa WHERE id_solicitud_postventa=? FOR UPDATE');
+		$existente->execute([$idSolicitud]);
+		$reembolso = $existente->fetch();
+		if (!$reembolso || (float) $reembolso['importe_reembolso'] !== $importe) {
+			throw new \DomainException('El importe del reembolso no coincide con la solicitud aprobada');
+		}
+		if ($reembolso['estado_reembolso'] === 'completado') {
+			throw new \DomainException('El reembolso ya fue completado');
+		}
+		if ($reembolso['referencia_reembolso'] && $reembolso['estado_reembolso'] === 'en_proceso') {
+			return (string) $reembolso['referencia_reembolso'];
+		}
+		$referencia = 'RF-' . date('YmdHis') . '-' . $idSolicitud;
+		$sth = $con->prepare(
+			"UPDATE reembolsos_postventa
+			 SET estado_reembolso='en_proceso', referencia_reembolso=COALESCE(referencia_reembolso, ?)
+			 WHERE id_solicitud_postventa=? AND estado_reembolso IN ('aprobado','en_proceso')"
+		);
+		$sth->execute([$referencia, $idSolicitud]);
+		if ($sth->rowCount() < 1) {
+			$check = $con->prepare('SELECT referencia_reembolso FROM reembolsos_postventa WHERE id_solicitud_postventa=?');
+			$check->execute([$idSolicitud]);
+			$referenciaExistente = $check->fetchColumn();
+			if (!$referenciaExistente) {
+				throw new \DomainException('No se pudo registrar el reembolso simulado');
+			}
+			return (string) $referenciaExistente;
+		}
+		return $referencia;
+	}
+
 	public static function get(): array
 	{
 		$con = Conexion::getInstance();

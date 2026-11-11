@@ -29,7 +29,7 @@ class Favoritos
         $sth->execute([':usuario' => $userId]);
         $productos = $sth->fetchAll();
         foreach ($productos as &$producto) {
-            $producto['url_imagen'] = $producto['url_imagen'] ? IMGS . 'productos/' . $producto['url_imagen'] : null;
+            $producto['url_imagen'] = $producto['url_imagen'] ? Productos::urlImagenPublica($producto['url_imagen']) : null;
         }
         unset($producto);
         return ['status' => 'success', 'productos' => $productos];

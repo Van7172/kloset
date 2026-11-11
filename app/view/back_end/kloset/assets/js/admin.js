@@ -227,6 +227,7 @@ window.Kloset = (function () {
 
     let texto = '';
     let estado = '';
+    let tipo = '';
     let categoria = '';
 
     function aplicar() {
@@ -235,6 +236,7 @@ window.Kloset = (function () {
         const ok =
           (texto === '' || (fila.dataset.buscar || '').includes(texto)) &&
           (estado === '' || fila.dataset.estado === estado) &&
+          (tipo === '' || fila.dataset.tipo === tipo) &&
           (categoria === '' || fila.dataset.categoria === categoria) &&
           (!opciones || typeof opciones.filterRow !== 'function' || opciones.filterRow(fila));
         fila.hidden = !ok;
@@ -252,7 +254,13 @@ window.Kloset = (function () {
       const btn = ev.target.closest('.kl-filter');
       if (!btn) return;
       filtros.querySelectorAll('.kl-filter').forEach((b) => b.classList.toggle('active', b === btn));
-      estado = btn.dataset.filtro || '';
+      if (btn.dataset.filtroTipo) {
+        tipo = btn.dataset.filtroTipo;
+        estado = '';
+      } else {
+        tipo = '';
+        estado = btn.dataset.filtro || '';
+      }
       aplicar();
     });
 

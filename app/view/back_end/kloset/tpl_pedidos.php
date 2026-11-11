@@ -84,8 +84,33 @@
                 <input class="kl-field" id="ped-comentario" maxlength="255" placeholder="Comentario para el historial (opcional)" style="border-bottom:1px solid var(--rule); margin-top:12px;">
                 <div class="kl-form-error" id="form-pedido-error" hidden style="margin-top:12px;"></div>
                 <button class="kl-btn" type="button" id="ped-guardar" style="width:100%; margin-top:14px;" disabled>Guardar cambio de estado</button>
+                <button class="kl-btn kl-btn--ghost" type="button" id="ped-registrar-incidencia" style="width:100%; margin-top:8px;" hidden>Registrar incidencia</button>
+                <p id="ped-incidencia-registrada" hidden style="margin:12px 0 0; font-size:12px; color:var(--soft); line-height:1.5;">Este pedido ya cuenta con una incidencia registrada.</p>
                 <p style="margin:12px 0 0; font-size:12px; color:var(--soft); line-height:1.5;">La entrega estimada se calcula desde la aprobación del pago.</p>
             </div>
+        </div>
+
+        <div class="kl-detail-section" id="ped-formulario-incidencia" hidden>
+            <div class="kl-kicker" style="margin-bottom:8px;">Registrar incidencia en Devoluciones e incidencias</div>
+            <div id="ped-incidencia-resumen" style="font-size:12.5px; line-height:1.5; margin-bottom:12px;"></div>
+            <label class="kl-kicker" for="ped-incidencia-tipo" style="display:block;">Solución solicitada *</label>
+            <select class="kl-field" id="ped-incidencia-tipo">
+                <option value="reembolso">Reembolso</option>
+                <option value="cambio">Cambio de producto</option>
+            </select>
+            <div id="ped-incidencia-codigo-bloque">
+                <label class="kl-kicker" for="ped-incidencia-codigo" style="display:block;margin-top:12px;">Código de cancelación del cliente *</label>
+                <input class="kl-field" id="ped-incidencia-codigo" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" autocomplete="off">
+            </div>
+            <label class="kl-kicker" for="ped-incidencia-motivo" style="display:block;margin-top:12px;">Motivo *</label>
+            <input class="kl-field" id="ped-incidencia-motivo" maxlength="120" placeholder="Producto equivocado, defectuoso o diferente">
+            <label class="kl-kicker" for="ped-incidencia-descripcion" style="display:block;margin-top:12px;">Descripción del inconveniente *</label>
+            <textarea class="kl-field" id="ped-incidencia-descripcion" rows="4" maxlength="5000" placeholder="Describe lo ocurrido"></textarea>
+            <label class="kl-kicker" for="ped-incidencia-evidencias" style="display:block;margin-top:12px;">Fotografías como evidencia</label>
+            <input class="kl-field" id="ped-incidencia-evidencias" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+            <div class="kl-form-error" id="form-ped-incidencia-error" hidden style="margin-top:12px;"></div>
+            <button class="kl-btn" type="button" id="ped-incidencia-guardar" style="width:100%;margin-top:14px;">Guardar incidencia</button>
+            <button class="kl-btn kl-btn--ghost" type="button" id="ped-incidencia-cancelar" style="width:100%;margin-top:8px;">Cancelar</button>
         </div>
 
         <div class="kl-detail-section">

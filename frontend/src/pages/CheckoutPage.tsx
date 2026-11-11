@@ -23,7 +23,7 @@ function marca(num: string): string {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { bolsa, usuario, crearPedido, cargandoSesion, cargandoBolsa } = useKloset();
+  const { bolsa, usuario, crearPedido, recargarBolsa, cargandoSesion, cargandoBolsa } = useKloset();
   const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const [estado, setEstado] = useState<Estado>('idle');
@@ -39,6 +39,7 @@ export function CheckoutPage() {
   const [editarDireccion, setEditarDireccion] = useState(false);
   const [usarManual, setUsarManual] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const bolsaSincronizada = useRef(false);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -57,6 +58,13 @@ export function CheckoutPage() {
   useEffect(() => {
     if (!cargandoSesion && !cargandoBolsa && bolsa.length === 0 && estado === 'idle') navigate('/bolsa');
   }, [bolsa.length, estado, navigate, cargandoSesion, cargandoBolsa]);
+
+  useEffect(() => {
+    if (usuario && !cargandoSesion && !cargandoBolsa && !bolsaSincronizada.current) {
+      bolsaSincronizada.current = true;
+      void recargarBolsa();
+    }
+  }, [usuario, cargandoSesion, cargandoBolsa, recargarBolsa]);
 
   const programar = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -126,6 +134,10 @@ export function CheckoutPage() {
     programar(() => setProgreso('96%'), 500);
     programar(() => void cerrarPedido(), 1100);
   };
+
+  if (cargandoSesion || cargandoBolsa) {
+    return <p className="py-16 text-center text-soft">Verificando tu bolsa…</p>;
+  }
 
   const pasos = [
     { label: 'Bolsa', activo: true },

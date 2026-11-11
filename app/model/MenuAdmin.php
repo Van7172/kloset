@@ -14,7 +14,7 @@ class MenuAdmin
 		$counts = self::counts();
 
 		$grouped = [];
-		$permitidas = ['dashboard','categorias','productos','variantes','pedidos','pagos','notificaciones','clientes','configuracion'];
+		$permitidas = ['dashboard','categorias','productos','variantes','pedidos','postventa','pagos','notificaciones','clientes','configuracion'];
 		foreach ($sections as $item) {
 			$sec = $item['seccion'] ?? null;
 			if (!$sec || !is_object($sec) || $sec->getEstado() !== 'activo') {
@@ -32,7 +32,7 @@ class MenuAdmin
 				];
 			}
 			$grouped[$modId]['secciones'][] = [
-				'nombre_seccion' => $url === 'notificaciones' ? 'Consultas' : $sec->getNombre(),
+				'nombre_seccion' => $url === 'notificaciones' ? 'Consultas' : ($url === 'postventa' ? 'Devoluciones e incidencias' : $sec->getNombre()),
 				'url_seccion' => $url,
 				'count' => $counts[$url] ?? null,
 			];
@@ -55,6 +55,9 @@ class MenuAdmin
 			'pedidos' => (int) $con->query(
 				"SELECT COUNT(*) FROM pedidos
 				 WHERE estado_pedido IN ('pagado', 'en_preparacion', 'enviado', 'en_reparto')"
+			)->fetchColumn(),
+			'postventa' => (int) $con->query(
+				"SELECT COUNT(*) FROM solicitudes_postventa WHERE estado_solicitud IN ('pendiente_revision','en_revision')"
 			)->fetchColumn(),
 			'pagos' => (int) $con->query('SELECT COUNT(*) FROM pagos')->fetchColumn(),
 			'notificaciones' => (int) $con->query(

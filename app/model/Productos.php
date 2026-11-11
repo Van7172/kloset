@@ -238,7 +238,7 @@ class Productos
 		$productos = $sth->fetchAll();
 		foreach ($productos as &$producto) {
 			$producto['codigo_producto'] = self::codigo((int) $producto['id_producto']);
-			$producto['url_imagen'] = $producto['url_imagen'] ? self::urlPublica($producto['url_imagen']) : null;
+			$producto['url_imagen'] = $producto['url_imagen'] ? self::urlImagenPublica($producto['url_imagen']) : null;
 		}
 		unset($producto);
 
@@ -297,16 +297,24 @@ class Productos
 		$imagenes = $sth->fetchAll();
 		foreach ($imagenes as &$imagen) {
 			$imagen['archivo_imagen'] = $imagen['url_imagen'];
-			$imagen['url_imagen'] = self::urlPublica($imagen['url_imagen']);
+			$imagen['url_imagen'] = self::urlImagenPublica($imagen['url_imagen']);
 		}
 		unset($imagen);
 
 		return $imagenes;
 	}
 
-	private static function urlPublica(string $archivo): string
+	public static function urlImagenPublica(string $archivo): ?string
 	{
-		return IMGS . 'productos/' . $archivo;
+		$archivo = basename($archivo);
+		$rutaNueva = PUBLIC_ROOT_HOST . self::DIR_IMGS . $archivo;
+		if (is_file($rutaNueva)) {
+			return IMGS . 'productos/' . $archivo;
+		}
+		if (is_file(PUBLIC_ROOT_HOST . 'imgs/' . $archivo)) {
+			return IMGS . $archivo;
+		}
+		return null;
 	}
 
 	private static function borrarArchivo(string $archivo): void

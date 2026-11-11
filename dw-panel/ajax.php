@@ -18,7 +18,8 @@ $acciones = [
     'Productos' => ['productos', ['getById','store','updateProducto','deleteProducto']],
     'Variantes' => ['variantes', ['getById','store','updateVariante','deleteVariante']],
     'Colores' => ['variantes', ['listar','guardarConImagenes','renombrar','galeria','subir','ordenar','eliminarImagen']],
-    'PedidosAdmin' => ['pedidos', ['getById','cambiarEstado']],
+    'PedidosAdmin' => ['pedidos', ['getById','cambiarEstado','registrarRecepcionRetorno']],
+    'Postventa' => ['postventa', ['get','detalle','cambiarEstado','cambiarSolucion','registrarAdmin']],
     'Pagos' => ['pagos', ['getById']],
     'Clientes' => ['clientes', ['getById']],
     'Notificaciones' => ['notificaciones', ['responderConsulta','marcarLeida','marcarTodasLeidas']],
@@ -28,7 +29,9 @@ $acciones = [
 $nombre = (string)($_POST['class'] ?? '');
 $metodo = (string)($_POST['method'] ?? '');
 if (!isset($acciones[$nombre]) || !in_array($metodo, $acciones[$nombre][1], true)) responderPanel(['status'=>'error','message'=>'Acción no habilitada en KLOSET'], 400);
-if ($error = \Develoweb\App\Model\Acl::guard($acciones[$nombre][0])) responderPanel($error, 403);
+$seccionAccion = $acciones[$nombre][0];
+if ($nombre === 'Postventa' && $metodo === 'registrarAdmin') $seccionAccion = 'pedidos';
+if ($error = \Develoweb\App\Model\Acl::guard($seccionAccion)) responderPanel($error, 403);
 try {
     $clase = MODEL_NAMESPACE . $nombre;
     $resultado = $clase::$metodo();

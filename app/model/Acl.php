@@ -23,7 +23,7 @@ class Acl
 		if (!in_array($rol, ['Administrador', 'Asesor'], true) || $usuario->getEstado() !== 'activo') {
 			return false;
 		}
-		if (!in_array($url_seccion, ['dashboard','categorias','productos','variantes','pedidos','pagos','notificaciones','clientes','configuracion','mi-cuenta'], true)) {
+		if (!in_array($url_seccion, ['dashboard','categorias','productos','variantes','pedidos','postventa','pagos','notificaciones','clientes','configuracion','mi-cuenta'], true)) {
 			return false;
 		}
 		if ($url_seccion === 'configuracion' && $rol !== 'Administrador') return false;

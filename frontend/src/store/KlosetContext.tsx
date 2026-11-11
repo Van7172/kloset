@@ -75,6 +75,7 @@ type Acciones = {
   guardarPerfil: (m: Medidas) => Promise<string | null>;
   setCorte: (c: Corte) => void;
   añadirABolsa: (item: ItemBolsa) => Promise<string | null>;
+  recargarBolsa: () => Promise<string | null>;
   quitarDeBolsa: (idCarritoItem: number) => Promise<void>;
   cambiarCantidad: (idCarritoItem: number, cantidad: number) => Promise<string | null>;
   guardarParaDespues: (idCarritoItem: number) => Promise<string | null>;
@@ -329,6 +330,27 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const recargarBolsa = useCallback(async () => {
+    if (!getToken()) {
+      setBolsa([]);
+      setCargandoBolsa(false);
+      return null;
+    }
+
+    setCargandoBolsa(true);
+    carritoRevision.current++;
+    try {
+      const res = await api.carrito.obtener();
+      if (res.status !== 'success') return res.message || 'No se pudo cargar la bolsa';
+      setBolsa(res.items.map(mapCarritoItem));
+      return null;
+    } catch {
+      return 'No hay conexión con la API';
+    } finally {
+      setCargandoBolsa(false);
+    }
+  }, []);
+
   const quitarDeBolsa = useCallback(async (idCarritoItem: number) => {
     try {
       const res = await api.carrito.quitar(idCarritoItem);
@@ -424,6 +446,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       guardarPerfil,
       setCorte: (c: Corte) => setCorteState(c),
       añadirABolsa,
+      recargarBolsa,
       quitarDeBolsa,
       cambiarCantidad,
       guardarParaDespues,
@@ -458,6 +481,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       cargandoBolsa,
       guardarPerfil,
       añadirABolsa,
+      recargarBolsa,
       quitarDeBolsa,
       cambiarCantidad,
       guardarParaDespues,

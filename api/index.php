@@ -51,6 +51,8 @@ $routes = [
 		'carrito' => ['Develoweb\\App\\Model\\Carritos', 'mio'],
 		'carrito/guardados' => ['Develoweb\\App\\Model\\Carritos', 'guardados'],
 		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'mios'],
+		'postventa' => ['Develoweb\\App\\Model\\Postventa', 'mias'],
+		'postventa/detalle' => ['Develoweb\\App\\Model\\Postventa', 'detalleMio'],
 		'pedido' => ['Develoweb\\App\\Model\\Pedidos', 'detalle'],
 		'pedido/codigo' => ['Develoweb\\App\\Model\\Pedidos', 'codigoEntrega'],
 		'direcciones' => ['Develoweb\\App\\Model\\Direcciones', 'mias'],
@@ -93,6 +95,9 @@ if ($resource === 'producto') {
 }
 if ($resource === 'pedido' && $action === 'codigo') {
 	$key = 'pedido/codigo';
+}
+if ($resource === 'postventa' && $action !== '') {
+	$key = 'postventa/' . $action;
 }
 if ($resource === 'carrito' && $action !== '') {
 	$key = 'carrito/' . $action;

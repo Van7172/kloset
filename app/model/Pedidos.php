@@ -266,7 +266,10 @@ class Pedidos
 				'ref' => $codigoPedido,
 				'fecha' => date('Y-m-d H:i:s'),
 				'estado' => 'pagado',
+				'estado_pedido' => 'pagado',
 				'total' => (float) $total,
+				'codigo_entrega' => CodigoEntrega::abrir($codigoEntregaCifrado),
+				'codigo_anulacion' => CodigoEntrega::abrir($codigoAnulacionCifrado),
 				'marca_tarjeta' => $marcaTarjeta,
 				'ultimos_digitos' => $ultimosDigitos,
 				'id_direccion_envio' => $idDireccion,
@@ -324,7 +327,7 @@ class Pedidos
 			$itemsSth->execute([':id' => $pedido['id_pedido']]);
 			$pedido['items'] = $itemsSth->fetchAll();
 			foreach ($pedido['items'] as &$item) {
-				$item['url_imagen'] = $item['url_imagen'] ? IMGS . 'productos/' . $item['url_imagen'] : null;
+				$item['url_imagen'] = $item['url_imagen'] ? Productos::urlImagenPublica($item['url_imagen']) : null;
 			}
 			unset($item);
 		}
@@ -349,7 +352,7 @@ class Pedidos
 			http_response_code(404);
 			return ['status' => 'error', 'message' => 'Pedido no encontrado'];
 		}
-		if (in_array($pedido['estado_pedido'], ['pagado', 'en_preparacion'], true)
+		if (in_array($pedido['estado_pedido'], ['pagado', 'en_preparacion', 'enviado', 'en_reparto', 'entregado', 'cancelado'], true)
 			&& (!$pedido['codigo_entrega_hash'] || !$pedido['codigo_entrega_cifrado']
 				|| !$pedido['codigo_anulacion_hash'] || !$pedido['codigo_anulacion_cifrado'])) {
 			$con->beginTransaction();
@@ -357,7 +360,7 @@ class Pedidos
 				$lock = $con->prepare('SELECT estado_pedido,codigo_entrega_hash,codigo_entrega_cifrado,codigo_anulacion_hash,codigo_anulacion_cifrado FROM pedidos WHERE id_pedido=? AND id_usuario_sistema=? FOR UPDATE');
 				$lock->execute([$id, $userId]);
 				$codigos = $lock->fetch();
-				if ($codigos && in_array($codigos['estado_pedido'], ['pagado', 'en_preparacion'], true)) {
+				if ($codigos && in_array($codigos['estado_pedido'], ['pagado', 'en_preparacion', 'enviado', 'en_reparto', 'entregado', 'cancelado'], true)) {
 					foreach (['entrega', 'anulacion'] as $tipo) {
 						if (!$codigos["codigo_{$tipo}_hash"] || !$codigos["codigo_{$tipo}_cifrado"]) {
 							[$codigos["codigo_{$tipo}_hash"], $codigos["codigo_{$tipo}_cifrado"]] = CodigoEntrega::crear();
@@ -380,14 +383,12 @@ class Pedidos
 		$pedido['codigo_entrega'] = in_array($pedido['estado_pedido'], ['pagado', 'en_preparacion', 'enviado', 'en_reparto'], true)
 			? CodigoEntrega::abrir($pedido['codigo_entrega_cifrado'])
 			: null;
-		$pedido['codigo_anulacion'] = in_array($pedido['estado_pedido'], ['pagado', 'en_preparacion', 'cancelado'], true)
-			? CodigoEntrega::abrir($pedido['codigo_anulacion_cifrado'])
-			: null;
+		$pedido['codigo_anulacion'] = CodigoEntrega::abrir($pedido['codigo_anulacion_cifrado']);
 		unset($pedido['codigo_entrega_hash'], $pedido['codigo_entrega_cifrado'], $pedido['codigo_anulacion_hash'], $pedido['codigo_anulacion_cifrado']);
-		$sth = $con->prepare('SELECT pi.id_variante,pi.cantidad_pedido_item,pi.precio_unitario_pedido_item, COALESCE(pi.talla_compra,v.talla_variante) AS talla_variante,COALESCE(pi.corte_compra,v.corte_variante) AS corte_variante,COALESCE(pi.nombre_color_compra,c.nombre_color) AS nombre_color,COALESCE(pi.sku_compra,v.sku_variante) AS sku_variante,pr.id_producto,COALESCE(pi.nombre_producto_compra,pr.nombre_producto) AS nombre_producto,pr.url_producto,(SELECT i.url_imagen FROM productos_imagenes i WHERE i.id_color=v.id_color ORDER BY i.principal_imagen DESC,i.orden_imagen,i.id_imagen LIMIT 1) AS url_imagen FROM pedidos_items pi INNER JOIN productos_variantes v ON v.id_variante=pi.id_variante INNER JOIN productos_colores c ON c.id_color=v.id_color INNER JOIN productos pr ON pr.id_producto=v.id_producto WHERE pi.id_pedido=?');
+		$sth = $con->prepare('SELECT pi.id_pedido_item,pi.id_variante,pi.cantidad_pedido_item,pi.precio_unitario_pedido_item, COALESCE(pi.talla_compra,v.talla_variante) AS talla_variante,COALESCE(pi.corte_compra,v.corte_variante) AS corte_variante,COALESCE(pi.nombre_color_compra,c.nombre_color) AS nombre_color,COALESCE(pi.sku_compra,v.sku_variante) AS sku_variante,pr.id_producto,COALESCE(pi.nombre_producto_compra,pr.nombre_producto) AS nombre_producto,pr.url_producto,(SELECT i.url_imagen FROM productos_imagenes i WHERE i.id_color=v.id_color ORDER BY i.principal_imagen DESC,i.orden_imagen,i.id_imagen LIMIT 1) AS url_imagen FROM pedidos_items pi INNER JOIN productos_variantes v ON v.id_variante=pi.id_variante INNER JOIN productos_colores c ON c.id_color=v.id_color INNER JOIN productos pr ON pr.id_producto=v.id_producto WHERE pi.id_pedido=?');
 		$sth->execute([$id]);
 		$pedido['items'] = $sth->fetchAll();
-		foreach ($pedido['items'] as &$item) $item['url_imagen'] = $item['url_imagen'] ? IMGS . 'productos/' . $item['url_imagen'] : null;
+		foreach ($pedido['items'] as &$item) $item['url_imagen'] = $item['url_imagen'] ? Productos::urlImagenPublica($item['url_imagen']) : null;
 		unset($item);
 		$sth = $con->prepare('SELECT estado_historial_estado_pedido AS estado, comentario_historial_estado_pedido AS comentario, fecha_creacion AS fecha FROM historial_estados_pedidos WHERE id_pedido = ? ORDER BY fecha_creacion ASC, id_historial_estado_pedido ASC');
 		$sth->execute([$id]);
