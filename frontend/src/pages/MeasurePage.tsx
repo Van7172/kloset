@@ -1,12 +1,13 @@
 import { Seo } from '../components/Seo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useKloset } from '../store/KlosetContext';
+import { useAuth, useProfile } from '../store/KlosetContext';
 import { RANGOS_MEDIDAS, type Medidas } from '../lib/fit';
 
 export function MeasurePage() {
   const navigate = useNavigate();
-  const { medidas, guardarPerfil, usuario } = useKloset();
+  const { usuario } = useAuth();
+  const { medidas, guardarPerfil } = useProfile();
   const [valores, setValores] = useState<Medidas>(medidas);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');

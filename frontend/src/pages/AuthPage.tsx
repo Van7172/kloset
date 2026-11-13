@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Seo } from '../components/Seo';
 import { cumplePoliticaContrasena, passwordRequirements } from '../lib/password';
 import { api } from '../services/api';
-import { useKloset } from '../store/KlosetContext';
+import { useAuth, useCartActions } from '../store/KlosetContext';
 
 function CampoContrasena({ id, etiqueta, valor, onChange, visible, alternar, autocomplete, placeholder }: {
   id: string;
@@ -30,7 +30,8 @@ function CampoContrasena({ id, etiqueta, valor, onChange, visible, alternar, aut
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { entrar, intencion, setIntencion, añadirABolsa } = useKloset();
+  const { entrar, intencion, setIntencion } = useAuth();
+  const { añadirABolsa } = useCartActions();
   const [modo, setModo] = useState<'login' | 'signup'>('login');
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');

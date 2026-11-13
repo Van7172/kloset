@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { KlosetProvider } from './store/KlosetContext';
 import { CatalogPage } from './pages/CatalogPage';
+import { CoveragePage } from './pages/CoveragePage';
 import './index.css';
 
 // La portada va en el bundle inicial (es el LCP); el resto se carga bajo demanda.
@@ -17,7 +18,6 @@ const OrdersPage = lazy(() => import('./pages/OrdersPage').then((m) => ({ defaul
 const AuthPage = lazy(() => import('./pages/AuthPage').then((m) => ({ default: m.AuthPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const AccountPage = lazy(() => import('./pages/AccountPage').then((m) => ({ default: m.AccountPage })));
-const CoveragePage = lazy(() => import('./pages/CoveragePage').then((m) => ({ default: m.CoveragePage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then((m) => ({ default: m.AboutPage })));
 const ContactPage = lazy(() => import('./pages/ContactPage').then((m) => ({ default: m.ContactPage })));
 const LegalPage = lazy(() => import('./pages/LegalPage').then((m) => ({ default: m.LegalPage })));
@@ -120,11 +120,7 @@ createRoot(document.getElementById('root')!).render(
             />
             <Route
               path="cobertura"
-              element={
-                <Suspense fallback={<Cargando />}>
-                  <CoveragePage />
-                </Suspense>
-              }
+              element={<CoveragePage />}
             />
             <Route
               path="nosotros"

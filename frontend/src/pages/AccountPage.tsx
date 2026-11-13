@@ -2,8 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Seo } from '../components/Seo';
 import { AddressForm } from '../components/AddressForm';
-import { api, type ApiDatosCuenta, type ApiDireccion, type ApiFavorito } from '../services/api';
-import { useKloset, type Pedido } from '../store/KlosetContext';
+import { api, isAbortError, type ApiDatosCuenta, type ApiDireccion, type ApiFavorito } from '../services/api';
+import { useAuth, useCart, useOrders, useProfile, type Pedido } from '../store/KlosetContext';
 import { money, tallaRecomendada } from '../lib/fit';
 import { cumplePoliticaContrasena, passwordRequirements } from '../lib/password';
 import { nombreCortoDepartamento } from '../lib/locations';
@@ -35,7 +35,10 @@ function fechaEntrega(pedido: Pedido): string {
 export function AccountPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { usuario, cargandoSesion, bolsa, pedidos, medidas, tienePerfil, corte, borrarPerfil, actualizarNombre, salir } = useKloset();
+  const { usuario, cargandoSesion, sesionVersion, actualizarNombre, salir } = useAuth();
+  const { bolsa } = useCart();
+  const { pedidos } = useOrders();
+  const { medidas, tienePerfil, corte, borrarPerfil } = useProfile();
   const active: Tab = tabs.find((t) => t.id === params.get('tab'))?.id ?? 'resumen';
   const [favoritos, setFavoritos] = useState<ApiFavorito[]>([]);
   const [direcciones, setDirecciones] = useState<ApiDireccion[]>([]);
@@ -56,16 +59,44 @@ export function AccountPage() {
 
   useEffect(() => { if (!cargandoSesion && !usuario) navigate('/entrar', { replace: true }); }, [cargandoSesion, usuario, navigate]);
   useEffect(() => {
+    setFavoritos([]);
+    setDirecciones([]);
+    setDatos(null);
+    setAvisos([]);
+    setNombre(usuario?.nombre ?? '');
+    setTelefono('');
     if (!usuario) return;
-    void api.favoritos.listar().then((r) => { if (r.status === 'success') setFavoritos(r.productos); }).catch(() => undefined);
-    void api.direcciones.listar().then((r) => { if (r.status === 'success') setDirecciones(r.direcciones); }).catch(() => undefined);
-    void api.cuenta.datos().then((r) => {
-      if (r.status !== 'success' || !r.datos) return;
-      setDatos(r.datos); setNombre(r.datos.nombre); setTelefono(r.datos.telefono ?? '');
-      setAvisosPedidos(Boolean(r.datos.avisos_pedidos)); setAvisosNovedades(Boolean(r.datos.avisos_novedades));
-    }).catch(() => undefined);
-    void api.cuenta.avisos().then((r) => { if (r.status === 'success') setAvisos(r.avisos); }).catch(() => undefined);
-  }, [usuario]);
+
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    void api.favoritos.listar(options).then((r) => {
+      if (!controller.signal.aborted && r.status === 'success') setFavoritos(r.productos);
+    }).catch((requestError: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(requestError)) setError('No pudimos cargar tus favoritos.');
+    });
+    void api.direcciones.listar(options).then((r) => {
+      if (!controller.signal.aborted && r.status === 'success') setDirecciones(r.direcciones);
+    }).catch((requestError: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(requestError)) setError('No pudimos cargar tus direcciones.');
+    });
+    void api.cuenta.datos(options).then((r) => {
+      if (controller.signal.aborted || r.status !== 'success' || !r.datos) return;
+      setDatos(r.datos);
+      setNombre(r.datos.nombre);
+      setTelefono(r.datos.telefono ?? '');
+      setAvisosPedidos(Boolean(r.datos.avisos_pedidos));
+      setAvisosNovedades(Boolean(r.datos.avisos_novedades));
+    }).catch((requestError: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(requestError)) setError('No pudimos cargar los datos de tu cuenta.');
+    });
+    void api.cuenta.avisos(options).then((r) => {
+      if (!controller.signal.aborted && r.status === 'success') setAvisos(r.avisos);
+    }).catch((requestError: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(requestError)) setError('No pudimos cargar tus avisos.');
+    });
+
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion]);
 
   if (!usuario) return null;
   const tab = (value: Tab) => { setError(''); setMensaje(''); setParams(value === 'resumen' ? {} : { tab: value }); };

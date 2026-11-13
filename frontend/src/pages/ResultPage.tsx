@@ -1,13 +1,13 @@
 import { Seo } from '../components/Seo';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useKloset } from '../store/KlosetContext';
+import { useProfile } from '../store/KlosetContext';
 import { confianza, mapaAjuste, porQueEstaTalla, tallaRecomendada } from '../lib/fit';
 
 export function ResultPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const producto = params.get('producto');
-  const { medidas, corte } = useKloset();
+  const { medidas, corte } = useProfile();
 
   const talla = tallaRecomendada(medidas, corte);
   const zonas = mapaAjuste(corte);

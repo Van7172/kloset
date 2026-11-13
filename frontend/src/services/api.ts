@@ -200,6 +200,22 @@ export type ApiDetalle = {
 };
 
 const TOKEN_KEY = 'kloset_token';
+const READ_TIMEOUT_MS = 30_000;
+type RequestOptions = Pick<RequestInit, 'signal'>;
+const pendingGets = new Map<string, Promise<unknown>>();
+
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
+export function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException
+    ? error.name === 'AbortError' || error.name === 'TimeoutError'
+    : error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError');
+}
 
 export function getToken(): string | null {
   try {
@@ -220,19 +236,85 @@ export function setToken(token: string | null) {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const method = (options.method ?? 'GET').toUpperCase();
+  const requestUrl = `${API_BASE}${path}`;
+  const deduplicationKey = JSON.stringify([requestUrl, token ?? 'anonymous']);
+  const deduplicate = method === 'GET' && !options.signal;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  return (await res.json()) as T;
+  if (deduplicate) {
+    const pending = pendingGets.get(deduplicationKey);
+    if (pending) return pending as Promise<T>;
+  }
+
+  const execute = async (): Promise<T> => {
+    const headers = new Headers(options.headers);
+    if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+
+    const controller = new AbortController();
+    const externalSignal = options.signal;
+    let timedOut = false;
+    const abortFromExternalSignal = () => controller.abort(externalSignal?.reason);
+    if (externalSignal?.aborted) abortFromExternalSignal();
+    else externalSignal?.addEventListener('abort', abortFromExternalSignal, { once: true });
+
+    const timeout = method === 'GET'
+      ? window.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, READ_TIMEOUT_MS)
+      : undefined;
+
+    try {
+      const response = await fetch(requestUrl, {
+        ...options,
+        method,
+        headers,
+        signal: controller.signal,
+      });
+
+      if (response.status === 204) return undefined as T;
+
+      let payload: unknown;
+      try {
+        payload = await response.json();
+      } catch {
+        if (!response.ok) {
+          throw new ApiRequestError('No pudimos completar la solicitud.', response.status);
+        }
+        throw new ApiRequestError('La API devolvió una respuesta inválida.', response.status);
+      }
+
+      if (!response.ok) {
+        if (payload && typeof payload === 'object' && 'status' in payload && 'message' in payload) {
+          return payload as T;
+        }
+        throw new ApiRequestError('No pudimos completar la solicitud.', response.status);
+      }
+
+      return payload as T;
+    } catch (error) {
+      if (timedOut) throw new ApiRequestError('La solicitud tardó demasiado. Inténtalo nuevamente.');
+      throw error;
+    } finally {
+      if (timeout !== undefined) window.clearTimeout(timeout);
+      externalSignal?.removeEventListener('abort', abortFromExternalSignal);
+    }
+  };
+
+  const promise = execute();
+  if (deduplicate) {
+    pendingGets.set(deduplicationKey, promise);
+    void promise.finally(() => {
+      if (pendingGets.get(deduplicationKey) === promise) pendingGets.delete(deduplicationKey);
+    }).catch(() => undefined);
+  }
+  return promise;
 }
 
 export const api = {
-  health: () => request<{ status: string }>('/health'),
-  configuracion: () => request<{ status: string; tolerancia_cm: number }>('/config'),
+  health: (options?: RequestOptions) => request<{ status: string }>('/health', options),
+  configuracion: (options?: RequestOptions) => request<{ status: string; tolerancia_cm: number }>('/config', options),
 
   contacto: (datos: { tema: string; nombre: string; correo: string; telefono: string; mensaje: string; sitio: string }) =>
     request<{ status: string; message?: string }>('/contacto', {
@@ -240,9 +322,9 @@ export const api = {
       body: JSON.stringify(datos),
     }),
 
-  productos: () => request<{ status: string; productos: ApiProducto[] }>('/productos'),
+  productos: (options?: RequestOptions) => request<{ status: string; productos: ApiProducto[] }>('/productos', options),
 
-  producto: (url: string) => request<ApiDetalle>(`/producto?url=${encodeURIComponent(url)}`),
+  producto: (url: string, options?: RequestOptions) => request<ApiDetalle>(`/producto?url=${encodeURIComponent(url)}`, options),
 
   login: (correo: string, password: string) =>
     request<{ status: string; token?: string; usuario?: ApiUsuario; message?: string }>('/auth/login', {
@@ -282,10 +364,10 @@ export const api = {
       }),
   },
 
-  me: () => request<{ status: string; usuario?: ApiUsuario }>('/auth/me'),
+  me: (options?: RequestOptions) => request<{ status: string; usuario?: ApiUsuario }>('/auth/me', options),
 
   medidas: {
-    obtener: () => request<{ status: string; perfil: ApiPerfilCorporal | null }>('/medidas'),
+    obtener: (options?: RequestOptions) => request<{ status: string; perfil: ApiPerfilCorporal | null }>('/medidas', options),
     guardar: (datos: { estatura: number; pecho: number; cintura: number; cadera: number; corte: string }) =>
       request<{ status: string; message?: string; perfil?: ApiPerfilCorporal }>('/medidas', {
         method: 'POST',
@@ -295,10 +377,10 @@ export const api = {
   },
 
   carrito: {
-    guardados: () => request<{ status: string; items: ApiCarritoItem[] }>('/carrito/guardados'),
+    guardados: (options?: RequestOptions) => request<{ status: string; items: ApiCarritoItem[] }>('/carrito/guardados', options),
     guardar: (id_carrito_item: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/guardar', { method: 'POST', body: JSON.stringify({ id_carrito_item }) }),
     restaurar: (id_variante: number) => request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/restaurar', { method: 'POST', body: JSON.stringify({ id_variante }) }),
-    obtener: () => request<{ status: string; message?: string; items: ApiCarritoItem[] }>('/carrito'),
+    obtener: (options?: RequestOptions) => request<{ status: string; message?: string; items: ApiCarritoItem[] }>('/carrito', options),
     agregar: (datos: { id_variante: number; cantidad?: number }) =>
       request<{ status: string; message?: string; items?: ApiCarritoItem[] }>('/carrito/agregar', {
         method: 'POST',
@@ -316,10 +398,10 @@ export const api = {
   },
 
   pedidos: {
-    codigo: (id: number) => request<{ status: string; codigo?: string | null }>(`/pedido/codigo?id=${id}`),
+    codigo: (id: number, options?: RequestOptions) => request<{ status: string; codigo?: string | null }>(`/pedido/codigo?id=${id}`, options),
     cancelar: (id: number) => request<{ status: string; message?: string; codigo_anulacion?: string | null }>('/pedidos/cancelar', { method: 'POST', body: JSON.stringify({ id }) }),
-    listar: () => request<{ status: string; pedidos: ApiPedido[] }>('/pedidos'),
-    detalle: (id: number) => request<{ status: string; message?: string; pedido?: ApiPedido }>(`/pedido?id=${id}`),
+    listar: (options?: RequestOptions) => request<{ status: string; pedidos: ApiPedido[] }>('/pedidos', options),
+    detalle: (id: number, options?: RequestOptions) => request<{ status: string; message?: string; pedido?: ApiPedido }>(`/pedido?id=${id}`, options),
     crear: (datos: { id_direccion?: number; direccion?: string; ciudad?: string; referencia?: string; marca_tarjeta?: string; ultimos_digitos?: string; numero_simulado: string; otp_simulado?: string }) =>
       request<{ status: string; message?: string; correo_enviado?: boolean; pedido?: ApiPedido }>('/pedidos', {
         method: 'POST',
@@ -328,25 +410,25 @@ export const api = {
   },
 
   postventa: {
-    listar: () => request<{ status: string; message?: string; solicitudes?: ApiSolicitudPostventa[] }>('/postventa'),
-    detalle: (id: number) => request<{ status: string; message?: string; solicitud?: ApiSolicitudPostventa; items?: ApiItemPostventa[]; cambios?: ApiCambioPostventa[]; historial?: ApiHistorialPostventa[]; evidencias?: ApiEvidenciaPostventa[] }>(`/postventa/detalle?id=${id}`),
+    listar: (options?: RequestOptions) => request<{ status: string; message?: string; solicitudes?: ApiSolicitudPostventa[] }>('/postventa', options),
+    detalle: (id: number, options?: RequestOptions) => request<{ status: string; message?: string; solicitud?: ApiSolicitudPostventa; items?: ApiItemPostventa[]; cambios?: ApiCambioPostventa[]; historial?: ApiHistorialPostventa[]; evidencias?: ApiEvidenciaPostventa[] }>(`/postventa/detalle?id=${id}`, options),
   },
 
   direcciones: {
-    listar: () => request<{ status: string; direcciones: ApiDireccion[] }>('/direcciones'),
+    listar: (options?: RequestOptions) => request<{ status: string; direcciones: ApiDireccion[] }>('/direcciones', options),
     guardar: (datos: { id?: number; nombre: string; direccion: string; ciudad: string; departamento: string; referencia?: string; telefono?: string; principal?: boolean }) =>
       request<{ status: string; message?: string; id?: number; direcciones?: ApiDireccion[] }>('/direcciones', { method: 'POST', body: JSON.stringify(datos) }),
     eliminar: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/eliminar', { method: 'POST', body: JSON.stringify({ id }) }),
     principal: (id: number) => request<{ status: string; message?: string; direcciones?: ApiDireccion[] }>('/direcciones/principal', { method: 'POST', body: JSON.stringify({ id }) }),
   },
   favoritos: {
-    listar: () => request<{ status: string; productos: ApiFavorito[] }>('/favoritos'),
+    listar: (options?: RequestOptions) => request<{ status: string; productos: ApiFavorito[] }>('/favoritos', options),
     alternar: (id_producto: number) => request<{ status: string; message?: string; favorito?: boolean }>('/favoritos/alternar', { method: 'POST', body: JSON.stringify({ id_producto }) }),
   },
   cuenta: {
-    datos: () => request<{ status: string; datos: ApiDatosCuenta | null }>('/cuenta/datos'),
+    datos: (options?: RequestOptions) => request<{ status: string; datos: ApiDatosCuenta | null }>('/cuenta/datos', options),
     guardar: (datos: { nombre: string; telefono: string; avisos_pedidos: boolean; avisos_novedades: boolean }) => request<{ status: string; message?: string; datos?: ApiDatosCuenta }>('/cuenta/datos', { method: 'POST', body: JSON.stringify(datos) }),
     clave: (actual: string, nueva: string) => request<{ status: string; message?: string }>('/cuenta/clave', { method: 'POST', body: JSON.stringify({ actual, nueva }) }),
-    avisos: () => request<{ status: string; avisos: { id_notificacion: number; id_pedido: number | null; mensaje_notificacion: string; fecha_creacion: string }[] }>('/cuenta/avisos'),
+    avisos: (options?: RequestOptions) => request<{ status: string; avisos: { id_notificacion: number; id_pedido: number | null; mensaje_notificacion: string; fecha_creacion: string }[] }>('/cuenta/avisos', options),
   },
 };
