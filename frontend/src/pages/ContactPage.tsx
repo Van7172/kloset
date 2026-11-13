@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Seo } from '../components/Seo';
-import { api } from '../services/api';
-import { useKloset } from '../store/KlosetContext';
+import { api, isAbortError } from '../services/api';
+import { useAuth } from '../store/KlosetContext';
 
 const TEMAS = [
   { key: 'talla', label: 'Duda de talla' },
@@ -17,7 +17,7 @@ const CANALES = [
 type Tema = (typeof TEMAS)[number]['key'];
 
 export function ContactPage() {
-  const { usuario } = useKloset();
+  const { usuario, sesionVersion } = useAuth();
   const [tema, setTema] = useState<Tema>('talla');
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
@@ -38,21 +38,23 @@ export function ContactPage() {
     setErrorDatosCuenta('');
     if (!usuario) return;
 
-    let activo = true;
-    void api.cuenta.datos().then((res) => {
-      if (!activo) return;
+    const controller = new AbortController();
+    void api.cuenta.datos({ signal: controller.signal }).then((res) => {
+      if (controller.signal.aborted) return;
       if (res.status !== 'success' || !res.datos) {
         setErrorDatosCuenta('No pudimos cargar los datos de tu cuenta. Puedes completar el nombre y correo manualmente.');
         return;
       }
       if (!camposEditados.current.nombre) setNombre(res.datos.nombre);
       if (!camposEditados.current.correo) setCorreo(res.datos.correo);
-    }).catch(() => {
-      if (activo) setErrorDatosCuenta('No pudimos cargar los datos de tu cuenta. Puedes completar el nombre y correo manualmente.');
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(error)) {
+        setErrorDatosCuenta('No pudimos cargar los datos de tu cuenta. Puedes completar el nombre y correo manualmente.');
+      }
     });
 
-    return () => { activo = false; };
-  }, [usuario]);
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion]);
 
   const campos = [
     { k: 'nombre', label: 'Nombre', ph: 'Tu nombre', value: nombre, set: setNombre },

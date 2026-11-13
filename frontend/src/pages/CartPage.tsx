@@ -1,13 +1,15 @@
 import { Seo } from '../components/Seo';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useKloset } from '../store/KlosetContext';
+import { useAuth, useCart, useCartActions } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 import { Marco } from '../components/Marco';
 
 export function CartPage({ compact = false }: { compact?: boolean }) {
   const navigate = useNavigate();
-  const { bolsa, quitarDeBolsa, cambiarCantidad, usuario, setIntencion } = useKloset();
+  const { usuario, setIntencion } = useAuth();
+  const { bolsa } = useCart();
+  const { quitarDeBolsa, cambiarCantidad } = useCartActions();
   const [error, setError] = useState('');
   const totalPrendas = bolsa.reduce((a, b) => a + b.cantidad, 0);
   const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);

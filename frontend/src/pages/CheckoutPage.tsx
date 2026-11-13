@@ -2,9 +2,9 @@ import { Seo } from '../components/Seo';
 import { nombreCortoDepartamento } from '../lib/locations';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useKloset } from '../store/KlosetContext';
+import { useAuth, useCart, useCartActions, useOrderActions } from '../store/KlosetContext';
 import { money } from '../lib/fit';
-import { api, type ApiDireccion } from '../services/api';
+import { api, isAbortError, type ApiDireccion } from '../services/api';
 import { AddressForm } from '../components/AddressForm';
 import { validarCaducidad } from '../lib/checkoutValidation';
 
@@ -23,7 +23,10 @@ function marca(num: string): string {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { bolsa, usuario, crearPedido, recargarBolsa, cargandoSesion, cargandoBolsa } = useKloset();
+  const { usuario, cargandoSesion, sesionVersion } = useAuth();
+  const { bolsa, cargandoBolsa } = useCart();
+  const { recargarBolsa } = useCartActions();
+  const { crearPedido } = useOrderActions();
   const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const [estado, setEstado] = useState<Estado>('idle');
@@ -47,13 +50,21 @@ export function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    setDirecciones([]);
+    setDireccionId(null);
     if (!usuario) return;
-    void api.direcciones.listar().then((res) => {
+
+    const controller = new AbortController();
+    void api.direcciones.listar({ signal: controller.signal }).then((res) => {
+      if (controller.signal.aborted) return;
       if (res.status !== 'success') return;
       setDirecciones(res.direcciones);
       setDireccionId(res.direcciones.find((d) => Boolean(d.principal))?.id ?? res.direcciones[0]?.id ?? null);
-    }).catch(() => undefined);
-  }, [usuario]);
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(error)) setError('No pudimos cargar tus direcciones.');
+    });
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion]);
 
   useEffect(() => {
     if (!cargandoSesion && !cargandoBolsa && bolsa.length === 0 && estado === 'idle') navigate('/bolsa');
@@ -64,7 +75,7 @@ export function CheckoutPage() {
       bolsaSincronizada.current = true;
       void recargarBolsa();
     }
-  }, [usuario, cargandoSesion, cargandoBolsa, recargarBolsa]);
+  }, [usuario?.id, usuario?.rol, sesionVersion, cargandoSesion, cargandoBolsa, recargarBolsa]);
 
   const programar = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));

@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Seo } from '../components/Seo';
 import { ShipmentInfo } from '../components/ShipmentInfo';
-import { api, type ApiPedido, type ApiSolicitudPostventa } from '../services/api';
-import { useKloset } from '../store/KlosetContext';
+import { api, isAbortError, type ApiPedido, type ApiSolicitudPostventa } from '../services/api';
+import { useAuth, useOrders } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 
 type IconoEtapa = 'check' | 'camion' | 'paquete' | 'cancelado';
@@ -67,7 +67,8 @@ export function OrdersPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [params] = useSearchParams();
-  const { usuario, cargandoSesion, pedidos, recargarPedidos } = useKloset();
+  const { usuario, cargandoSesion, sesionVersion } = useAuth();
+  const { pedidos, recargarPedidos } = useOrders();
   const nuevo = params.get('nuevo') === '1';
   const correoFallo = nuevo && params.get('correo') === 'fallo';
   const pedidoId = Number(id || (nuevo ? pedidos[0]?.id : 0));
@@ -82,21 +83,32 @@ export function OrdersPage() {
   useEffect(() => { if (!id && !nuevo && !cargandoSesion) navigate('/cuenta?tab=pedidos', { replace: true }); }, [id, nuevo, cargandoSesion, navigate]);
   useEffect(() => {
     if (!usuario || !pedidoId) return;
-    void api.pedidos.detalle(pedidoId).then((res) => {
-      if (res.status === 'success' && res.pedido) { setPedido(res.pedido); void recargarPedidos(); }
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+    setPedido(null);
+    setError('');
+    setSolicitudesPostventa([]);
+
+    void api.pedidos.detalle(pedidoId, options).then((res) => {
+      if (controller.signal.aborted) return;
+      if (res.status === 'success' && res.pedido) setPedido(res.pedido);
       else setError(res.message || 'Pedido no encontrado');
-    }).catch(() => setError('No pudimos cargar el pedido.'));
-    void api.postventa.listar().then(async (res) => {
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(error)) setError('No pudimos cargar el pedido.');
+    });
+    void api.postventa.listar(options).then(async (res) => {
+      if (controller.signal.aborted) return;
       if (res.status === 'success') {
         const solicitudes = (res.solicitudes ?? []).filter((solicitud) => solicitud.id_pedido === pedidoId);
         const detalles = await Promise.all(solicitudes.map(async (solicitud) => {
-          const detalle = await api.postventa.detalle(solicitud.id_solicitud_postventa);
+          const detalle = await api.postventa.detalle(solicitud.id_solicitud_postventa, options);
           return detalle.status === 'success' ? { ...solicitud, ...detalle.solicitud, items: detalle.items, cambios: detalle.cambios, historial: detalle.historial, evidencias: detalle.evidencias } : solicitud;
         }));
-        setSolicitudesPostventa(detalles);
+        if (!controller.signal.aborted) setSolicitudesPostventa(detalles);
       }
     }).catch(() => undefined);
-  }, [usuario, pedidoId, recargarPedidos]);
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion, pedidoId, recargarPedidos]);
 
   if (!usuario) return null;
   if (error) return <div className="mx-auto max-w-[800px] py-10 text-center"><p role="alert" className="mb-5 text-red">{error}</p><Link to="/cuenta?tab=pedidos" className="underline">Volver a mis pedidos</Link></div>;

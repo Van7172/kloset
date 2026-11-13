@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { api, type ApiProducto } from '../services/api';
-import { useKloset } from '../store/KlosetContext';
+import { api, isAbortError, type ApiProducto } from '../services/api';
+import { useProfile } from '../store/KlosetContext';
 import { CORTES, money, tallaRecomendada, type Corte } from '../lib/fit';
 import { Marco } from '../components/Marco';
 import { Seo } from '../components/Seo';
@@ -46,7 +46,7 @@ function MapaCobertura() {
 }
 
 export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }) {
-  const { medidas, corte, tienePerfil, setCorte } = useKloset();
+  const { medidas, corte, tienePerfil, setCorte } = useProfile();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const categoriaUrl = searchParams.get('categoria') ?? 'Todo';
@@ -60,11 +60,19 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
   const productosPorPagina = 16;
 
   useEffect(() => {
-    api.productos().then((res) => {
+    const controller = new AbortController();
+    api.productos({ signal: controller.signal }).then((res) => {
+      if (controller.signal.aborted) return;
       if (res.status === 'success') setProductos(res.productos ?? []);
       else setError('No se pudo cargar el catálogo.');
-    }).catch(() => setError('No pudimos cargar el catálogo. Vuelve a intentarlo en un momento.'))
-      .finally(() => setCargando(false));
+    }).catch((error: unknown) => {
+      if (!controller.signal.aborted && !isAbortError(error)) {
+        setError('No pudimos cargar el catálogo. Vuelve a intentarlo en un momento.');
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setCargando(false);
+    });
+    return () => controller.abort();
   }, []);
 
   const mostrados = useMemo(() => productos.filter((p) =>

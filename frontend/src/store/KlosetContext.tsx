@@ -1,4 +1,5 @@
 import {
+  type Context,
   createContext,
   useCallback,
   useContext,
@@ -68,6 +69,7 @@ type Estado = {
   cargandoSesion: boolean;
   cargandoPerfil: boolean;
   cargandoBolsa: boolean;
+  sesionVersion: number;
 };
 
 type Acciones = {
@@ -89,7 +91,24 @@ type Acciones = {
   salir: () => void;
 };
 
-const KlosetContext = createContext<(Estado & Acciones) | null>(null);
+type AuthState = Pick<Estado, 'usuario' | 'cargandoSesion' | 'intencion' | 'sesionVersion'>
+  & Pick<Acciones, 'entrar' | 'salir' | 'actualizarNombre' | 'setIntencion'>;
+type ThemeState = Pick<Estado, 'tema'> & Pick<Acciones, 'alternarTema'>;
+type ProfileState = Pick<Estado, 'medidas' | 'tienePerfil' | 'corte' | 'cargandoPerfil'>
+  & Pick<Acciones, 'guardarPerfil' | 'setCorte' | 'borrarPerfil'>;
+type CartState = Pick<Estado, 'bolsa' | 'cargandoBolsa'>;
+type CartActions = Pick<Acciones, 'añadirABolsa' | 'recargarBolsa' | 'quitarDeBolsa' | 'cambiarCantidad' | 'guardarParaDespues' | 'recuperarGuardado'>;
+type OrdersState = Pick<Estado, 'pedidos'> & Pick<Acciones, 'recargarPedidos'>;
+type OrdersActions = Pick<Acciones, 'crearPedido'>;
+type KlosetState = Estado & Acciones;
+
+const AuthContext = createContext<AuthState | null>(null);
+const ThemeContext = createContext<ThemeState | null>(null);
+const ProfileContext = createContext<ProfileState | null>(null);
+const CartContext = createContext<CartState | null>(null);
+const CartActionsContext = createContext<CartActions | null>(null);
+const OrdersContext = createContext<OrdersState | null>(null);
+const OrdersActionsContext = createContext<OrdersActions | null>(null);
 
 function leer<T>(clave: string, porDefecto: T): T {
   try {
@@ -177,6 +196,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   const [toleranciaVersion, setToleranciaVersion] = useState(0);
   useEffect(() => { void api.configuracion().then((r) => { if (r.status === 'success') { configurarTolerancia(Number(r.tolerancia_cm)); setToleranciaVersion((v) => v + 1); } }).catch(() => undefined); }, []);
   const [usuario, setUsuario] = useState<ApiUsuario | null>(null);
+  const [sesionVersion, setSesionVersion] = useState(0);
+  const tokenDeSesion = useRef<string | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
   const [cargandoPerfil, setCargandoPerfil] = useState(Boolean(getToken()));
   const [cargandoBolsa, setCargandoBolsa] = useState(Boolean(getToken()));
@@ -187,6 +208,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   const [bolsa, setBolsa] = useState<ItemBolsa[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [intencion, setIntencion] = useState<Intencion>(null);
+  const sesionActiva = usuario !== null;
   const carritoRevision = useRef(0);
   const pedidosRevision = useRef(0);
 
@@ -207,18 +229,44 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
 
   // Restaura la sesión si el token sigue siendo válido
   useEffect(() => {
+    const controller = new AbortController();
     if (!getToken()) {
       setCargandoSesion(false);
       return;
     }
     api
-      .me()
+      .me({ signal: controller.signal })
       .then((res) => {
-        if (res.status === 'success' && res.usuario) setUsuario(res.usuario);
-        else setToken(null);
+        if (controller.signal.aborted) return;
+        if (res.status === 'success' && res.usuario) {
+          setUsuario((actual) =>
+            actual
+            && actual.id === res.usuario?.id
+            && actual.rol === res.usuario?.rol
+            && actual.nombre === res.usuario?.nombre
+            && actual.correo === res.usuario?.correo
+              ? actual
+              : res.usuario ?? null,
+          );
+          const token = getToken();
+          if (token && tokenDeSesion.current !== token) {
+            tokenDeSesion.current = token;
+            setSesionVersion((version) => version + 1);
+          }
+        } else {
+          tokenDeSesion.current = null;
+          setToken(null);
+        }
       })
-      .catch(() => setToken(null))
-      .finally(() => setCargandoSesion(false));
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        tokenDeSesion.current = null;
+        setToken(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setCargandoSesion(false);
+      });
+    return () => controller.abort();
   }, []);
 
   // La bolsa, el perfil corporal y los pedidos viven en la cuenta: se cargan al
@@ -231,14 +279,15 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       if (!getToken()) setCargandoBolsa(false);
       return;
     }
-    let activo = true;
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
     setCargandoPerfil(true);
     setCargandoBolsa(true);
 
     api
-      .medidas.obtener()
+      .medidas.obtener(options)
       .then((res) => {
-        if (!activo) return;
+        if (controller.signal.aborted) return;
         if (res.status === 'success' && res.perfil) {
           setMedidasState({
             h: Number(res.perfil.estatura_perfil_corporal),
@@ -252,31 +301,36 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
         }
       })
       .catch(() => undefined)
-      .finally(() => { if (activo) setCargandoPerfil(false); });
+      .finally(() => { if (!controller.signal.aborted) setCargandoPerfil(false); });
 
     const revisionCarrito = carritoRevision.current;
     api
-      .carrito.obtener()
+      .carrito.obtener(options)
       .then((res) => {
-        if (activo && res.status === 'success' && revisionCarrito === carritoRevision.current) setBolsa(res.items.map(mapCarritoItem));
+        if (!controller.signal.aborted && res.status === 'success' && revisionCarrito === carritoRevision.current) setBolsa(res.items.map(mapCarritoItem));
       })
       .catch(() => undefined)
-      .finally(() => { if (activo) setCargandoBolsa(false); });
+      .finally(() => { if (!controller.signal.aborted) setCargandoBolsa(false); });
 
     const revisionPedidos = pedidosRevision.current;
     api
-      .pedidos.listar()
+      .pedidos.listar(options)
       .then((res) => {
-        if (activo && res.status === 'success' && revisionPedidos === pedidosRevision.current) setPedidos(res.pedidos.map(mapPedido));
+        if (!controller.signal.aborted && res.status === 'success' && revisionPedidos === pedidosRevision.current) setPedidos(res.pedidos.map(mapPedido));
       })
       .catch(() => undefined);
-    return () => { activo = false; };
-  }, [usuario]);
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion]);
 
   const recargarPedidos = useCallback(async () => {
+    const token = getToken();
+    if (!token) return;
     try {
       const res = await api.pedidos.listar();
-      if (res.status === 'success') { pedidosRevision.current++; setPedidos(res.pedidos.map(mapPedido)); }
+      if (getToken() === token && res.status === 'success') {
+        pedidosRevision.current++;
+        setPedidos(res.pedidos.map(mapPedido));
+      }
     } catch { /* El detalle muestra el error de conexión en su propio flujo. */ }
   }, []);
 
@@ -287,7 +341,9 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
         return res.message || 'No pudimos iniciar tu sesión';
       }
       setToken(res.token);
+      tokenDeSesion.current = res.token;
       setUsuario(res.usuario);
+      setSesionVersion((version) => version + 1);
       return null;
     } catch {
       return 'No hay conexión con la API';
@@ -295,7 +351,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const guardarPerfil = useCallback(async (m: Medidas) => {
-    if (!usuario) {
+    if (!sesionActiva) {
       setMedidasState(m);
       setTienePerfil(true);
       return null; // invitado: se queda solo en este dispositivo
@@ -310,7 +366,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     } catch {
       return 'No hay conexión con la API';
     }
-  }, [usuario, corte]);
+  }, [sesionActiva, corte]);
 
   const añadirABolsa = useCallback(async (item: ItemBolsa) => {
     // `getToken()` (no el estado `usuario`) porque esto puede llamarse justo tras
@@ -331,7 +387,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const recargarBolsa = useCallback(async () => {
-    if (!getToken()) {
+    const token = getToken();
+    if (!token) {
       setBolsa([]);
       setCargandoBolsa(false);
       return null;
@@ -341,13 +398,15 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     carritoRevision.current++;
     try {
       const res = await api.carrito.obtener();
+      if (getToken() !== token) return null;
       if (res.status !== 'success') return res.message || 'No se pudo cargar la bolsa';
       setBolsa(res.items.map(mapCarritoItem));
       return null;
     } catch {
+      if (getToken() !== token) return null;
       return 'No hay conexión con la API';
     } finally {
-      setCargandoBolsa(false);
+      if (getToken() === token) setCargandoBolsa(false);
     }
   }, []);
 
@@ -389,7 +448,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
 
   const borrarPerfil = useCallback(async () => {
     try {
-      if (usuario) {
+      if (sesionActiva) {
         const res = await api.medidas.eliminar();
         if (res.status !== 'success') return res.message || 'No pudimos borrar tus medidas';
       }
@@ -401,7 +460,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     } catch {
       return 'No hay conexión con la API';
     }
-  }, [usuario]);
+  }, [sesionActiva]);
 
   const crearPedido = useCallback(
     async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string; numero: string; otp?: string }) => {
@@ -429,75 +488,101 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const valor = useMemo(
-    () => ({
-      usuario,
-      tema,
-      medidas,
-      tienePerfil,
-      corte,
-      bolsa,
-      pedidos,
-      intencion,
-      cargandoSesion,
-      cargandoPerfil,
-      cargandoBolsa,
-      alternarTema: () => setTema((t) => (t === 'dark' ? 'light' : 'dark')),
-      guardarPerfil,
-      setCorte: (c: Corte) => setCorteState(c),
-      añadirABolsa,
-      recargarBolsa,
-      quitarDeBolsa,
-      cambiarCantidad,
-      guardarParaDespues,
-      recuperarGuardado,
-      crearPedido,
-      borrarPerfil,
-      recargarPedidos,
-      actualizarNombre: (nombre: string) => setUsuario((u) => u ? { ...u, nombre } : u),
-      setIntencion,
-      entrar,
-      salir: () => {
-        setToken(null);
-        setUsuario(null);
-        setMedidasState(MEDIDAS_INICIALES);
-        setTienePerfil(false);
-        localStorage.removeItem('kloset-medidas');
-        localStorage.removeItem('kloset-perfil');
-      },
-    }),
-    [
-      usuario,
-      tema,
-      toleranciaVersion,
-      medidas,
-      tienePerfil,
-      corte,
-      bolsa,
-      pedidos,
-      intencion,
-      cargandoSesion,
-      cargandoPerfil,
-      cargandoBolsa,
-      guardarPerfil,
-      añadirABolsa,
-      recargarBolsa,
-      quitarDeBolsa,
-      cambiarCantidad,
-      guardarParaDespues,
-      recuperarGuardado,
-      crearPedido,
-      borrarPerfil,
-      recargarPedidos,
-      entrar,
-    ],
-  );
+  const alternarTema = useCallback(() => setTema((actual) => (actual === 'dark' ? 'light' : 'dark')), []);
+  const setCorte = useCallback((nuevoCorte: Corte) => setCorteState(nuevoCorte), []);
+  const actualizarNombre = useCallback((nombre: string) => setUsuario((actual) => actual ? { ...actual, nombre } : actual), []);
+  const salir = useCallback(() => {
+    setToken(null);
+    tokenDeSesion.current = null;
+    setUsuario(null);
+    setMedidasState(MEDIDAS_INICIALES);
+    setTienePerfil(false);
+    localStorage.removeItem('kloset-medidas');
+    localStorage.removeItem('kloset-perfil');
+  }, []);
 
-  return <KlosetContext.Provider value={valor}>{children}</KlosetContext.Provider>;
+  const authValue = useMemo<AuthState>(
+    () => ({ usuario, cargandoSesion, intencion, sesionVersion, entrar, salir, actualizarNombre, setIntencion }),
+    [usuario, cargandoSesion, intencion, sesionVersion, entrar, salir, actualizarNombre],
+  );
+  const themeValue = useMemo<ThemeState>(() => ({ tema, alternarTema }), [tema, alternarTema]);
+  const profileValue = useMemo<ProfileState>(
+    () => ({ medidas, tienePerfil, corte, cargandoPerfil, guardarPerfil, setCorte, borrarPerfil }),
+    // La tolerancia vive en fit.ts; notificar este contexto actualiza las tallas derivadas.
+    [medidas, tienePerfil, corte, cargandoPerfil, guardarPerfil, setCorte, borrarPerfil, toleranciaVersion],
+  );
+  const cartValue = useMemo<CartState>(
+    () => ({ bolsa, cargandoBolsa }),
+    [bolsa, cargandoBolsa],
+  );
+  const cartActionsValue = useMemo<CartActions>(
+    () => ({ añadirABolsa, recargarBolsa, quitarDeBolsa, cambiarCantidad, guardarParaDespues, recuperarGuardado }),
+    [añadirABolsa, recargarBolsa, quitarDeBolsa, cambiarCantidad, guardarParaDespues, recuperarGuardado],
+  );
+  const ordersValue = useMemo<OrdersState>(() => ({ pedidos, recargarPedidos }), [pedidos, recargarPedidos]);
+  const ordersActionsValue = useMemo<OrdersActions>(() => ({ crearPedido }), [crearPedido]);
+
+  return (
+    <AuthContext.Provider value={authValue}>
+      <ThemeContext.Provider value={themeValue}>
+        <ProfileContext.Provider value={profileValue}>
+          <CartContext.Provider value={cartValue}>
+            <CartActionsContext.Provider value={cartActionsValue}>
+              <OrdersContext.Provider value={ordersValue}>
+                <OrdersActionsContext.Provider value={ordersActionsValue}>{children}</OrdersActionsContext.Provider>
+              </OrdersContext.Provider>
+            </CartActionsContext.Provider>
+          </CartContext.Provider>
+        </ProfileContext.Provider>
+      </ThemeContext.Provider>
+    </AuthContext.Provider>
+  );
 }
 
-export function useKloset() {
-  const ctx = useContext(KlosetContext);
-  if (!ctx) throw new Error('useKloset debe usarse dentro de KlosetProvider');
+function useRequiredContext<T>(context: Context<T | null>, hookName: string): T {
+  const ctx = useContext(context);
+  if (!ctx) throw new Error(`${hookName} debe usarse dentro de KlosetProvider`);
   return ctx;
+}
+
+export function useAuth() {
+  return useRequiredContext(AuthContext, 'useAuth');
+}
+
+export function useTheme() {
+  return useRequiredContext(ThemeContext, 'useTheme');
+}
+
+export function useProfile() {
+  return useRequiredContext(ProfileContext, 'useProfile');
+}
+
+export function useCart() {
+  return useRequiredContext(CartContext, 'useCart');
+}
+
+export function useCartActions() {
+  return useRequiredContext(CartActionsContext, 'useCartActions');
+}
+
+export function useOrders() {
+  return useRequiredContext(OrdersContext, 'useOrders');
+}
+
+export function useOrderActions() {
+  return useRequiredContext(OrdersActionsContext, 'useOrderActions');
+}
+
+export function useKloset(): KlosetState {
+  const auth = useAuth();
+  const theme = useTheme();
+  const profile = useProfile();
+  const cart = useCart();
+  const cartActions = useCartActions();
+  const orders = useOrders();
+  const ordersActions = useOrderActions();
+  return useMemo(
+    () => ({ ...auth, ...theme, ...profile, ...cart, ...cartActions, ...orders, ...ordersActions }),
+    [auth, theme, profile, cart, cartActions, orders, ordersActions],
+  );
 }

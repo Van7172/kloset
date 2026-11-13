@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useKloset } from '../store/KlosetContext';
+import { useAuth, useCart, useProfile, useTheme } from '../store/KlosetContext';
 import logo from '../assets/kloset-logo-transparente.png';
 
 const TABS = [
@@ -55,7 +55,10 @@ function IconoLuna() {
 }
 
 export function AppLayout() {
-  const { tema, alternarTema, bolsa, usuario, tienePerfil } = useKloset();
+  const { tema, alternarTema } = useTheme();
+  const { bolsa } = useCart();
+  const { usuario } = useAuth();
+  const { tienePerfil } = useProfile();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const oscuro = tema === 'dark';

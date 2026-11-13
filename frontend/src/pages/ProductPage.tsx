@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, type ApiDetalle } from '../services/api';
-import { useKloset, type ItemBolsa } from '../store/KlosetContext';
+import { api, isAbortError, type ApiDetalle } from '../services/api';
+import { useAuth, useCartActions, useProfile, type ItemBolsa } from '../store/KlosetContext';
 import { TALLAS, money, tallaRecomendada, type Talla } from '../lib/fit';
 import { Marco } from '../components/Marco';
 import { Seo } from '../components/Seo';
@@ -9,7 +9,9 @@ import { Seo } from '../components/Seo';
 export function ProductPage() {
   const { url = '' } = useParams();
   const navigate = useNavigate();
-  const { medidas, corte, tienePerfil, usuario, añadirABolsa, setIntencion } = useKloset();
+  const { usuario, setIntencion, sesionVersion } = useAuth();
+  const { añadirABolsa } = useCartActions();
+  const { medidas, corte, tienePerfil } = useProfile();
 
   const [detalle, setDetalle] = useState<ApiDetalle | null>(null);
   const [error, setError] = useState('');
@@ -24,6 +26,7 @@ export function ProductPage() {
   const [favoritoOcupado, setFavoritoOcupado] = useState(false);
 
   useEffect(() => {
+    const controller = new AbortController();
     setDetalle(null);
     setError('');
     setTalla(null);
@@ -31,20 +34,26 @@ export function ProductPage() {
     setCorteElegido(null);
     setFoto(0);
     api
-      .producto(url)
+      .producto(url, { signal: controller.signal })
       .then((res) => {
+        if (controller.signal.aborted) return;
         if (res.status === 'success') { setDetalle(res); setIdColor(res.colores?.find((c) => res.variantes.some((v) => v.id_color === c.id_color && Number(v.stock_variante) > 0))?.id_color ?? null); }
         else setError(res.message || 'Producto no encontrado');
       })
-      .catch(() => setError('API no disponible'));
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted && !isAbortError(error)) setError('API no disponible');
+      });
+    return () => controller.abort();
   }, [url]);
 
   useEffect(() => {
     if (!usuario || !detalle?.producto) { setFavorito(false); return; }
-    void api.favoritos.listar().then((res) => {
-      if (res.status === 'success') setFavorito(res.productos.some((p) => p.id_producto === detalle.producto.id_producto));
+    const controller = new AbortController();
+    void api.favoritos.listar({ signal: controller.signal }).then((res) => {
+      if (!controller.signal.aborted && res.status === 'success') setFavorito(res.productos.some((p) => p.id_producto === detalle.producto.id_producto));
     }).catch(() => undefined);
-  }, [usuario, detalle]);
+    return () => controller.abort();
+  }, [usuario?.id, usuario?.rol, sesionVersion, detalle]);
 
   if (error) {
     return (
