@@ -19,6 +19,15 @@ class Acl
 		if ($usuario === null) {
 			return false;
 		}
+		$rol = (string) $usuario->getRol();
+		if (!in_array($rol, ['Administrador', 'Asesor'], true) || $usuario->getEstado() !== 'activo') {
+			return false;
+		}
+		if (!in_array($url_seccion, ['dashboard','categorias','productos','variantes','pedidos','postventa','pagos','notificaciones','clientes','configuracion','mi-cuenta'], true)) {
+			return false;
+		}
+		if ($url_seccion === 'configuracion' && $rol !== 'Administrador') return false;
+		if (in_array($url_seccion, ['dashboard', 'mi-cuenta'], true)) return true;
 		return !empty($usuario->findSeccionByCurrentUrl($url_seccion));
 	}
 

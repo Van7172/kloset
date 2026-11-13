@@ -14,11 +14,13 @@
   }
 
   function pintar(p) {
-    titulo.textContent = 'Pago #' + p.id_pedido;
+    titulo.textContent = 'Pago · ' + (p.codigo_pedido || 'pedido pendiente');
     const estadoClase = p.estado_pago === 'aprobado' ? 'kl-fg-ok' : p.estado_pago === 'rechazado' ? 'kl-fg-red' : 'kl-fg-warn';
     resumen.innerHTML =
       kv('cliente', p.cliente) +
       kv('correo', p.correo) +
+      kv('codigo_pedido', p.codigo_pedido || '—') +
+      kv('id_pedido interno', p.id_pedido) +
       kv('monto_pago', 'S/ ' + Number(p.monto_pago).toFixed(2)) +
       kv('metodo_pago', p.metodo_pago + (p.marca_pago ? ' · ' + p.marca_pago + (p.ultimos_digitos_pago ? ' ····' + p.ultimos_digitos_pago : '') : '')) +
       kv('estado_pago', p.estado_pago, estadoClase) +

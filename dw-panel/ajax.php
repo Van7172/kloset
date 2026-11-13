@@ -15,20 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') responderPanel(['status'=>'error','me
 if (!hash_equals($_SESSION['csrf_panel'], (string)($_POST['csrf'] ?? ''))) responderPanel(['status'=>'error','message'=>'Recarga el panel antes de continuar'], 403);
 $acciones = [
     'Categorias' => ['categorias', ['getById','store','updateCategoria','deleteCategoria']],
-    'Productos' => ['productos', ['getById','store','updateProducto','deleteProducto','uploadImagenes','deleteImagen']],
+    'Productos' => ['productos', ['getById','store','updateProducto','deleteProducto']],
     'Variantes' => ['variantes', ['getById','store','updateVariante','deleteVariante']],
-    'PedidosAdmin' => ['pedidos', ['getById','cambiarEstado']],
+    'Colores' => ['variantes', ['listar','guardarConImagenes','renombrar','galeria','subir','ordenar','eliminarImagen']],
+    'PedidosAdmin' => ['pedidos', ['getById','cambiarEstado','registrarRecepcionRetorno']],
+    'Postventa' => ['postventa', ['get','detalle','cambiarEstado','cambiarSolucion','registrarAdmin']],
     'Pagos' => ['pagos', ['getById']],
     'Clientes' => ['clientes', ['getById']],
-    'Notificaciones' => ['notificaciones', ['marcarLeida','marcarTodasLeidas']],
-    'Usuarios' => ['usuarios', ['getById','store','updateSecciones']],
-    'Roles' => ['roles', ['getById','store','updateRol','deleteRol']],
+    'Notificaciones' => ['notificaciones', ['responderConsulta','marcarLeida','marcarTodasLeidas']],
     'Configuracion' => ['configuracion', ['saveAll']],
+    'MiCuentaAdmin' => ['mi-cuenta', ['guardar','cambiarClave']],
 ];
 $nombre = (string)($_POST['class'] ?? '');
 $metodo = (string)($_POST['method'] ?? '');
 if (!isset($acciones[$nombre]) || !in_array($metodo, $acciones[$nombre][1], true)) responderPanel(['status'=>'error','message'=>'Acción no habilitada en KLOSET'], 400);
-if ($error = \Develoweb\App\Model\Acl::guard($acciones[$nombre][0])) responderPanel($error, 403);
+$seccionAccion = $acciones[$nombre][0];
+if ($nombre === 'Postventa' && $metodo === 'registrarAdmin') $seccionAccion = 'pedidos';
+if ($error = \Develoweb\App\Model\Acl::guard($seccionAccion)) responderPanel($error, 403);
 try {
     $clase = MODEL_NAMESPACE . $nombre;
     $resultado = $clase::$metodo();

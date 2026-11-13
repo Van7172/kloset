@@ -2,7 +2,6 @@
 
 namespace Develoweb\App\Model;
 
-use PDO;
 use Throwable;
 
 class Contactos
@@ -43,22 +42,6 @@ class Contactos
                 ':telefono' => $telefono !== '' ? $telefono : null,
                 ':mensaje' => $mensaje,
             ]);
-            $id = (int) $con->lastInsertId();
-
-            $admins = $con->query(
-                "SELECT id_usuario_sistema FROM sistema_usuarios WHERE id_rol = 1 AND estado_usuario_sistema = 'activo'"
-            )->fetchAll(PDO::FETCH_COLUMN);
-            $notificar = $con->prepare(
-                'INSERT INTO notificaciones (id_usuario_sistema, id_contacto, mensaje_notificacion)
-                 VALUES (:admin, :contacto, :mensaje)'
-            );
-            foreach ($admins as $admin) {
-                $notificar->execute([
-                    ':admin' => (int) $admin,
-                    ':contacto' => $id,
-                    ':mensaje' => 'Nueva consulta de ' . mb_substr($nombre, 0, 120),
-                ]);
-            }
             $con->commit();
         } catch (Throwable $e) {
             if ($con->inTransaction()) $con->rollBack();

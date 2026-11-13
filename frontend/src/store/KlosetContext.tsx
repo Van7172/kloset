@@ -17,16 +17,19 @@ import {
   type ApiPedidoItem,
   type ApiUsuario,
 } from '../services/api';
-import { MEDIDAS_INICIALES, type Corte, type Medidas, type Talla } from '../lib/fit';
+import { MEDIDAS_INICIALES, configurarTolerancia, type Corte, type Medidas, type Talla } from '../lib/fit';
 
 export type ItemBolsa = {
   /** Ausente en el ítem "optimista" que se guarda como intención antes de iniciar sesión. */
   id_carrito_item?: number;
+  id_variante: number;
+  color: string;
+  sku: string;
   id_producto: number;
   url_producto: string;
   name: string;
   size: Talla;
-  fit: Corte;
+  fit: string;
   price: number;
   imagen: string | null;
   cantidad: number;
@@ -63,6 +66,7 @@ type Estado = {
   pedidos: Pedido[];
   intencion: Intencion;
   cargandoSesion: boolean;
+  cargandoPerfil: boolean;
   cargandoBolsa: boolean;
 };
 
@@ -71,11 +75,12 @@ type Acciones = {
   guardarPerfil: (m: Medidas) => Promise<string | null>;
   setCorte: (c: Corte) => void;
   añadirABolsa: (item: ItemBolsa) => Promise<string | null>;
+  recargarBolsa: () => Promise<string | null>;
   quitarDeBolsa: (idCarritoItem: number) => Promise<void>;
   cambiarCantidad: (idCarritoItem: number, cantidad: number) => Promise<string | null>;
   guardarParaDespues: (idCarritoItem: number) => Promise<string | null>;
   recuperarGuardado: (idVariante: number) => Promise<string | null>;
-  crearPedido: (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => Promise<string | null>;
+  crearPedido: (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string; numero: string; otp?: string }) => Promise<{ error: string | null; correoEnviado: boolean }>;
   borrarPerfil: () => Promise<string | null>;
   actualizarNombre: (nombre: string) => void;
   recargarPedidos: () => Promise<void>;
@@ -116,6 +121,9 @@ function temaInicial(): 'light' | 'dark' {
 function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
   return {
     id_carrito_item: it.id_carrito_item,
+    id_variante: it.id_variante,
+    color: it.nombre_color,
+    sku: it.sku_variante,
     id_producto: it.id_producto,
     url_producto: it.url_producto,
     name: it.nombre_producto,
@@ -129,6 +137,9 @@ function mapCarritoItem(it: ApiCarritoItem): ItemBolsa {
 
 function mapPedidoItem(it: ApiPedidoItem): ItemBolsa {
   return {
+    id_variante: it.id_variante ?? 0,
+    color: it.nombre_color ?? '',
+    sku: it.sku_variante ?? '',
     id_producto: it.id_producto ?? 0,
     url_producto: it.url_producto ?? '',
     name: it.nombre_producto ?? '',
@@ -163,8 +174,11 @@ function mapPedido(p: ApiPedido): Pedido {
 }
 
 export function KlosetProvider({ children }: { children: ReactNode }) {
+  const [toleranciaVersion, setToleranciaVersion] = useState(0);
+  useEffect(() => { void api.configuracion().then((r) => { if (r.status === 'success') { configurarTolerancia(Number(r.tolerancia_cm)); setToleranciaVersion((v) => v + 1); } }).catch(() => undefined); }, []);
   const [usuario, setUsuario] = useState<ApiUsuario | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const [cargandoPerfil, setCargandoPerfil] = useState(Boolean(getToken()));
   const [cargandoBolsa, setCargandoBolsa] = useState(Boolean(getToken()));
   const [tema, setTema] = useState<'light' | 'dark'>(temaInicial);
   const [medidas, setMedidasState] = useState<Medidas>(() => leer('kloset-medidas', MEDIDAS_INICIALES));
@@ -213,10 +227,12 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     if (!usuario) {
       setBolsa([]);
       setPedidos([]);
+      setCargandoPerfil(false);
       if (!getToken()) setCargandoBolsa(false);
       return;
     }
     let activo = true;
+    setCargandoPerfil(true);
     setCargandoBolsa(true);
 
     api
@@ -235,7 +251,8 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
           setTienePerfil(false);
         }
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => { if (activo) setCargandoPerfil(false); });
 
     const revisionCarrito = carritoRevision.current;
     api
@@ -301,9 +318,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     if (!getToken()) return 'Inicia sesión para guardar tu bolsa';
     try {
       const res = await api.carrito.agregar({
-        id_producto: item.id_producto,
-        talla: item.size,
-        corte: item.fit,
+        id_variante: item.id_variante,
         cantidad: item.cantidad,
       });
       if (res.status !== 'success' || !res.items) return res.message || 'No se pudo añadir a la bolsa';
@@ -312,6 +327,27 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       return null;
     } catch {
       return 'No hay conexión con la API';
+    }
+  }, []);
+
+  const recargarBolsa = useCallback(async () => {
+    if (!getToken()) {
+      setBolsa([]);
+      setCargandoBolsa(false);
+      return null;
+    }
+
+    setCargandoBolsa(true);
+    carritoRevision.current++;
+    try {
+      const res = await api.carrito.obtener();
+      if (res.status !== 'success') return res.message || 'No se pudo cargar la bolsa';
+      setBolsa(res.items.map(mapCarritoItem));
+      return null;
+    } catch {
+      return 'No hay conexión con la API';
+    } finally {
+      setCargandoBolsa(false);
     }
   }, []);
 
@@ -368,7 +404,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
   }, [usuario]);
 
   const crearPedido = useCallback(
-    async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string }) => {
+    async (direccion: DireccionEnvio, tarjeta: { marca: string; ultimos: string; numero: string; otp?: string }) => {
       try {
         const res = await api.pedidos.crear({
           id_direccion: direccion.id_direccion,
@@ -377,15 +413,17 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
           referencia: direccion.referencia,
           marca_tarjeta: tarjeta.marca,
           ultimos_digitos: tarjeta.ultimos,
+          numero_simulado: tarjeta.numero,
+          otp_simulado: tarjeta.otp,
         });
-        if (res.status !== 'success' || !res.pedido) return res.message || 'No se pudo registrar el pedido';
+        if (res.status !== 'success' || !res.pedido) return { error: res.message || 'No se pudo registrar el pedido', correoEnviado: false };
         pedidosRevision.current++;
         carritoRevision.current++;
         setPedidos((p) => [mapPedido(res.pedido as ApiPedido), ...p]);
         setBolsa([]);
-        return null;
+        return { error: null, correoEnviado: res.correo_enviado !== false };
       } catch {
-        return 'No hay conexión con la API';
+        return { error: 'No hay conexión con la API', correoEnviado: false };
       }
     },
     [],
@@ -402,11 +440,13 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       pedidos,
       intencion,
       cargandoSesion,
+      cargandoPerfil,
       cargandoBolsa,
       alternarTema: () => setTema((t) => (t === 'dark' ? 'light' : 'dark')),
       guardarPerfil,
       setCorte: (c: Corte) => setCorteState(c),
       añadirABolsa,
+      recargarBolsa,
       quitarDeBolsa,
       cambiarCantidad,
       guardarParaDespues,
@@ -429,6 +469,7 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
     [
       usuario,
       tema,
+      toleranciaVersion,
       medidas,
       tienePerfil,
       corte,
@@ -436,9 +477,11 @@ export function KlosetProvider({ children }: { children: ReactNode }) {
       pedidos,
       intencion,
       cargandoSesion,
+      cargandoPerfil,
       cargandoBolsa,
       guardarPerfil,
       añadirABolsa,
+      recargarBolsa,
       quitarDeBolsa,
       cambiarCantidad,
       guardarParaDespues,

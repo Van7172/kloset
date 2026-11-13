@@ -1,14 +1,18 @@
 <div class="kl-work kl-rise">
     <div class="kl-work-main">
         <div class="kl-table-bar">
-            <div class="kl-kicker">tabla · productos_variantes</div>
+            <div class="kl-kicker">Inventario · variantes</div>
             <div class="kl-top-spacer"></div>
             <div class="kl-filters" id="filtros-estado">
                 <button class="kl-filter active" type="button" data-filtro="">Todos</button>
-                <button class="kl-filter" type="button" data-filtro="Slim">Slim</button>
-                <button class="kl-filter" type="button" data-filtro="Regular">Regular</button>
-                <button class="kl-filter" type="button" data-filtro="Oversize">Oversize</button>
+                <button class="kl-filter" type="button" data-filtro="normal">Stock normal</button>
+                <button class="kl-filter" type="button" data-filtro="critico">Stock crítico</button>
+                <button class="kl-filter" type="button" data-filtro="agotado">Sin stock</button>
             </div>
+            <select class="kl-filter" id="inv-producto"><option value="">Productos</option><?php foreach ($productos as $p): ?><option value="<?= (int)$p['id_producto'] ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option><?php endforeach; ?></select>
+            <select class="kl-filter" id="inv-color"><option value="">Colores</option><?php foreach (\Develoweb\App\Model\Colores::todos() as $c): ?><option value="<?= (int)$c['id_color'] ?>" data-producto="<?= (int)$c['id_producto'] ?>"><?= htmlspecialchars($c['nombre_color']) ?></option><?php endforeach; ?></select>
+            <select class="kl-filter" id="inv-talla"><option value="">Tallas</option><?php foreach (['XS','S','M','L','XL','XXL'] as $t): ?><option><?= $t ?></option><?php endforeach; ?></select>
+            <select class="kl-filter" id="inv-corte"><option value="">Cortes</option><?php foreach (['No aplica','Slim','Regular','Oversize'] as $c): ?><option><?= $c ?></option><?php endforeach; ?></select>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($variantes) ?></span> filas</span>
             <button class="kl-create-btn" type="button" id="var-crear" title="Crear registro" aria-label="Crear registro" <?= empty($productos) ? 'disabled' : '' ?>>
                 <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 2.4v11.2M2.4 8h11.2" /></svg>
@@ -16,13 +20,14 @@
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:1.3fr 1.8fr .6fr .9fr 1fr 84px; --min-w:760px;">
+            <div class="kl-grid" style="--cols:1.8fr 1fr .6fr .9fr 1.2fr 1fr 84px; --min-w:880px;">
                 <div class="kl-grid-head">
-                    <div>sku_variante</div>
                     <div>producto</div>
+                    <div>color</div>
                     <div class="kl-cell--center">talla</div>
                     <div>corte</div>
-                    <div class="kl-cell--right">stock_variante</div>
+                    <div>SKU</div>
+                    <div class="kl-cell--right">stock</div>
                     <div class="kl-cell--right" style="position:sticky; right:0; background:var(--panel);">acciones</div>
                 </div>
 
@@ -33,12 +38,14 @@
                         <?php $critico = (int) $v['stock_variante'] < $umbralStock; ?>
                         <div class="kl-grid-row" role="button" tabindex="0"
                              data-id="<?= (int) $v['id_variante'] ?>"
-                             data-estado="<?= htmlspecialchars($v['corte_variante']) ?>"
-                             data-buscar="<?= htmlspecialchars(mb_strtolower($v['sku_variante'] . ' ' . $v['nombre_producto'])) ?>">
-                            <div class="kl-cell"><b class="kl-mono"><?= htmlspecialchars($v['sku_variante']) ?></b></div>
+                             data-estado="<?= (int) $v['stock_variante'] === 0 ? 'agotado' : ($critico ? 'critico' : 'normal') ?>"
+                             data-producto="<?= (int) $v['id_producto'] ?>" data-color="<?= (int) $v['id_color'] ?>" data-talla="<?= htmlspecialchars($v['talla_variante']) ?>" data-corte="<?= htmlspecialchars($v['corte_variante']) ?>"
+                             data-buscar="<?= htmlspecialchars(mb_strtolower($v['sku_variante'] . ' ' . $v['nombre_producto'] . ' ' . $v['nombre_color'])) ?>">
                             <div class="kl-cell"><b><?= htmlspecialchars($v['nombre_producto']) ?></b></div>
+                            <div class="kl-cell"><b><?= htmlspecialchars($v['nombre_color']) ?></b></div>
                             <div class="kl-cell kl-cell--center kl-cell--num"><b><?= htmlspecialchars($v['talla_variante']) ?></b></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($v['corte_variante']) ?></b></div>
+                            <div class="kl-cell"><b class="kl-mono"><?= htmlspecialchars($v['sku_variante']) ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--num">
                                 <b class="<?= $critico ? 'kl-fg-red' : '' ?>"><?= (int) $v['stock_variante'] ?><?= $critico ? ' · crítico' : '' ?></b>
                             </div>
@@ -77,17 +84,28 @@
             <div class="kl-detail-section">
                 <div class="kl-form-error" id="form-variante-error" hidden></div>
 
-                <label class="kl-label" for="var-producto">id_producto *</label>
+                <label class="kl-label" for="var-producto">Producto *</label>
                 <select class="kl-field" id="var-producto" name="id_producto" required>
                     <option value="">Selecciona…</option>
                     <?php foreach ($productos as $p): ?>
-                        <option value="<?= (int) $p['id_producto'] ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option>
+                        <option value="<?= (int) $p['id_producto'] ?>" data-codigo="<?= htmlspecialchars(\Develoweb\App\Model\Productos::codigo((int) $p['id_producto'])) ?>"><?= htmlspecialchars($p['nombre_producto']) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <label class="kl-label" for="var-color">Color *</label>
+                <select class="kl-field" id="var-color" name="id_color" required><option value="">Selecciona un producto</option></select>
+                <div id="color-gestion" hidden>
+                    <p class="kl-hint">Las imágenes de este color se comparten entre sus tallas y cortes.</p>
+                    <div class="kl-imgs" id="color-galeria" aria-live="polite"></div>
+                    <label class="kl-label" for="color-imagenes">Agregar imágenes a este color</label>
+                    <input class="kl-field" id="color-imagenes" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+                    <button class="kl-btn kl-btn--ghost kl-btn--sm" id="color-subir" type="button">Guardar imágenes</button>
+                    <label class="kl-label" for="color-renombre">Nombre comercial del color</label>
+                    <div class="kl-inline-actions"><input class="kl-field" id="color-renombre" maxlength="100"><button class="kl-btn kl-btn--ghost kl-btn--sm" id="color-actualizar" type="button">Actualizar</button></div>
+                </div>
 
                 <div class="kl-grid-2">
                     <div>
-                        <label class="kl-label" for="var-talla">talla_variante *</label>
+                        <label class="kl-label" for="var-talla">Talla *</label>
                         <select class="kl-field" id="var-talla" name="talla" required>
                             <?php foreach (['XS', 'S', 'M', 'L', 'XL', 'XXL'] as $t): ?>
                                 <option value="<?= $t ?>"><?= $t ?></option>
@@ -95,19 +113,20 @@
                         </select>
                     </div>
                     <div>
-                        <label class="kl-label" for="var-corte">corte_variante *</label>
+                        <label class="kl-label" for="var-corte">Corte</label>
                         <select class="kl-field" id="var-corte" name="corte" required>
-                            <?php foreach (['Slim', 'Regular', 'Oversize'] as $c): ?>
+                            <?php foreach (['No aplica', 'Slim', 'Regular', 'Oversize'] as $c): ?>
                                 <option value="<?= $c ?>"><?= $c ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
 
-                <label class="kl-label" for="var-sku">Código personalizado * <span class="kl-hint">— único, con letras y números</span></label>
-                <input class="kl-field" type="text" id="var-sku" name="sku" minlength="3" maxlength="50" pattern="(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{3,50}" title="Usa entre 3 y 50 letras y números; incluye al menos una letra y un número" autocomplete="off" required>
+                <label class="kl-label" for="var-sku">SKU</label>
+                <input class="kl-field kl-mono" type="text" id="var-sku" placeholder="Se genera al guardar" readonly aria-describedby="var-sku-ayuda">
+                <p class="kl-hint" id="var-sku-ayuda">Se genera con el código del producto, color, talla y corte. NAC indica que el corte no aplica.</p>
 
-                <label class="kl-label" for="var-stock">stock_variante *</label>
+                <label class="kl-label" for="var-stock">Stock *</label>
                 <input class="kl-field" type="number" id="var-stock" name="stock" min="0" step="1" required>
             </div>
 
@@ -118,15 +137,20 @@
         </form>
     </aside>
 
-    <aside class="kl-detail kl-confirm" id="confirmar-variante" hidden>
-        <div class="kl-detail-section" style="padding-top:18px;">
-            <div class="kl-kicker kl-fg-red">DELETE · productos_variantes</div>
-            <div class="kl-detail-title" data-rol="titulo">¿Eliminar?</div>
-            <p data-rol="texto" style="margin:0; color:var(--body); font-size:13.5px; line-height:1.55;"></p>
+    <div class="kl-modal" id="modal-nuevo-color" role="dialog" aria-modal="true" aria-labelledby="nuevo-color-titulo" hidden>
+        <div class="kl-modal-box kl-color-modal">
+            <div class="kl-modal-head"><h3 id="nuevo-color-titulo">Agregar nuevo color</h3><button class="kl-modal-close" type="button" data-cancelar-color aria-label="Cerrar">&times;</button></div>
+            <form id="form-nuevo-color" class="kl-form">
+                <p class="kl-hint" id="nuevo-color-producto"></p>
+                <div class="kl-form-error" id="nuevo-color-error" hidden></div>
+                <label class="kl-label" for="nuevo-color-nombre">Nombre comercial del color *</label>
+                <input class="kl-field" id="nuevo-color-nombre" name="nombre" maxlength="100" placeholder="Ej. Icey Blue" required>
+                <label class="kl-label" for="nuevo-color-imagenes">Imágenes del producto en ese color *</label>
+                <input class="kl-field" id="nuevo-color-imagenes" name="imagenes[]" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple required>
+                <p class="kl-hint">Una o varias imágenes JPEG, PNG, GIF o WebP, hasta 10 MB cada una.</p>
+                <div class="kl-modal-foot"><button class="kl-btn" type="submit">Guardar color</button><button class="kl-btn kl-btn--ghost" type="button" data-cancelar-color>Cancelar</button></div>
+            </form>
         </div>
-        <div class="kl-detail-actions">
-            <button class="kl-btn kl-btn--danger" type="button" data-rol="ok">Eliminar</button>
-            <button class="kl-btn kl-btn--ghost" type="button" id="confirmar-variante-cancelar">Cancelar</button>
-        </div>
-    </aside>
+    </div>
+
 </div>

@@ -1,31 +1,22 @@
-<div class="kl-rise" style="max-width:820px;">
-    <div class="kl-panel">
-        <div class="kl-panel-head">
-            <div class="kl-kicker">tabla · sistema_configuraciones · almacén llave-valor</div>
-        </div>
-        <div class="kl-panel-body">
-            <form id="form-config">
-                <?php if (empty($configurations)): ?>
-                    <p class="kl-fg-soft" style="font-size:13.5px;">No hay llaves registradas.</p>
-                <?php else: ?>
-                    <?php foreach ($configurations as $c): ?>
-                        <div class="kl-config-row">
-                            <div>
-                                <div class="kl-mono"><?= htmlspecialchars($c['llave_configuracion']) ?></div>
-                                <p><?= htmlspecialchars($c['descripcion_configuracion'] ?? '') ?></p>
-                            </div>
-                            <input type="text"
-                                   name="valores[<?= (int) $c['id_configuracion'] ?>]"
-                                   value="<?= htmlspecialchars((string) $c['valor_configuracion']) ?>"
-                                   aria-label="<?= htmlspecialchars($c['llave_configuracion']) ?>">
-                        </div>
-                    <?php endforeach; ?>
-
-                    <button class="kl-btn" type="submit" style="margin-top:18px; min-height:48px; padding:0 22px;">
-                        Guardar configuración
-                    </button>
-                <?php endif; ?>
-            </form>
-        </div>
-    </div>
-</div>
+<?php
+$bloques = [
+  'Información de la tienda' => ['NOMBRE_SITIO'=>'Nombre comercial','CORREO_CONTACTO'=>'Correo de contacto','TELEFONO_CONTACTO'=>'Teléfono'],
+  'Inventario' => ['inventario.alerta_stock'=>'Umbral de stock crítico'],
+  'Asistente de talla' => ['tallas.tolerancia_cm'=>'Tolerancia de recomendación (cm)'],
+];
+$porLlave = array_column($configurations,'valor_configuracion','llave_configuracion');
+$ids = array_column($configurations,'id_configuracion','llave_configuracion');
+?>
+<div class="kl-rise" style="max-width:820px;"><form id="form-config">
+  <?php foreach ($bloques as $bloque=>$campos): ?>
+  <section class="kl-panel" style="margin-bottom:18px;"><div class="kl-panel-head"><div class="kl-kicker"><?= htmlspecialchars($bloque) ?></div></div><div class="kl-panel-body">
+    <?php foreach ($campos as $llave=>$etiqueta): if (!isset($ids[$llave])) continue; ?>
+    <div class="kl-config-row"><label for="cfg-<?= (int)$ids[$llave] ?>"><?= htmlspecialchars($etiqueta) ?></label>
+      <input id="cfg-<?= (int)$ids[$llave] ?>" type="<?= $llave==='CORREO_CONTACTO' ? 'email' : (in_array($llave,['inventario.alerta_stock','tallas.tolerancia_cm'],true) ? 'number' : 'text') ?>" <?= $llave==='inventario.alerta_stock' ? 'min="1" step="1"' : ($llave==='tallas.tolerancia_cm' ? 'min="0" max="10" step="0.1"' : '') ?> name="valores[<?= (int)$ids[$llave] ?>]" value="<?= htmlspecialchars((string)($porLlave[$llave] ?? '')) ?>" required>
+    </div><?php endforeach; ?>
+  </div></section>
+  <?php endforeach; ?>
+  <section class="kl-panel" style="margin-bottom:18px;"><div class="kl-panel-head"><div class="kl-kicker">Envíos</div></div><div class="kl-panel-body"><p>El checkout actual ofrece envío gratis en todas las compras.</p></div></section>
+  <section class="kl-panel" style="margin-bottom:18px;"><div class="kl-panel-head"><div class="kl-kicker">Pagos</div></div><div class="kl-panel-body"><p>Modo actual: <strong>Simulador</strong>. Las transacciones son de demostración.</p></div></section>
+  <button class="kl-btn" type="submit">Guardar configuración</button>
+</form></div>

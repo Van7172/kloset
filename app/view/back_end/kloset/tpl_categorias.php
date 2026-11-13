@@ -82,7 +82,7 @@
                 <input class="kl-field" type="text" id="cat-nombre" name="nombre" maxlength="80" required>
 
                 <label class="kl-label" for="cat-url">url_categoria <span class="kl-hint">— se genera del nombre</span></label>
-                <input class="kl-field" type="text" id="cat-url" name="url" maxlength="120">
+                <input class="kl-field" type="text" id="cat-url" name="url" maxlength="120" readonly>
 
                 <label class="kl-label" for="cat-descripcion">descripcion_categoria</label>
                 <textarea class="kl-field kl-textarea" id="cat-descripcion" name="descripcion" rows="3"></textarea>
@@ -101,15 +101,4 @@
         </form>
     </aside>
 
-    <aside class="kl-detail kl-confirm" id="confirmar-categoria" hidden>
-        <div class="kl-detail-section" style="padding-top:18px;">
-            <div class="kl-kicker kl-fg-red">DELETE · categorias</div>
-            <div class="kl-detail-title" data-rol="titulo">¿Eliminar?</div>
-            <p data-rol="texto" style="margin:0; color:var(--body); font-size:13.5px; line-height:1.55;"></p>
-        </div>
-        <div class="kl-detail-actions">
-            <button class="kl-btn kl-btn--danger" type="button" data-rol="ok">Eliminar</button>
-            <button class="kl-btn kl-btn--ghost" type="button" id="confirmar-categoria-cancelar">Cancelar</button>
-        </div>
-    </aside>
 </div>

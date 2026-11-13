@@ -44,7 +44,7 @@
 
   function pedirEliminar(id, fila) {
     const nombre = fila.querySelector('.kl-mono').textContent;
-    Kloset.confirmarEliminar(CONFIRM, PANEL, {
+    Kloset.confirmarEliminar({
       titulo: '¿Eliminar "' + nombre + '"?',
       texto: 'ON DELETE RESTRICT: no podrá borrarse si algún sistema_usuarios lo tiene asignado.',
       onConfirmar: async () => {

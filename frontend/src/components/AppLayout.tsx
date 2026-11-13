@@ -1,7 +1,6 @@
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useKloset } from '../store/KlosetContext';
 import logo from '../assets/kloset-logo-transparente.png';
-import logoSquare from '../assets/kloset-logo-square.png';
 
 const TABS = [
   { key: 'catalogo', label: 'Catálogo', to: '/catalogo', rutas: ['/catalogo', '/producto'], soloMovil: false, ocultaConSesion: false, enBarra: true },
@@ -69,20 +68,15 @@ export function AppLayout() {
       <header className="sticky top-0 z-40 border-b border-ink backdrop-blur-md" style={{ background: 'var(--header-bg)' }}>
         <div className="mx-auto flex max-w-[1320px] items-center gap-[18px] px-[18px] py-[13px]">
           <Link to="/" className="flex select-none items-center">
-            {oscuro ? (
-              <span
-                role="img"
-                aria-label="Kloset"
-                className="block h-[30px] w-[162px] bg-no-repeat"
-                style={{
-                  backgroundImage: `url(${logoSquare})`,
-                  backgroundSize: '196px 196px',
-                  backgroundPosition: '-17px -83px',
-                }}
-              />
-            ) : (
-              <img src={logo} alt="Kloset" width={128} height={32} decoding="async" className="h-8 w-auto" />
-            )}
+            <img
+              src={logo}
+              alt="Kloset"
+              width={160}
+              height={40}
+              decoding="async"
+              className="h-10 w-auto"
+              style={{ filter: oscuro ? 'brightness(0) invert(1)' : 'none' }}
+            />
           </Link>
 
           <nav className="ml-3 hidden items-stretch gap-[2px] lg:flex">
@@ -175,31 +169,32 @@ export function AppLayout() {
         <Outlet />
       </main>
 
-      <footer className="mt-[60px] border-t-[3px] border-[#C4211F] bg-[#161615] text-[#F0EFEC]">
+      <footer className="mt-[60px] border-t-[3px] border-red" style={{ background: 'var(--footer-bg)', color: 'var(--footer-text)' }}>
         <div className="mx-auto flex max-w-[1320px] flex-col gap-[30px] px-4 pb-[26px] pt-[30px] md:flex-row md:gap-14 md:px-7 md:pb-9 md:pt-11">
           <div className="shrink-0">
             <img
-              src={logoSquare}
+              src={logo}
               alt="Kloset"
-              width={132}
-              height={132}
+              width={180}
+              height={60}
               loading="lazy"
               decoding="async"
-              className="block h-[132px] w-[132px] object-cover"
+              className="block h-[60px] w-[180px] object-contain"
+              style={{ filter: 'brightness(0) invert(1)' }}
             />
-            <p className="mt-4 max-w-[26ch] text-[13px] leading-relaxed text-[#95948E]">
+            <p className="mt-4 max-w-[26ch] text-[13px] leading-relaxed" style={{ color: 'var(--footer-muted)' }}>
               Ropa deportiva medida sobre tu cuerpo, no sobre un maniquí estándar.
             </p>
           </div>
           <div className="grid flex-1 grid-cols-2 gap-[26px] md:grid-cols-3">
             {COLUMNAS_PIE.map((col) => (
               <div key={col.title}>
-                <div className="mb-3 border-b border-[#C4211F] pb-[9px] font-narrow text-[11.5px] uppercase tracking-[0.14em] text-[#F0EFEC]">
+                <div className="mb-3 border-b border-red pb-[9px] font-narrow text-[11.5px] uppercase tracking-[0.14em]" style={{ color: 'var(--footer-text)' }}>
                   {col.title}
                 </div>
                 {col.links.map((l) => (
                   <div key={l.label} className="py-[7px]">
-                    <Link to={l.to} className="text-[13.5px] text-[#B6B5AF] hover:text-[#F0EFEC]">
+                    <Link to={l.to} className="text-[13.5px] hover:text-ink" style={{ color: 'var(--footer-muted)' }}>
                       {l.label}
                     </Link>
                   </div>
@@ -208,13 +203,13 @@ export function AppLayout() {
             ))}
           </div>
         </div>
-        <div className="border-t border-[#2E2E2B]">
-          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em] text-[#95948E]">
+        <div className="border-t" style={{ borderColor: 'var(--footer-rule)' }}>
+          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em]" style={{ color: 'var(--footer-muted)' }}>
             <span>© 2026 Kloset · Lima</span>
             <span className="flex flex-wrap gap-[18px]">
-              <Link to="/legal/privacidad" className="hover:text-[#F0EFEC]">Política de Privacidad</Link>
-              <Link to="/legal/terminos" className="hover:text-[#F0EFEC]">Términos y Condiciones</Link>
-              <Link to="/legal/reclamaciones" className="hover:text-[#F0EFEC]">Libro de Reclamaciones</Link>
+              <Link to="/legal/privacidad" className="hover:text-ink">Política de Privacidad</Link>
+              <Link to="/legal/terminos" className="hover:text-ink">Términos y Condiciones</Link>
+              <Link to="/legal/reclamaciones" className="hover:text-ink">Libro de Reclamaciones</Link>
             </span>
           </div>
         </div>

@@ -10,10 +10,12 @@ class Clientes
 	{
 		$con = Conexion::getInstance();
 		$sth = $con->query(
-			"SELECT u.id_usuario_sistema, u.nombre_usuario_sistema, u.correo_usuario_sistema, u.estado_usuario_sistema,
+			"SELECT u.id_usuario_sistema, u.nombre_usuario_sistema, u.correo_usuario_sistema,
 			        pc.talla_recomendada_perfil_corporal,
-			        (pc.id_perfil_corporal IS NOT NULL) AS tiene_perfil,
-			        (SELECT COUNT(*) FROM pedidos p WHERE p.id_usuario_sistema = u.id_usuario_sistema) AS total_pedidos
+			        (pc.estatura_perfil_corporal>=100 AND pc.pecho_perfil_corporal>=50 AND pc.cintura_perfil_corporal>=40 AND pc.cadera_perfil_corporal>=50) AS tiene_perfil,
+			        (SELECT COUNT(*) FROM pedidos p WHERE p.id_usuario_sistema = u.id_usuario_sistema) AS total_pedidos,
+			        (SELECT COALESCE(SUM(p.total_pedido),0) FROM pedidos p JOIN pagos pg ON pg.id_pedido=p.id_pedido AND pg.estado_pago='aprobado' WHERE p.id_usuario_sistema=u.id_usuario_sistema AND p.estado_pedido <> 'cancelado') AS total_comprado,
+			        (SELECT MAX(p.fecha_pago_aprobado) FROM pedidos p JOIN pagos pg ON pg.id_pedido=p.id_pedido AND pg.estado_pago='aprobado' WHERE p.id_usuario_sistema=u.id_usuario_sistema AND p.estado_pedido <> 'cancelado') AS ultima_compra
 			 FROM sistema_usuarios u
 			 INNER JOIN sistema_roles r ON r.id_rol = u.id_rol
 			 LEFT JOIN perfiles_corporales pc ON pc.id_usuario_sistema = u.id_usuario_sistema
@@ -34,7 +36,7 @@ class Clientes
 
 		$sth = $con->prepare(
 			"SELECT u.id_usuario_sistema, u.nombre_usuario_sistema, u.correo_usuario_sistema,
-			        u.estado_usuario_sistema, u.fecha_creacion
+			        u.telefono_usuario_sistema,u.fecha_creacion
 			 FROM sistema_usuarios u
 			 INNER JOIN sistema_roles r ON r.id_rol = u.id_rol
 			 WHERE u.id_usuario_sistema = :id AND r.nombre_rol = 'Cliente'"
@@ -55,10 +57,13 @@ class Clientes
 
 		$sth = $con->prepare(
 			"SELECT id_pedido, estado_pedido, total_pedido, fecha_creacion
-			 FROM pedidos WHERE id_usuario_sistema = :id ORDER BY fecha_creacion DESC LIMIT 5"
+			 FROM pedidos WHERE id_usuario_sistema = :id ORDER BY fecha_creacion DESC"
 		);
 		$sth->execute([':id' => $id]);
 		$pedidos = $sth->fetchAll();
+		$sth = $con->prepare("SELECT COALESCE(SUM(p.total_pedido),0) FROM pedidos p JOIN pagos pg ON pg.id_pedido=p.id_pedido AND pg.estado_pago='aprobado' WHERE p.id_usuario_sistema=? AND p.estado_pedido <> 'cancelado'");
+		$sth->execute([$id]);
+		$totalComprado = $sth->fetchColumn();
 
 		return [
 			'status' => 'success',
@@ -66,6 +71,8 @@ class Clientes
 			'perfil' => $perfil,
 			'avatar' => $avatar ?: null,
 			'pedidos' => $pedidos,
+			'total_comprado' => $totalComprado,
+			'perfil_completo' => $perfil && (float)$perfil['estatura_perfil_corporal']>=100 && (float)$perfil['pecho_perfil_corporal']>=50 && (float)$perfil['cintura_perfil_corporal']>=40 && (float)$perfil['cadera_perfil_corporal']>=50,
 		];
 	}
 }

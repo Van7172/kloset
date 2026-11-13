@@ -152,9 +152,12 @@ try {
     successPanel('Productos','deleteProducto',['id'=>$ids['prod']]); unset($ids['prod']);
     successPanel('Categorias','deleteCategoria',['id'=>$ids['cat']]); unset($ids['cat']);
     $r=clientApi('contacto',['nombre'=>'QA Contacto','correo'=>'qa-contacto-'.$suffix.'@example.invalid','tema'=>'otro','mensaje'=>'Consulta de integración administrativa local']);
-    checkPanel($r['status']==='success','contacto genera notificación de panel');
+    checkPanel($r['status']==='success','contacto recibido');
     $q=$db->prepare('SELECT id_contacto FROM contactos WHERE correo_contacto=?'); $q->execute(['qa-contacto-'.$suffix.'@example.invalid']); $ids['contact']=(int)$q->fetchColumn();
-    checkPanel((int)$db->query('SELECT COUNT(*) FROM notificaciones WHERE id_contacto='.$ids['contact'])->fetchColumn()>0,'contacto visible en notificaciones DB');
+    checkPanel((string)$db->query('SELECT estado_contacto FROM contactos WHERE id_contacto='.$ids['contact'])->fetchColumn()==='pendiente','consulta registrada como pendiente');
+    [$code,$res]=adminCall('Notificaciones','marcarAtendida',['id'=>$ids['contact']]);
+    checkPanel($code===200 && $res['status']==='success','consulta marcada como atendida');
+    checkPanel((string)$db->query('SELECT estado_contacto FROM contactos WHERE id_contacto='.$ids['contact'])->fetchColumn()==='atendida','estado atendida persistido');
     $db->prepare("UPDATE sistema_usuarios SET estado_usuario_sistema='inactivo' WHERE id_usuario_sistema=?")->execute([$ids['admin']]);
     [$code]=adminCall('Productos','getById',['id'=>99999999]); checkPanel($code===401,'usuario desactivado pierde sesión');
 } finally {

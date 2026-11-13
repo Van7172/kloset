@@ -43,6 +43,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $routes = [
 	'GET' => [
 		'health' => fn () => ['status' => 'ok', 'service' => 'kloset-api'],
+		'config' => ['Develoweb\\App\\Model\\Configuracion', 'publica'],
 		'productos' => ['Develoweb\\App\\Model\\Productos', 'listPublic'],
 		'producto' => ['Develoweb\\App\\Model\\Productos', 'getByUrlPublic'],
 		'auth/me' => ['Develoweb\\App\\Model\\AuthApi', 'me'],
@@ -50,7 +51,10 @@ $routes = [
 		'carrito' => ['Develoweb\\App\\Model\\Carritos', 'mio'],
 		'carrito/guardados' => ['Develoweb\\App\\Model\\Carritos', 'guardados'],
 		'pedidos' => ['Develoweb\\App\\Model\\Pedidos', 'mios'],
+		'postventa' => ['Develoweb\\App\\Model\\Postventa', 'mias'],
+		'postventa/detalle' => ['Develoweb\\App\\Model\\Postventa', 'detalleMio'],
 		'pedido' => ['Develoweb\\App\\Model\\Pedidos', 'detalle'],
+		'pedido/codigo' => ['Develoweb\\App\\Model\\Pedidos', 'codigoEntrega'],
 		'direcciones' => ['Develoweb\\App\\Model\\Direcciones', 'mias'],
 		'favoritos' => ['Develoweb\\App\\Model\\Favoritos', 'mios'],
 		'cuenta/datos' => ['Develoweb\\App\\Model\\CuentaApi', 'datos'],
@@ -88,6 +92,12 @@ if ($resource === 'auth') {
 }
 if ($resource === 'producto') {
 	$key = 'producto';
+}
+if ($resource === 'pedido' && $action === 'codigo') {
+	$key = 'pedido/codigo';
+}
+if ($resource === 'postventa' && $action !== '') {
+	$key = 'postventa/' . $action;
 }
 if ($resource === 'carrito' && $action !== '') {
 	$key = 'carrito/' . $action;

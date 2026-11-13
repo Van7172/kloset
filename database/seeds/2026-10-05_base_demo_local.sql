@@ -22,7 +22,7 @@ INSERT INTO sistema_secciones (id_seccion, id_modulo, nombre_seccion, url_seccio
 (7, 3, 'Configuración', 'configuracion', 3),
 (8, 1, 'Inventario', 'variantes', 3),
 (9, 2, 'Pagos', 'pagos', 3),
-(10, 2, 'Notificaciones', 'notificaciones', 4),
+(10, 2, 'Consultas', 'notificaciones', 4),
 (11, 5, 'Clientes', 'clientes', 1),
 (12, 3, 'Roles', 'roles', 2);
 

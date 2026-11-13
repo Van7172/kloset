@@ -15,10 +15,6 @@ export function ResultPage() {
   return (
     <div className="kl-rise mx-auto max-w-[640px]">
       <Seo title="Tu talla recomendada" description="Tu talla y el mapa de ajuste por zonas —pecho, cintura, cadera y largo— calculados a partir de tus medidas y del corte elegido." path="/resultado" noindex />
-      <div className="mb-[18px] mt-[6px] font-narrow text-xs uppercase tracking-[0.14em] text-soft">
-        Paso 2 · Recomendación
-      </div>
-
       <div className="flex flex-wrap items-start gap-[26px] border-b border-t-2 border-ink py-[26px]">
         <div
           className="flex h-[116px] w-[116px] shrink-0 items-center justify-center bg-red font-display text-[52px] font-medium tracking-[-0.03em] text-[#F2F2F0]"

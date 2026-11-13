@@ -1,6 +1,5 @@
 (function () {
   const PANEL = 'detalle-categoria';
-  const CONFIRM = 'confirmar-categoria';
   const form = document.getElementById('form-categoria');
   if (!form) return;
 
@@ -46,9 +45,9 @@
 
   function pedirEliminar(id, fila) {
     const nombre = fila.querySelector('.kl-cell b').textContent;
-    Kloset.confirmarEliminar(CONFIRM, PANEL, {
+    Kloset.confirmarEliminar({
       titulo: '¿Eliminar "' + nombre + '"?',
-      texto: 'ON DELETE SET NULL: los productos de esta categoría quedan sin categoría, no se borran.',
+      texto: 'Tiene ' + (fila.querySelector('.kl-cell--num b')?.textContent || '0') + ' productos asociados. Se conservarán sin esta categoría; también se conservarán los pedidos anteriores.',
       onConfirmar: async () => {
         const res = await Kloset.ajax('Categorias', 'deleteCategoria', { id: id });
         if (res.status !== 'success') {
@@ -68,7 +67,6 @@
   document.querySelectorAll('[data-cerrar-detalle]').forEach((btn) => {
     btn.addEventListener('click', () => Kloset.cerrarDetalle(PANEL));
   });
-  document.getElementById('confirmar-categoria-cancelar')?.addEventListener('click', () => Kloset.cerrarDetalle(CONFIRM));
 
   document.querySelectorAll('.kl-grid-row').forEach((fila) => {
     fila.querySelector('[data-accion="editar"]')?.addEventListener('click', (ev) => {
@@ -81,11 +79,7 @@
     });
   });
 
-  form.elements.nombre.addEventListener('blur', () => {
-    if (form.elements.url.value.trim() === '') {
-      form.elements.url.value = Kloset.slug(form.elements.nombre.value);
-    }
-  });
+  form.elements.nombre.addEventListener('input', () => { form.elements.url.value = Kloset.slug(form.elements.nombre.value); });
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -95,7 +89,7 @@
     const res = await Kloset.ajax('Categorias', metodo, new FormData(form));
 
     if (res.status !== 'success') {
-      Kloset.showError('form-categoria-error', res.message || 'No se pudo guardar');
+      Kloset.reportarError('form-categoria-error', res.message || 'No se pudo guardar');
       return;
     }
     Kloset.toast(res.message);

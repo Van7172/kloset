@@ -50,6 +50,8 @@ return [
 		'servidor_correo_url' => getenv('KLOSET_SMTP_HOST') ?: 'localhost',
 		'servidor_correo_usuario' => getenv('KLOSET_SMTP_USER') ?: '',
 		'servidor_correo_contrasena' => getenv('KLOSET_SMTP_PASS') ?: '',
+		'servidor_correo_puerto' => getenv('KLOSET_SMTP_PORT') ?: '587',
+		'servidor_correo_seguridad' => getenv('KLOSET_SMTP_SECURITY') ?: 'tls',
 	],
 	'jwt' => [
 		// En producción define KLOSET_JWT_SECRET; el valor de abajo es solo para XAMPP.

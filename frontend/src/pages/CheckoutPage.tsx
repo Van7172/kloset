@@ -6,6 +6,7 @@ import { useKloset } from '../store/KlosetContext';
 import { money } from '../lib/fit';
 import { api, type ApiDireccion } from '../services/api';
 import { AddressForm } from '../components/AddressForm';
+import { validarCaducidad } from '../lib/checkoutValidation';
 
 type Estado = 'idle' | 'processing' | '3ds' | 'declined' | 'error' | 'done';
 
@@ -22,7 +23,7 @@ function marca(num: string): string {
 
 export function CheckoutPage() {
   const navigate = useNavigate();
-  const { bolsa, usuario, crearPedido, cargandoSesion, cargandoBolsa } = useKloset();
+  const { bolsa, usuario, crearPedido, recargarBolsa, cargandoSesion, cargandoBolsa } = useKloset();
   const subtotal = bolsa.reduce((a, b) => a + b.price * b.cantidad, 0);
 
   const [estado, setEstado] = useState<Estado>('idle');
@@ -38,6 +39,7 @@ export function CheckoutPage() {
   const [editarDireccion, setEditarDireccion] = useState(false);
   const [usarManual, setUsarManual] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const bolsaSincronizada = useRef(false);
   const timers = useRef<number[]>([]);
 
   useEffect(() => {
@@ -56,6 +58,13 @@ export function CheckoutPage() {
   useEffect(() => {
     if (!cargandoSesion && !cargandoBolsa && bolsa.length === 0 && estado === 'idle') navigate('/bolsa');
   }, [bolsa.length, estado, navigate, cargandoSesion, cargandoBolsa]);
+
+  useEffect(() => {
+    if (usuario && !cargandoSesion && !cargandoBolsa && !bolsaSincronizada.current) {
+      bolsaSincronizada.current = true;
+      void recargarBolsa();
+    }
+  }, [usuario, cargandoSesion, cargandoBolsa, recargarBolsa]);
 
   const programar = (fn: () => void, ms: number) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -76,10 +85,10 @@ export function CheckoutPage() {
   const cerrarPedido = async () => {
     const fallo = await crearPedido(
       !usarManual && direccionId ? { id_direccion: direccionId } : { direccion: envio.direccion, ciudad: envio.ciudad, referencia: envio.referencia },
-      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4) },
+      { marca: marca(pago.num) || 'Tarjeta', ultimos: soloDigitos(pago.num).slice(-4), numero: soloDigitos(pago.num), otp },
     );
-    if (fallo) {
-      setErrorPedido(fallo);
+    if (fallo.error) {
+      setErrorPedido(fallo.error);
       setEstado('error');
       return;
     }
@@ -89,14 +98,15 @@ export function CheckoutPage() {
     setProgreso('100%');
     setOtp('');
     setPago({ holder: '', num: '', exp: '', cvc: '' });
-    navigate('/pedidos?nuevo=1', { replace: true });
+    navigate(`/pedidos?nuevo=1&correo=${fallo.correoEnviado ? 'enviado' : 'fallo'}`, { replace: true });
   };
 
   const pagar = () => {
     if ((usarManual || !direccionId) && (!envio.direccion.trim() || !envio.ciudad.trim())) return setError('La dirección y el distrito son obligatorios');
     const d = soloDigitos(pago.num);
     if (d.length < 15) return setError('Número de tarjeta incompleto');
-    if (!/^\d{2}\/\d{2}$/.test(pago.exp)) return setError('Caducidad en formato MM/AA');
+    const errorCaducidad = validarCaducidad(pago.exp);
+    if (errorCaducidad) return setError(errorCaducidad);
     if (soloDigitos(pago.cvc).length < 3) return setError('CVC incompleto');
     if (!pago.holder.trim()) return setError('Falta el titular de la tarjeta');
     if (!aceptaTerminos) return setError('Acepta los términos y condiciones para continuar');
@@ -107,7 +117,7 @@ export function CheckoutPage() {
     programar(() => setProgreso('58%'), 500);
     programar(() => setProgreso('92%'), 1100);
     programar(() => {
-      if (d === '4000000000000002') return setEstado('declined');
+      if (d !== '4242424242424242' && d !== '4000000000003220') return setEstado('declined');
       if (d === '4000000000003220') {
         setOtp('');
         return setEstado('3ds');
@@ -125,6 +135,10 @@ export function CheckoutPage() {
     programar(() => void cerrarPedido(), 1100);
   };
 
+  if (cargandoSesion || cargandoBolsa) {
+    return <p className="py-16 text-center text-soft">Verificando tu bolsa…</p>;
+  }
+
   const pasos = [
     { label: 'Bolsa', activo: true },
     { label: 'Pago', activo: estado !== 'declined' && estado !== 'error' },
@@ -137,7 +151,7 @@ export function CheckoutPage() {
     { k: 'exp' as const, label: 'Caducidad', ph: 'MM/AA', ls: '0.08em', mode: 'numeric' },
     { k: 'cvc' as const, label: 'CVC', ph: '123', ls: '0.2em', mode: 'numeric' },
   ];
-  const entregaEstimada = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(Date.now() + 3 * 86400000));
+  const entregaEstimada = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(Date.now() + 5 * 86400000));
 
   return (
     <div className="kl-rise mx-auto max-w-[1000px]">
@@ -171,7 +185,7 @@ export function CheckoutPage() {
         <div className="w-full min-w-0 lg:flex-[1.25]">
           {estado === 'idle' && (
             <div>
-              <h2 className="mb-1 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">Pago seguro</h2>
+              <h2 className="mb-1 font-display text-[30px] font-normal leading-tight tracking-[-0.025em]">Pago de demostración</h2>
               <p className="mb-5 text-sm text-body">Completa los datos para finalizar tu compra.</p>
               <div className="mb-3 border-t border-rule pt-3 font-narrow text-[12px] font-semibold uppercase tracking-[0.08em]">1. Dirección de entrega</div>
               {!usarManual && direccionId && <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border border-rule p-4"><div><div className="font-display text-lg">{direcciones.find((d) => d.id === direccionId)?.nombre}</div><p className="mt-1 text-sm text-body">{direcciones.find((d) => d.id === direccionId)?.direccion}<br />{direcciones.find((d) => d.id === direccionId)?.ciudad}, {nombreCortoDepartamento(direcciones.find((d) => d.id === direccionId)?.departamento ?? 'Lima Metropolitana')}</p></div><button type="button" onClick={() => setElegirDireccion(true)} className="min-h-11 cursor-pointer border border-ink bg-transparent px-4 font-narrow text-xs font-semibold uppercase">Cambiar dirección</button></div>}
@@ -264,7 +278,7 @@ export function CheckoutPage() {
               >
                 Confirmar pago
               </button>
-              <div className="mt-3 text-center text-xs text-soft">▣ Tu pago está protegido con encriptación SSL.</div>
+              <div className="mt-3 text-center text-xs text-soft">▣ No se realiza ningún cargo real.</div>
             </div>
           )}
 
@@ -388,7 +402,7 @@ export function CheckoutPage() {
               <div className="min-w-0">
                 <div className="font-display text-[17px]">{it.name}</div>
                 <div className="mt-[3px] text-xs text-soft">
-                  Talla {it.size} · {it.fit}
+                  {it.color} · talla {it.size} · {it.fit} · SKU {it.sku}
                   {it.cantidad > 1 && ` · ×${it.cantidad}`}
                 </div>
               </div>

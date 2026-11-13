@@ -1,25 +1,22 @@
+<p class="kl-notice">Transacciones simuladas. Los pagos se aprueban en el checkout; aquí solo se consultan.</p>
 <div class="kl-work kl-rise">
     <div class="kl-work-main">
         <div class="kl-table-bar">
             <div class="kl-kicker">tabla · pagos</div>
             <div class="kl-top-spacer"></div>
-            <div class="kl-filters" id="filtros-estado">
-                <button class="kl-filter active" type="button" data-filtro="">Todos</button>
-                <button class="kl-filter" type="button" data-filtro="aprobado">aprobado</button>
-                <button class="kl-filter" type="button" data-filtro="pendiente">pendiente</button>
-                <button class="kl-filter" type="button" data-filtro="rechazado">rechazado</button>
-            </div>
             <span class="kl-rowcount"><span id="kl-rowcount"><?= count($pagos) ?></span> filas</span>
         </div>
 
         <div class="kl-scroll">
-            <div class="kl-grid" style="--cols:.8fr 1.2fr 1.6fr .8fr 1fr; --min-w:700px;">
+            <div class="kl-grid" style="--cols:.8fr 1.2fr 1fr 1.6fr .8fr .8fr 1fr; --min-w:940px;">
                 <div class="kl-grid-head">
-                    <div>id_pedido</div>
+                    <div>codigo_pedido</div>
+                    <div>cliente</div>
                     <div>metodo_pago</div>
                     <div>id_transaccion_pasarela_pago</div>
                     <div class="kl-cell--right">monto</div>
                     <div class="kl-cell--right">estado_pago</div>
+                    <div class="kl-cell--right">fecha</div>
                 </div>
 
                 <?php if (empty($pagos)): ?>
@@ -30,13 +27,15 @@
                              data-id="<?= (int) $p['id_pago'] ?>"
                              data-estado="<?= htmlspecialchars($p['estado_pago']) ?>"
                              data-buscar="<?= htmlspecialchars(mb_strtolower($p['cliente'] . ' ' . $p['id_transaccion_pasarela_pago'])) ?>">
-                            <div class="kl-cell"><b class="kl-serif" style="font-size:16px;">#<?= (int) $p['id_pedido'] ?></b><small><?= htmlspecialchars($p['cliente']) ?></small></div>
+                            <div class="kl-cell"><a href="<?= DW_PANEL ?>pedidos?pedido=<?= (int) $p['id_pedido'] ?>" class="kl-serif" style="font-size:16px;"><?= htmlspecialchars($p['codigo_pedido'] ?? '—') ?> →</a></div>
+                            <div class="kl-cell"><b><?= htmlspecialchars($p['cliente']) ?></b></div>
                             <div class="kl-cell"><b><?= htmlspecialchars($p['metodo_pago']) ?><?= $p['marca_pago'] ? ' · ' . htmlspecialchars($p['marca_pago']) : '' ?></b></div>
                             <div class="kl-cell"><b class="kl-mono kl-fg-soft" style="text-transform:none;"><?= htmlspecialchars($p['id_transaccion_pasarela_pago'] ?? '—') ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--num"><b>S/ <?= number_format((float) $p['monto_pago'], 2) ?></b></div>
                             <div class="kl-cell kl-cell--right kl-cell--tag">
                                 <b class="<?= $p['estado_pago'] === 'aprobado' ? 'kl-fg-ok' : ($p['estado_pago'] === 'rechazado' ? 'kl-fg-red' : 'kl-fg-warn') ?>"><?= htmlspecialchars($p['estado_pago']) ?></b>
                             </div>
+                            <div class="kl-cell kl-cell--right"><b><?= htmlspecialchars($p['fecha_creacion']) ?></b></div>
                         </div>
                     <?php endforeach; ?>
                 <?php endif; ?>

@@ -15,6 +15,10 @@
   --hover: #E8E7E3;
   --header-bg: rgba(242, 242, 240, 0.94);
   --stage-veil: rgba(242, 242, 240, 0.82);
+  --footer-bg: #161615;
+  --footer-text: #F0EFEC;
+  --footer-muted: #B6B5AF;
+  --footer-rule: #2E2E2B;
   --stripe: rgba(28, 28, 26, 0.055);
   --fig-a: rgba(28, 28, 26, 0.16);
   --fig-b: rgba(28, 28, 26, 0.045);
@@ -22,18 +26,22 @@
 }
 
 [data-theme="dark"] {
-  --paper: #161615;
+  --paper: #292927;
   --ink: #F0EFEC;
-  --soft: #95948E;
-  --body: #B6B5AF;
-  --rule: #2E2E2B;
-  --surface: #232321;
-  --surface-2: #1D1D1B;
+  --soft: #B7B6AF;
+  --body: #D0CFC9;
+  --rule: #4A4A45;
+  --surface: #333330;
+  --surface-2: #3B3B37;
   --red: #D93A2B;
-  --hover: #232321;
-  --header-bg: rgba(22, 22, 21, 0.94);
-  --stage-veil: rgba(22, 22, 21, 0.8);
-  --stripe: rgba(240, 239, 236, 0.05);
+  --hover: #3B3B37;
+  --header-bg: rgba(41, 41, 39, 0.96);
+  --stage-veil: rgba(41, 41, 39, 0.86);
+  --footer-bg: #333330;
+  --footer-text: #F0EFEC;
+  --footer-muted: #D0CFC9;
+  --footer-rule: #4A4A45;
+  --stripe: rgba(240, 239, 236, 0.07);
   --fig-a: rgba(240, 239, 236, 0.16);
   --fig-b: rgba(240, 239, 236, 0.045);
   --fig-bd: rgba(240, 239, 236, 0.22);
