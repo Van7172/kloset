@@ -59,6 +59,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const oscuro = tema === 'dark';
+  const esInicio = pathname === '/';
 
   const activa = (rutas: string[]) =>
     rutas.some((r) => (r === '/' ? pathname === '/' : pathname.startsWith(r)));
@@ -66,7 +67,13 @@ export function AppLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-paper text-ink">
       <header className="sticky top-0 z-40 border-b border-ink backdrop-blur-md" style={{ background: 'var(--header-bg)' }}>
-        <div className="mx-auto flex max-w-[1320px] items-center gap-[18px] px-[18px] py-[13px]">
+        <div
+          className={
+            esInicio
+              ? 'flex w-full items-center gap-[18px] px-[4%] py-[13px]'
+              : 'mx-auto flex max-w-[1320px] items-center gap-[18px] px-[18px] py-[13px]'
+          }
+        >
           <Link to="/" className="flex select-none items-center">
             <img
               src={logo}
@@ -165,12 +172,27 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-[18px] pb-[30px] md:px-[22px] md:py-[26px] md:pb-11 xl:px-7 xl:py-8 xl:pb-14">
+      <main
+        className={
+          esInicio
+            ? 'w-full flex-1'
+            : 'mx-auto w-full max-w-[1320px] flex-1 px-4 py-[18px] pb-[30px] md:px-[22px] md:py-[26px] md:pb-11 xl:px-7 xl:py-8 xl:pb-14'
+        }
+      >
         <Outlet />
       </main>
 
-      <footer className="mt-[60px] border-t-[3px] border-red" style={{ background: 'var(--footer-bg)', color: 'var(--footer-text)' }}>
-        <div className="mx-auto flex max-w-[1320px] flex-col gap-[30px] px-4 pb-[26px] pt-[30px] md:flex-row md:gap-14 md:px-7 md:pb-9 md:pt-11">
+      <footer
+        className={`${esInicio ? 'mt-0' : 'mt-[60px]'} border-t-[3px] border-red`}
+        style={{ background: 'var(--footer-bg)', color: 'var(--footer-text)' }}
+      >
+        <div
+          className={
+            esInicio
+              ? 'flex w-full flex-col gap-[30px] px-[4%] pb-[26px] pt-[30px] md:flex-row md:gap-14 md:pb-9 md:pt-11'
+              : 'mx-auto flex max-w-[1320px] flex-col gap-[30px] px-4 pb-[26px] pt-[30px] md:flex-row md:gap-14 md:px-7 md:pb-9 md:pt-11'
+          }
+        >
           <div className="shrink-0">
             <img
               src={logo}
@@ -204,7 +226,14 @@ export function AppLayout() {
           </div>
         </div>
         <div className="border-t" style={{ borderColor: 'var(--footer-rule)' }}>
-          <div className="mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em]" style={{ color: 'var(--footer-muted)' }}>
+          <div
+            className={
+              esInicio
+                ? 'flex w-full flex-wrap items-center justify-between gap-3 px-[4%] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em]'
+                : 'mx-auto flex max-w-[1320px] flex-wrap items-center justify-between gap-3 px-[18px] py-4 font-narrow text-[11.5px] uppercase tracking-[0.1em]'
+            }
+            style={{ color: 'var(--footer-muted)' }}
+          >
             <span>© 2026 Kloset · Lima</span>
             <span className="flex flex-wrap gap-[18px]">
               <Link to="/legal/privacidad" className="hover:text-ink">Política de Privacidad</Link>

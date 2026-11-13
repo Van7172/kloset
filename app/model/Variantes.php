@@ -18,6 +18,12 @@ class Variantes
 		return Productos::codigo($producto) . '-' . $abreviaturaColor . '-' . $talla . '-' . $abreviaturasCorte[$corte];
 	}
 
+	/** SKU manual al crear producto: 3–50 caracteres, solo letras/números, al menos una letra y un dígito. */
+	public static function codigoValido(string $sku): bool
+	{
+		return (bool) preg_match('/^(?=.*[A-Za-z])(?=.*[0-9])[A-Za-z0-9]{3,50}$/D', $sku);
+	}
+
 	public static function get(): array
 	{
 		$con = Conexion::getInstance();

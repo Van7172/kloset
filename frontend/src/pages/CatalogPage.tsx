@@ -5,6 +5,7 @@ import { useKloset } from '../store/KlosetContext';
 import { CORTES, money, tallaRecomendada, type Corte } from '../lib/fit';
 import { Marco } from '../components/Marco';
 import { Seo } from '../components/Seo';
+import { HomeScrollShowcase } from '../components/HomeScrollShowcase';
 
 const ASSETS = (window as Window & { __KLOSET_ASSETS__?: string }).__KLOSET_ASSETS__ ?? '';
 const categorias = [
@@ -158,24 +159,11 @@ export function CatalogPage({ irAlCatalogo = false }: { irAlCatalogo?: boolean }
     </div>;
   }
 
-  return <div className="kl-rise home">
-    <Seo title="Kloset | Ropa que ya sabe cómo te queda" description="Ropa deportiva que combina comodidad, estilo y tu talla ideal. Explora camisetas, mallas, shorts, capas, tops y pantalones en Kloset." path={irAlCatalogo ? '/catalogo' : '/'} />
+  return <div className="home home-full">
+    <Seo title="Kloset | Ropa que ya sabe cómo te queda" description="Ropa deportiva que combina comodidad, estilo y tu talla ideal. Explora camisetas, mallas, shorts, capas, tops y pantalones en Kloset." path="/" />
 
-    <section className="home-hero" aria-labelledby="home-title">
-      <img src={ASSETS + '/imagenes/hero.webp'} alt="Modelos con ropa deportiva negra de Kloset" fetchPriority="high" />
-      <div className="home-hero-shade" />
-      <div className="home-hero-copy">
-        <p className="home-eyebrow">TU ESTILO, SIN LÍMITES</p>
-        <h1 id="home-title">Ropa que ya sabe <em>cómo te queda.</em></h1>
-        <p className="home-lede">Prendas deportivas que combinan comodidad, estilo y rendimiento. Encuentra tu talla ideal con KLOSET.</p>
-        <div className="home-actions">
-          <Link className="home-button home-button-red" to="/catalogo">EXPLORAR CATÁLOGO <span aria-hidden="true">→</span></Link>
-          <Link className="home-button home-button-outline" to="/nosotros">CONOCE MÁS</Link>
-        </div>
-      </div>
-      <p className="home-hero-note">Tu estilo.<br />Tu talla.<br />Sin dudas.</p>
-    </section>
-
+    <HomeScrollShowcase />
+  
     <section className="home-benefits" aria-label="Beneficios de comprar en Kloset">
       <div><Icono nombre="escudo" /><p><strong>Compra segura</strong><span>Proceso claro de principio a fin</span></p></div>
       <div><Icono nombre="cambio" /><p><strong>Devoluciones fáciles</strong><span>Hasta 30 días</span></p></div>
