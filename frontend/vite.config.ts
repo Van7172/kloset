@@ -16,6 +16,10 @@ export default defineConfig({
             if (/[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)) {
               return 'react-vendor';
             }
+            // three solo lo usa el probador 3D: chunk aparte, cacheable y fuera del resto de rutas.
+            if (/[\\/](three|@react-three)[\\/]/.test(id)) {
+              return 'three-vendor';
+            }
           }
         },
       },

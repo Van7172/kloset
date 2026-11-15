@@ -7,7 +7,7 @@ use PDO;
 
 class PerfilesCorporales
 {
-	private const TALLAS = ['XS', 'S', 'M', 'L', 'XL'];
+	private const TALLAS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 	/** Misma fórmula que `frontend/src/lib/fit.ts` (indiceTalla/tallaRecomendada). */
 	private static function tallaRecomendada(float $pecho, string $corte): string
@@ -15,15 +15,13 @@ class PerfilesCorporales
 		$c = $pecho;
 		$config = Conexion::getInstance()->query("SELECT valor_configuracion FROM sistema_configuraciones WHERE llave_configuracion='tallas.tolerancia_cm'")->fetchColumn();
 		$tolerancia = is_numeric($config) ? (float)$config : 2.5;
-		$i = $c < 88 + $tolerancia ? 0 : ($c < 96 + $tolerancia ? 1 : ($c < 104 + $tolerancia ? 2 : ($c < 112 + $tolerancia ? 3 : 4)));
-		$resto = fmod($c, 8);
-		if ($corte === 'Slim' && $resto > 5) {
-			$i = min(4, $i + 1);
+		// Talla más pequeña cuyo tope de pecho (88, 96, 104, 112, 120) cubre la medida; el resto es XXL.
+		foreach ([88, 96, 104, 112, 120] as $i => $tope) {
+			if ($c < $tope + $tolerancia) {
+				return self::TALLAS[$i];
+			}
 		}
-		if ($corte === 'Oversize' && $resto < 2) {
-			$i = max(0, $i - 1);
-		}
-		return self::TALLAS[$i];
+		return self::TALLAS[5];
 	}
 
 	public static function mio(): array

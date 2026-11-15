@@ -1,11 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   APRIETE_FIGURA,
-  CORTES,
-  VEREDICTO_CORTE,
-  mapaAjuste,
-  tallaRecomendada,
   type Corte,
 } from '../lib/fit';
 import { useKloset } from '../store/KlosetContext';
@@ -77,7 +73,7 @@ function frameUrl(prefix: string, index: number) {
 }
 
 export function HomeScrollShowcase() {
-  const { tema, medidas, corte, tienePerfil, setCorte } = useKloset();
+  const { tema, corte } = useKloset();
   const trackRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -98,8 +94,6 @@ export function HomeScrollShowcase() {
   const isVisibleRef = useRef(true);
   const isTabVisibleRef = useRef(true);
 
-  const talla = tallaRecomendada(medidas, corte);
-  const zonas = useMemo(() => mapaAjuste(corte), [corte]);
   const corteRef = useRef<Corte>(corte);
   const temaRef = useRef(tema);
 
@@ -662,36 +656,6 @@ export function HomeScrollShowcase() {
             )}
 
             <p className="home-lede">{activeChapter.copy}</p>
-
-            {/* Selector interactivo de corte + medidas reales en el Acto 3 */}
-            {showFitControls && (
-              <div className="home-scroll-fitbox">
-                <div className="home-scroll-cuts" role="group" aria-label="Probar corte en la prenda">
-                  {CORTES.map((opcion) => (
-                    <button
-                      key={opcion}
-                      type="button"
-                      onClick={() => setCorte(opcion)}
-                      className={corte === opcion ? 'is-active' : ''}
-                    >
-                      {opcion}
-                    </button>
-                  ))}
-                </div>
-                <p className="home-scroll-verdict">
-                  <strong>{corte}:</strong> {VEREDICTO_CORTE[corte]}
-                  {tienePerfil && <span className="home-scroll-badge">TU TALLA · {talla}</span>}
-                </p>
-                <div className="home-scroll-zones">
-                  {zonas.slice(0, 3).map((z) => (
-                    <div key={z.zone}>
-                      <span>{z.zone}</span>
-                      <strong>{z.note}</strong>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="home-actions">
               <Link className="home-button home-button-red" to="/catalogo">

@@ -389,13 +389,6 @@
   line-height: 0.98;
   margin: 0 0 16px;
 }
-.home-scroll-fitbox {
-  margin: 0 0 22px;
-  padding: 14px 16px;
-  border: 1px solid var(--ink);
-  background: var(--header-bg);
-  backdrop-filter: blur(8px);
-}
 .home-scroll-cuts {
   display: inline-flex;
   border: 1px solid var(--ink);

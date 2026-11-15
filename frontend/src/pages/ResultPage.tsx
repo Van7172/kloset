@@ -10,7 +10,7 @@ export function ResultPage() {
   const { medidas, corte } = useProfile();
 
   const talla = tallaRecomendada(medidas, corte);
-  const zonas = mapaAjuste(corte);
+  const zonas = mapaAjuste(medidas, talla, corte);
 
   return (
     <div className="kl-rise mx-auto max-w-[640px]">
@@ -28,7 +28,7 @@ export function ResultPage() {
           </div>
           <p className="m-0 text-[15px] leading-[1.65] text-body">{porQueEstaTalla(medidas, corte, talla)}</p>
           <div className="mt-4 border-b-2 border-red pb-[6px] font-narrow text-xs uppercase leading-[1.5] tracking-[0.1em] text-ink">
-            Confianza {confianza(corte)}% · basado en tus cuatro medidas
+            Confianza {confianza(medidas, talla, corte)}% · basado en tus cuatro medidas
           </div>
         </div>
       </div>
